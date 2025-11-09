@@ -1,0 +1,75 @@
+# MOTD 假玩家配置
+fakeplayer:
+  # 是否启用假玩家功能
+  enabled: true
+  # 显示的在线人数 = 实际在线 + count（可为负，最小为 0）
+  count: 3
+
+# 命令别名配置
+# 请在 aliases.yml 文件中配置命令别名
+# 使用 /tsl aliasreload 重载别名配置
+
+# Visitor 模式配置
+visitor:
+  # 获得访客权限时的提示
+  gained:
+    chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
+    title: "&a访客模式"
+    subtitle: "&7已启用"
+    sound: "entity.player.levelup"
+  # 失去访客权限时的提示
+  lost:
+    chat: "&c[访客模式] &7你已退出访客模式，怪物现在可以攻击你了！"
+    title: "&c访客模式"
+    subtitle: "&7已禁用"
+    sound: "block.note_block.bass"
+
+# 权限检测配置
+permission-checker:
+  # 是否启用权限检测
+  enabled: true
+  # 目标权限组名称（会替换玩家当前的所有权限组）
+  target-group: "normal"
+  # 变量名称（在 PlaceholderAPI 中使用，例如 %vault_eco_balance%）
+  variable-name: "%player_gamemode%"
+  # 变量期望值（当变量等于此值时才执行权限组修改）
+  variable-value: "SURVIVAL"
+  # 是否启用命令执行
+  execute-command: false
+  # 玩家权限组设置后执行的命令（%player% 将被替换为玩家名）
+  # 可以配置多条命令
+  commands:
+    - "say 欢迎 %player% 加入服务器！"
+    - "give %player% diamond 1"
+
+# 维护模式配置
+maintenance:
+  # 命令相关消息
+  messages:
+    # 启用维护模式时的提示
+    enabled: "&a[维护模式] &7服务器维护模式已启用！"
+    # 关闭维护模式时的提示
+    disabled: "&c[维护模式] &7服务器维护模式已关闭！"
+    # 没有权限时的提示
+    no-permission: "&c你没有权限使用此命令！"
+  # 玩家被踢出时显示的消息（多行）
+  kick-message:
+    - "&c&l⚠ 服务器维护中 ⚠"
+  # 服务器列表 MOTD（维护模式下显示）
+  motd:
+    - "&c&l⚠ 服务器维护中 ⚠"
+    - "&7正在进行维护，请稍后再试"
+  # 版本栏文本（替代原本的 "1.21.x"）
+  version-text: "&c维护中 ✖"
+  # 是否显示为不兼容版本（显示红色X）
+  show-incompatible-version: true
+  # 是否显示假玩家数量
+  show-fake-players: true
+  # 假在线人数
+  fake-online: 0
+  # 假最大人数
+  fake-max: 0
+  # 玩家列表悬浮提示（鼠标放到人数上显示的内容）
+  # 每一行会显示为一个"玩家"
+  hover-message:
+    - "&c&l⚠ 服务器维护中 ⚠"

@@ -1,0 +1,31 @@
+name: TSLplugins
+version: '1.0'
+main: org.tsl.tSLplugins.TSLplugins
+api-version: '1.21'
+authors: [ Zvbj ]
+description: TSL服务器的插件喵
+folia-supported: true
+softdepend: [ PlaceholderAPI ]
+
+commands:
+  tsl:
+    description: TSL 插件主命令
+    usage: |
+      /tsl advcount refresh <player|all>
+      /tsl aliasreload
+      /tsl maintenance
+
+permissions:
+  tsl.visitor:
+    description: 访客权限，拥有此权限的玩家不会被怪物攻击并发光
+    default: false
+  tsl.alias.reload:
+    description: 重载命令别名配置的权限
+    default: op
+  tsl.maintenance.toggle:
+    description: 切换维护模式的权限
+    default: op
+  tsl.maintenance.bypass:
+    description: 绕过维护模式，允许在维护时进入服务器
+    default: op
+
