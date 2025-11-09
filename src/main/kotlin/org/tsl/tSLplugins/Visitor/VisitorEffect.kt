@@ -27,6 +27,7 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
 
     init {
         setupLuckPerms()
+        startPeriodicCheck()
     }
 
     private fun setupLuckPerms() {
@@ -39,6 +40,35 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
         } else {
             plugin.logger.warning("未找到 LuckPerms！访客模式权限变更检测将不可用。")
         }
+    }
+
+    /**
+     * 启动定期检查任务，每30秒检查一次所有在线玩家的访客权限
+     * 这是一个保险机制，防止 LuckPerms 事件没有正确触发
+     */
+    private fun startPeriodicCheck() {
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+            Bukkit.getOnlinePlayers().forEach { player ->
+                val uuid = player.uniqueId
+                val hasPermission = player.hasPermission("tsl.visitor")
+                val wasVisitor = visitorPlayers.contains(uuid)
+
+                when {
+                    hasPermission && !wasVisitor -> {
+                        // 获得访客权限（可能是权限变更事件没触发）
+                        applyVisitorEffect(player)
+                        sendGainedMessage(player)
+                        plugin.logger.info("定期检查：玩家 ${player.name} 获得了访客权限")
+                    }
+                    !hasPermission && wasVisitor -> {
+                        // 失去访客权限（可能是权限变更事件没触发）
+                        removeVisitorEffect(player)
+                        sendLostMessage(player)
+                        plugin.logger.info("定期检查：玩家 ${player.name} 失去了访客权限")
+                    }
+                }
+            }
+        }, 600L, 600L) // 延迟 30 秒，每 30 秒检查一次
     }
 
     @EventHandler
@@ -90,28 +120,32 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
         val uuid = event.user.uniqueId
         val player = Bukkit.getPlayer(uuid) ?: return
 
-        if (player.isOnline) {
-            // 延迟检查，确保权限已更新 - 使用实体调度器以兼容 Folia
-            player.scheduler.runDelayed(plugin, { _ ->
-                if (player.isOnline) {
-                    val hasPermission = player.hasPermission("tsl.visitor")
-                    val wasVisitor = visitorPlayers.contains(uuid)
+        if (!player.isOnline) return
 
-                    when {
-                        hasPermission && !wasVisitor -> {
-                            // 获得访客权限
-                            applyVisitorEffect(player)
-                            sendGainedMessage(player)
-                        }
-                        !hasPermission && wasVisitor -> {
-                            // 失去访客权限
-                            removeVisitorEffect(player)
-                            sendLostMessage(player)
-                        }
-                    }
+        // 延迟检查，确保权限已更新 - 使用实体调度器以兼容 Folia
+        player.scheduler.runDelayed(plugin, { _ ->
+            if (!player.isOnline) return@runDelayed
+
+            val hasPermission = player.hasPermission("tsl.visitor")
+            val wasVisitor = visitorPlayers.contains(uuid)
+
+            when {
+                hasPermission && !wasVisitor -> {
+                    // 获得访客权限
+                    applyVisitorEffect(player)
+                    sendGainedMessage(player)
+                    plugin.logger.info("玩家 ${player.name} 获得了访客权限")
                 }
-            }, null, 5L)
-        }
+                !hasPermission && wasVisitor -> {
+                    // 失去访客权限
+                    removeVisitorEffect(player)
+                    sendLostMessage(player)
+                    plugin.logger.info("玩家 ${player.name} 失去了访客权限")
+                }
+                // hasPermission && wasVisitor - 已经是访客，无需操作
+                // !hasPermission && !wasVisitor - 本来就不是访客，无需操作
+            }
+        }, null, 10L) // 延迟 0.5 秒，确保权限完全更新
     }
 
     private fun applyVisitorEffect(player: Player) {

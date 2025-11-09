@@ -16,6 +16,7 @@ import org.tsl.tSLplugins.Maintenance.MaintenanceManager
 import org.tsl.tSLplugins.Maintenance.MaintenanceCommand
 import org.tsl.tSLplugins.Maintenance.MaintenanceLoginListener
 import org.tsl.tSLplugins.Maintenance.MaintenanceMotdListener
+import org.tsl.tSLplugins.Bossvoice.BossvoiceListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -24,8 +25,12 @@ class TSLplugins : JavaPlugin() {
     private lateinit var maintenanceManager: MaintenanceManager
 
     override fun onEnable() {
-        // 保存默认配置
-        saveDefaultConfig()
+        // 检查并更新配置文件
+        val configUpdateManager = ConfigUpdateManager(this)
+        configUpdateManager.checkAndUpdate()
+
+        // 重新加载配置（确保获取最新的配置）
+        reloadConfig()
 
         val pm = server.pluginManager
 
@@ -35,6 +40,7 @@ class TSLplugins : JavaPlugin() {
         pm.registerEvents(VisitorEffect(this), this)
         pm.registerEvents(FarmProtect(), this)
         pm.registerEvents(PermissionChecker(this), this)
+        pm.registerEvents(BossvoiceListener(this), this)
 
         // 初始化成就统计系统
         countHandler = AdvancementCount(this)
@@ -56,6 +62,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("advcount", AdvancementCommand(this, countHandler))
             dispatcher.registerSubCommand("aliasreload", AliasCommand(this, aliasManager))
             dispatcher.registerSubCommand("maintenance", MaintenanceCommand(maintenanceManager))
+            dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
             command.tabCompleter = dispatcher
@@ -82,6 +89,23 @@ class TSLplugins : JavaPlugin() {
 
     override fun onDisable() {
         // 插件关闭逻辑
+    }
+
+    /**
+     * 重新加载别名管理器
+     * @return 重载的别名数量
+     */
+    fun reloadAliasManager(): Int {
+        aliasManager.reloadAliases()
+        return aliasManager.getAliasCount()
+    }
+
+    /**
+     * 重新加载维护模式管理器
+     */
+    fun reloadMaintenanceManager() {
+        // 维护模式会自动从配置文件读取
+        // 这里只需要确保配置已重载
     }
 }
 

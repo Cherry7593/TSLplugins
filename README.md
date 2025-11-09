@@ -191,6 +191,7 @@ aliases:
 
 | 命令 | 说明 | 权限 |
 |------|------|------|
+| `/tsl reload` | 重新加载所有配置文件 | OP |
 | `/tsl aliasreload` | 重载别名配置 | `tsl.alias.reload` |
 
 ---
@@ -485,18 +486,23 @@ aliases:
 
 | 命令 | 说明 | 权限 |
 |------|------|------|
+| `/tsl reload` | 重新加载所有配置文件 | OP |
 | `/tsl advcount refresh <player\|all>` | 刷新成就统计 | - |
 | `/tsl aliasreload` | 重载别名配置 | `tsl.alias.reload` |
-| `/tsl maintenance` | 切换维护模式 | `tsl.maintenance.toggle` |
+| `/tsl maintenance on` | 开启维护模式 | `tsl.maintenance.manage` |
+| `/tsl maintenance off` | 关闭维护模式 | `tsl.maintenance.manage` |
+| `/tsl maintenance add <玩家名>` | 添加玩家到白名单 | `tsl.maintenance.manage` |
+| `/tsl maintenance remove <玩家名>` | 从白名单移除玩家 | `tsl.maintenance.manage` |
+| `/tsl maintenance whitelist` | 查看白名单列表 | `tsl.maintenance.manage` |
 
 ### 权限列表
 
 | 权限 | 说明 | 默认 |
 |------|------|------|
 | `tsl.visitor` | 访客权限（怪物不攻击、发光） | false |
+| `tsl.reload` | 重新加载插件配置 | OP |
 | `tsl.alias.reload` | 重载命令别名配置 | OP |
-| `tsl.maintenance.toggle` | 切换维护模式 | OP |
-| `tsl.maintenance.bypass` | 绕过维护模式限制 | OP |
+| `tsl.maintenance.manage` | 管理维护模式（所有命令） | OP |
 
 ### PlaceholderAPI 占位符
 
