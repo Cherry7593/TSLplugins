@@ -10,7 +10,10 @@ import org.tsl.tSLplugins.SubCommandHandler
  * 维护模式命令处理器
  * 处理 /tsl maintenance 命令及其子命令
  */
-class MaintenanceCommand(private val manager: MaintenanceManager) : SubCommandHandler {
+class MaintenanceCommand(
+    private val manager: MaintenanceManager,
+    private val permissionListener: MaintenancePermissionListener
+) : SubCommandHandler {
 
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
 
@@ -52,6 +55,9 @@ class MaintenanceCommand(private val manager: MaintenanceManager) : SubCommandHa
         val message = manager.getConfig().getString("maintenance.messages.enabled",
             "&a[维护模式] &7服务器维护模式已启用！") ?: "&a[维护模式] &7服务器维护模式已启用！"
         sender.sendMessage(serializer.deserialize(message))
+
+        // 立即检查在线玩家，踢出没有权限的玩家
+        permissionListener.checkOnlinePlayers()
     }
 
     private fun handleOff(sender: CommandSender) {
@@ -106,6 +112,10 @@ class MaintenanceCommand(private val manager: MaintenanceManager) : SubCommandHa
         if (onlinePlayer != null) {
             if (manager.removeFromWhitelist(onlinePlayer.uniqueId)) {
                 sender.sendMessage(serializer.deserialize("&a已将玩家 &f$playerName &a从维护模式白名单移除！"))
+                // 如果维护模式开启，立即检查该玩家是否还有权限
+                if (manager.isMaintenanceEnabled()) {
+                    permissionListener.checkOnlinePlayers()
+                }
             } else {
                 sender.sendMessage(serializer.deserialize("&c玩家 &f$playerName &c不在白名单中！"))
             }

@@ -27,49 +27,23 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
 
     init {
         setupLuckPerms()
-        startPeriodicCheck()
     }
 
+    /**
+     * 设置 LuckPerms 集成，监听权限变更事件
+     */
     private fun setupLuckPerms() {
         val provider = Bukkit.getServicesManager().getRegistration(LuckPerms::class.java)
         if (provider != null) {
             luckPerms = provider.provider
-            // 注册 LuckPerms 事件监听器
+            // 注册 LuckPerms 事件监听器 - 当玩家权限变更时自动触发
             luckPerms?.eventBus?.subscribe(plugin, UserDataRecalculateEvent::class.java, ::onPermissionChange)
-            plugin.logger.info("LuckPerms 集成成功！")
+            plugin.logger.info("LuckPerms 集成成功！访客模式将通过权限变更事件实时响应。")
         } else {
             plugin.logger.warning("未找到 LuckPerms！访客模式权限变更检测将不可用。")
         }
     }
 
-    /**
-     * 启动定期检查任务，每30秒检查一次所有在线玩家的访客权限
-     * 这是一个保险机制，防止 LuckPerms 事件没有正确触发
-     */
-    private fun startPeriodicCheck() {
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
-            Bukkit.getOnlinePlayers().forEach { player ->
-                val uuid = player.uniqueId
-                val hasPermission = player.hasPermission("tsl.visitor")
-                val wasVisitor = visitorPlayers.contains(uuid)
-
-                when {
-                    hasPermission && !wasVisitor -> {
-                        // 获得访客权限（可能是权限变更事件没触发）
-                        applyVisitorEffect(player)
-                        sendGainedMessage(player)
-                        plugin.logger.info("定期检查：玩家 ${player.name} 获得了访客权限")
-                    }
-                    !hasPermission && wasVisitor -> {
-                        // 失去访客权限（可能是权限变更事件没触发）
-                        removeVisitorEffect(player)
-                        sendLostMessage(player)
-                        plugin.logger.info("定期检查：玩家 ${player.name} 失去了访客权限")
-                    }
-                }
-            }
-        }, 600L, 600L) // 延迟 30 秒，每 30 秒检查一次
-    }
 
     @EventHandler
     fun onEntityTarget(event: EntityTargetEvent) {
@@ -116,6 +90,10 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
         visitorPlayers.remove(event.player.uniqueId)
     }
 
+    /**
+     * LuckPerms 权限变更事件处理
+     * 当玩家权限发生变更时（例如通过命令修改权限组），此方法会自动触发
+     */
     private fun onPermissionChange(event: UserDataRecalculateEvent) {
         val uuid = event.user.uniqueId
         val player = Bukkit.getPlayer(uuid) ?: return

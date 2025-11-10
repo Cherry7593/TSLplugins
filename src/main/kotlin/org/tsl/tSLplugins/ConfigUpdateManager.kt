@@ -42,38 +42,71 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
         // 需要更新
         plugin.logger.info("检测到配置文件版本不同（当前: v$currentVersion, 最新: v$CURRENT_CONFIG_VERSION）")
-        plugin.logger.info("开始更新配置文件，只添加新配置项，不修改现有配置...")
+        plugin.logger.info("开始更新配置文件，保持配置顺序并保留现有配置值...")
 
         // 读取默认配置（插件 JAR 内的配置）
         val defaultConfig = YamlConfiguration.loadConfiguration(
             InputStreamReader(plugin.getResource("config.yml")!!)
         )
 
-        // 更新版本号
-        currentConfig.set("config-version", CURRENT_CONFIG_VERSION)
+        // 创建新的配置对象，按照默认配置的顺序构建
+        val newConfig = YamlConfiguration()
 
-        // 合并配置：只添加新键，不修改已存在的键
+        // 首先设置版本号（确保版本号始终在最上方）
+        newConfig.set("config-version", CURRENT_CONFIG_VERSION)
+
+        // 按照默认配置的顺序，合并配置值
         var addedCount = 0
+        var updatedCount = 0
+
+        // 获取默认配置的所有键（保持顺序）
         for (key in defaultConfig.getKeys(true)) {
             // 跳过版本号键（已经设置）
             if (key == "config-version") continue
 
-            // 只添加不存在的键
-            if (!currentConfig.contains(key)) {
-                currentConfig.set(key, defaultConfig.get(key))
+            // 如果是配置节点（有子节点），跳过
+            if (defaultConfig.isConfigurationSection(key)) continue
+
+            if (currentConfig.contains(key)) {
+                // 保留用户的旧配置值
+                newConfig.set(key, currentConfig.get(key))
+                updatedCount++
+            } else {
+                // 添加新的配置项
+                newConfig.set(key, defaultConfig.get(key))
                 addedCount++
                 plugin.logger.info("  + 添加新配置项: $key")
             }
         }
 
+        // 备份旧配置文件
+        val backupFile = File(plugin.dataFolder, "config.yml.backup")
+        try {
+            configFile.copyTo(backupFile, overwrite = true)
+            plugin.logger.info("已备份旧配置文件到: config.yml.backup")
+        } catch (e: Exception) {
+            plugin.logger.warning("备份配置文件失败: ${e.message}")
+        }
+
         // 保存更新后的配置
         try {
-            currentConfig.save(configFile)
-            plugin.logger.info("配置文件更新完成！添加了 $addedCount 个新配置项")
-            plugin.logger.info("配置文件已更新到版本 $CURRENT_CONFIG_VERSION")
+            newConfig.save(configFile)
+            plugin.logger.info("配置文件更新完成！")
+            plugin.logger.info("  - 保留了 $updatedCount 个现有配置项")
+            plugin.logger.info("  - 添加了 $addedCount 个新配置项")
+            plugin.logger.info("  - 配置文件已更新到版本 $CURRENT_CONFIG_VERSION")
             return true
         } catch (e: Exception) {
             plugin.logger.severe("保存配置文件时出错: ${e.message}")
+            // 尝试恢复备份
+            if (backupFile.exists()) {
+                try {
+                    backupFile.copyTo(configFile, overwrite = true)
+                    plugin.logger.info("已从备份恢复配置文件")
+                } catch (ex: Exception) {
+                    plugin.logger.severe("恢复备份失败: ${ex.message}")
+                }
+            }
             return false
         }
     }
