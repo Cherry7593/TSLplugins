@@ -1,204 +1,151 @@
-# TSLplugins - 完整文档
+# TSLplugins
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.21-blue.svg)](https://kotlinlang.org)
 [![Paper](https://img.shields.io/badge/Paper-1.21.8-green.svg)](https://papermc.io)
 [![Folia](https://img.shields.io/badge/Folia-Supported-brightgreen.svg)](https://papermc.io/software/folia)
 
-> TSL服务器的Minecraft插件 - 完全使用 Kotlin 编写，支持 Folia 1.21.8
+> TSL服务器的Minecraft插件集合 - 完全使用 Kotlin 编写，支持 Folia 1.21.8
 
 ---
 
-## 📋 目录
+## 项目简介
 
-1. [项目概述](#项目概述)
-2. [快速开始](#快速开始)
-3. [功能模块](#功能模块)
-   - [命令别名系统](#命令别名系统)
-   - [维护模式](#维护模式)
-   - [成就系统](#成就系统)
-   - [访客模式](#访客模式)
-   - [权限检测器](#权限检测器)
-   - [农田保护](#农田保护)
-   - [MOTD 假玩家显示](#motd-假玩家显示)
-4. [配置文件](#配置文件)
-5. [命令和权限](#命令和权限)
-6. [技术架构](#技术架构)
-7. [开发指南](#开发指南)
+TSLplugins 是一个模块化的 Minecraft 服务器插件，使用 Kotlin 开发，完美支持 Paper 和 Folia 1.21.8。
 
----
+### 核心特性
 
-## 项目概述
+- ✅ **模块化设计** - 9 个独立功能模块，可单独禁用
+- ✅ **Kotlin 实现** - 简洁、安全、高效
+- ✅ **Folia 兼容** - 完美支持多线程服务器
+- ✅ **配置热重载** - 无需重启即可应用更改
+- ✅ **智能配置更新** - 自动合并新版本配置项
+- ✅ **性能优化** - 配置缓存机制，事件处理零开销
 
-### 项目信息
+### 功能模块
 
-- **名称**: TSLplugins
-- **版本**: 1.0
-- **语言**: Kotlin 1.9.21
-- **服务器**: Paper/Folia 1.21.8
-- **作者**: Zvbj
-
-### Kotlin 优势
-
-本插件从 Java 完全迁移到 Kotlin，带来：
-
-- ✅ **空安全** - 编译时避免 NullPointerException
-- ✅ **简洁语法** - 代码量减少约 30%
-- ✅ **属性访问** - 替代 getter/setter
-- ✅ **Data Class** - 自动生成常用方法
-- ✅ **Lambda** - 更简洁的回调
-- ✅ **字符串模板** - 清晰的消息格式化
-
-### 项目结构
-
-```
-TSLplugins/
-├── src/main/kotlin/org/tsl/tSLplugins/
-│   ├── TSLplugins.kt                    # 主插件类
-│   ├── Alias/                           # 命令别名系统 ⭐
-│   │   ├── AliasManager.kt              # 别名管理器
-│   │   ├── DynamicAliasCommand.kt       # 动态命令注册
-│   │   └── AliasCommand.kt              # 重载命令处理
-│   ├── Maintenance/                     # 维护模式系统 ⭐
-│   │   ├── MaintenanceManager.kt        # 维护模式管理器
-│   │   ├── MaintenanceCommand.kt        # 维护模式命令
-│   │   ├── MaintenanceLoginListener.kt  # 登录监听器
-│   │   └── MaintenanceMotdListener.kt   # MOTD监听器
-│   ├── Advancement/                     # 成就系统
-│   │   ├── AdvancementMessage.kt        # 成就消息处理
-│   │   ├── AdvancementCount.kt          # 成就计数器
-│   │   ├── AdvancementCommand.kt        # 成就命令
-│   │   └── TSLPlaceholderExpansion.kt   # PlaceholderAPI 扩展
-│   ├── Visitor/                         # 访客系统
-│   │   └── VisitorEffect.kt             # 访客特效和保护
-│   ├── Permission/                      # 权限检测
-│   │   └── PermissionChecker.kt         # 自动权限组分配
-│   ├── Farmprotect/                     # 农田保护
-│   │   └── FarmProtect.kt               # 防止踩踏农田
-│   └── Motd/                            # MOTD 模块
-│       └── FakePlayerMotd.kt            # 假玩家数显示
-└── src/main/resources/
-    ├── config.yml                       # 主配置文件
-    ├── aliases.yml                      # 别名配置文件
-    └── plugin.yml                       # 插件描述文件
-```
+1. **命令别名系统** - 自定义命令快捷方式，支持 Tab 补全
+2. **维护模式** - 服务器维护管理，白名单、自定义 MOTD
+3. **玩家体型调整** - 调整玩家体型大小
+4. **Hat 帽子系统** - 将任意物品戴在头上（命令操作，支持堆叠）
+5. **成就系统** - 成就消息过滤和统计
+6. **访客模式** - 新玩家保护，怪物免疫
+7. **权限检测器** - 自动权限分配
+8. **农田保护** - 防止踩踏农田
+9. **MOTD 假玩家** - 调整服务器列表显示人数
 
 ---
 
 ## 快速开始
 
-### 5分钟快速部署
+### 安装
 
-#### 1️⃣ 安装插件 (30秒)
+1. 下载 `TSLplugins-1.0.jar`
+2. 放入服务器 `plugins` 目录
+3. 安装依赖：[LuckPerms](https://luckperms.net/)（必需）
+4. 重启服务器
+
+### 基础使用
 
 ```bash
-# 复制插件到服务器
-cp TSLplugins-1.0.jar /your/server/plugins/
+# 查看所有命令
+/tsl
 
-# 重启服务器
-# 插件会自动创建配置文件
-```
+# 重载配置
+/tsl reload
 
-#### 2️⃣ 验证安装
+# 维护模式
+/tsl maintenance on
 
-启动后查看控制台：
-```
-[TSLplugins] 成功加载 X 个命令别名
-[TSLplugins] TSL插件启动成功！
-[TSLplugins] 命令别名系统已加载 X 个别名
-[TSLplugins] 维护模式状态: 未启用
-```
+# 调整体型
+/tsl scale 0.9
 
-#### 3️⃣ 基础配置
-
-编辑 `plugins/TSLplugins/aliases.yml`：
-```yaml
-aliases:
-  - "t:tpa"              # /t → /tpa
-  - "传送:tpa"           # /传送 → /tpa
-  - "h:home"             # /h → /home
-```
-
-#### 4️⃣ 重载配置
-
-```
-/tsl aliasreload
+# 戴帽子
+/tsl hat
 ```
 
 ---
 
-## 功能模块
+## 文档
 
-### 命令别名系统
+### 📖 [用户与开发者指南](USER_GUIDE.md)
 
-> ⭐ 为现有命令创建自定义别名，支持 Tab 补全，命令显示正常（白色）
+**面向用户和二次开发者**，包含：
+- 详细的功能说明
+- 完整的配置示例
+- 命令和权限列表
+- 常见问题解答
+- 二次开发指南
 
-#### 核心特性
+### 🔧 [开发笔记](DEV_NOTES.md)
 
-✅ **命令别名映射** - 支持任意命令别名  
-✅ **动态命令注册** - 别名显示为白色，不再红色  
-✅ **Tab 补全支持** - 智能补全玩家列表  
-✅ **子命令支持** - 如 `stp tp:teleport`  
-✅ **参数自动传递** - 输入参数自动附加到原命令  
-✅ **大小写不敏感** - `/t` 和 `/T` 效果相同  
-✅ **实时重载配置** - `/tsl aliasreload` 立即生效  
-✅ **中文别名支持** - 完美支持中文命令  
-✅ **Folia 兼容** - 使用实体调度器  
-
-#### 配置示例
-
-**aliases.yml**
-```yaml
-# 简单别名
-aliases:
-  - "t:tpa"              # 快速传送请求
-  - "ta:tpaccept"        # 快速接受
-  - "td:tpadeny"         # 快速拒绝
-  
-  # 中文命令
-  - "传送:tpa"
-  - "回家:home"
-  - "设置家:sethome"
-  
-  # 子命令简化
-  - "stp tp:teleport"    # /stp tp x y z → /teleport x y z
-  - "stp time:time set"  # /stp time day → /time set day
-  
-  # 游戏模式快捷方式
-  - "gm:gamemode"
-  - "gms:gamemode survival"
-  - "gmc:gamemode creative"
-```
-
-#### 使用示例
-
-```bash
-# 基础别名
-/t PlayerName        # → /tpa PlayerName
-
-# 中文别名
-/传送 Steve          # → /tpa Steve
-
-# 子命令别名
-/stp tp 100 64 100   # → /teleport 100 64 100
-/stp time day        # → /time set day
-
-# Tab 补全
-/t [Tab]             # 显示在线玩家列表
-/传送 [Tab]          # 显示在线玩家列表
-```
-
-#### 管理命令
-
-| 命令 | 说明 | 权限 |
-|------|------|------|
-| `/tsl reload` | 重新加载所有配置文件 | OP |
-| `/tsl aliasreload` | 重载别名配置 | `tsl.alias.reload` |
+**面向内部开发**，包含：
+- 项目架构说明
+- 技术要点和最佳实践
+- Folia 兼容性指南
+- 快速参考和开发规范
 
 ---
 
-### 维护模式
+## 技术栈
 
-> ⭐ 全功能服务器维护模式，支持自定义 MOTD、版本信息、玩家列表等
+- **语言**: Kotlin 1.9.21
+- **服务器**: Paper/Folia 1.21.8
+- **Java**: 21
+- **构建**: Gradle 8.5 + Kotlin DSL
+
+### 主要依赖
+
+- LuckPerms API 5.4（必需）
+- PlaceholderAPI 2.11.6（可选）
+- ProtocolLib 5.3.0（可选）
+
+---
+
+## 构建
+
+```bash
+# 克隆项目
+git clone <repository-url>
+cd TSLplugins
+
+# 构建插件
+./gradlew clean shadowJar
+
+# 输出位置
+# build/libs/TSLplugins-1.0.jar
+```
+
+### Windows 环境
+
+```cmd
+gradlew.bat clean shadowJar
+```
+
+---
+
+## 项目结构
+
+```
+TSLplugins/
+├── src/main/kotlin/org/tsl/tSLplugins/
+│   ├── TSLplugins.kt              # 主插件类
+│   ├── TSLCommand.kt              # 统一命令入口
+│   ├── ReloadCommand.kt           # 配置重载
+│   ├── ConfigUpdateManager.kt     # 配置版本控制
+│   │
+│   ├── Alias/                     # 命令别名系统
+│   ├── Maintenance/               # 维护模式
+│   ├── Scale/                     # 体型调整
+│   ├── Advancement/               # 成就系统
+│   ├── Visitor/                   # 访客模式
+│   ├── Permission/                # 权限检测
+│   ├── Farmprotect/              # 农田保护
+│   └── Motd/                     # MOTD 模块
+│
+└── src/main/resources/
+    ├── config.yml                 # 主配置文件
+    ├── aliases.yml                # 别名配置
+    └── plugin.yml                 # 插件描述
 
 #### 核心特性
 
@@ -599,11 +546,7 @@ A: 检查 OP 是否有 `tsl.maintenance.bypass` 权限。默认 OP 应该自动�
 ### Q: PlaceholderAPI 占位符不工作？
 A: 确保安装了 PlaceholderAPI 插件，并在插件启动时看到 "PlaceholderAPI 扩展已注册" 消息。
 
-### Q: 访客模式不生效？
-A: 确认玩家有 `tsl.visitor` 权限，使用 `/lp user <玩家> permission set tsl.visitor true` 设置。
-
-### Q: 如何临时关闭某个功能？
-A: 编辑 `config.yml` 中对应功能的 `enabled` 选项（部分功能支持）。
+```
 
 ---
 
@@ -615,20 +558,25 @@ A: 编辑 `config.yml` 中对应功能的 `enabled` 选项（部分功能支持�
 
 ## 更新日志
 
-### v1.0 (2025-11-07)
-- ✅ 实现命令别名系统（V2 - 支持 Tab 补全）
-- ✅ 实现维护模式系统
-- ✅ 实现成就系统
-- ✅ 实现访客模式
-- ✅ 实现权限检测器
-- ✅ 实现农田保护
-- ✅ 实现 MOTD 假玩家显示
+### v1.0 (2025-11-10)
+- ✅ 命令别名系统（支持 Tab 补全）
+- ✅ 维护模式系统（白名单、MOTD）
+- ✅ 玩家体型调整（Bypass 权限）
+- ✅ 成就系统（智能过滤）
+- ✅ 访客模式（怪物免疫、发光）
+- ✅ 权限检测器（自动分配）
+- ✅ 农田保护
+- ✅ MOTD 假玩家显示
 - ✅ 完全支持 Folia 1.21.8
-- ✅ 完整的 Kotlin 重写
+- ✅ 智能配置更新系统
 
 ---
 
 **感谢使用 TSLplugins！** 🎉
 
-如有问题或建议，请联系插件开发者。
+如有问题或建议，请查看 [用户指南](USER_GUIDE.md) 或联系插件开发者。
 
+---
+
+**最后更新**: 2025-11-11  
+**文档版本**: 1.0

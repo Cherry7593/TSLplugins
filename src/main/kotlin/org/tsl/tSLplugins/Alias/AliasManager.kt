@@ -81,6 +81,12 @@ class AliasManager(private val plugin: JavaPlugin) {
      * 加载别名配置文件
      */
     fun loadAliases() {
+        // 检查功能是否启用
+        if (!plugin.config.getBoolean("alias.enabled", true)) {
+            plugin.logger.info("命令别名功能已禁用")
+            return
+        }
+
         // 确保配置文件存在
         if (!aliasFile.exists()) {
             plugin.saveResource("aliases.yml", false)

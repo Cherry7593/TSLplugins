@@ -23,6 +23,12 @@ class MaintenanceCommand(
         label: String,
         args: Array<out String>
     ): Boolean {
+        // 检查功能是否启用
+        if (!manager.isFeatureEnabled()) {
+            sender.sendMessage(serializer.deserialize("&c维护模式功能已禁用"))
+            return true
+        }
+
         if (!sender.hasPermission("tsl.maintenance.manage")) {
             sender.sendMessage(serializer.deserialize("&c你没有权限使用此命令！"))
             return true

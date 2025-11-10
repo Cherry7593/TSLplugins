@@ -19,6 +19,11 @@ class MaintenanceMotdListener(private val manager: MaintenanceManager) : Listene
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onServerListPing(event: PaperServerListPingEvent) {
+        // 如果功能被禁用，直接返回
+        if (!manager.isFeatureEnabled()) {
+            return
+        }
+
         // 如果维护模式未启用，不做任何修改
         if (!manager.isMaintenanceEnabled()) {
             return

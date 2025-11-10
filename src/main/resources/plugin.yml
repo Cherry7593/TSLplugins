@@ -35,6 +35,9 @@ permissions:
   tsl.scale.bypass:
     description: 绕过体型范围限制，可以设置任意体型值
     default: op
+  tsl.hat.use:
+    description: 使用 Hat 命令的权限
+    default: true
   tsl.reload:
     description: 重载所有插件配置的权限
     default: op

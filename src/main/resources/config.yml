@@ -1,9 +1,9 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 3
+# 版本: 4
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 3
+config-version: 4
 
 # MOTD 假玩家配置
 fakeplayer:
@@ -13,11 +13,26 @@ fakeplayer:
   count: 3
 
 # 命令别名配置
-# 请在 aliases.yml 文件中配置命令别名
-# 使用 /tsl aliasreload 重载别名配置
+alias:
+  # 是否启用命令别名功能
+  enabled: true
+  # 请在 aliases.yml 文件中配置命令别名
+  # 使用 /tsl aliasreload 重载别名配置
+
+# 成就消息配置
+advancement:
+  # 是否启用成就消息过滤功能
+  enabled: true
+
+# 农田保护配置
+farmprotect:
+  # 是否启用农田保护功能
+  enabled: true
 
 # Visitor 模式配置
 visitor:
+  # 是否启用 Visitor 功能
+  enabled: true
   # 获得访客权限时的提示
   gained:
     chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
@@ -51,6 +66,8 @@ permission-checker:
 
 # 维护模式配置
 maintenance:
+  # 是否启用维护模式功能
+  enabled: true
   # 命令相关消息
   messages:
     # 启用维护模式时的提示
@@ -82,6 +99,8 @@ maintenance:
     - "&c&l⚠ 服务器维护中 ⚠"
 # 玩家体型调整配置
 scale:
+  # 是否启用体型调整功能
+  enabled: true
   # 最小体型
   min: 0.8
   # 最大体型
@@ -100,3 +119,30 @@ scale:
     no-permission: "%prefix%你没有权限"
     # 仅玩家可用
     console-only: "%prefix%只有玩家才能执行该命令"
+
+# Hat 功能配置
+hat:
+  # 是否启用 Hat 功能
+  enabled: true
+  # 冷却时间（秒），设置为 0 表示无冷却
+  cooldown: 0.0
+  # 黑名单物品（禁止戴在头上的物品类型）
+  blacklist:
+    - COMMAND_BLOCK
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&c[Hat]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cHat 功能已禁用"
+    # 没有手持物品
+    no-item: "%prefix%&c请先手持一个物品"
+    # 物品在黑名单中
+    blacklisted: "%prefix%&c该物品不能戴在头上"
+    # 权限不足
+    no-permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console-only: "%prefix%&c只有玩家才能使用此命令"
+    # 冷却中
+    cooldown: "%prefix%&c请等待 %cooldown% 秒后再使用"
+

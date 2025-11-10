@@ -4,11 +4,28 @@ import io.papermc.paper.advancement.AdvancementDisplay
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerAdvancementDoneEvent
+import org.bukkit.plugin.java.JavaPlugin
 
-class AdvancementMessage : Listener {
+class AdvancementMessage(private val plugin: JavaPlugin) : Listener {
+
+    private var enabled: Boolean = true
+
+    init {
+        loadConfig()
+    }
+
+    /**
+     * 加载配置
+     */
+    fun loadConfig() {
+        enabled = plugin.config.getBoolean("advancement.enabled", true)
+    }
 
     @EventHandler
     fun onAdvancement(event: PlayerAdvancementDoneEvent) {
+        // 检查功能是否启用
+        if (!enabled) return
+
         // 仅当该进度有可显示信息时才处理
         val display = event.advancement.display ?: return
 

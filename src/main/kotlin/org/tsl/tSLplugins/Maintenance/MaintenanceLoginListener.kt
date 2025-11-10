@@ -17,6 +17,11 @@ class MaintenanceLoginListener(private val manager: MaintenanceManager) : Listen
 
     @EventHandler(priority = EventPriority.LOWEST)
     fun onPreLogin(event: AsyncPlayerPreLoginEvent) {
+        // 如果功能被禁用，直接返回
+        if (!manager.isFeatureEnabled()) {
+            return
+        }
+
         // 如果维护模式未启用，允许所有玩家登录
         if (!manager.isMaintenanceEnabled()) {
             return

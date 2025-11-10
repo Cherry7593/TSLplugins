@@ -39,11 +39,22 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载体型调整配置
             plugin.reloadScaleManager()
 
+            // 重新加载 Hat 配置
+            plugin.reloadHatManager()
+
+            // 重新加载成就消息过滤器
+            plugin.reloadAdvancementMessage()
+
+            // 重新加载农田保护
+            plugin.reloadFarmProtect()
+
+            // 重新加载访客效果
+            plugin.reloadVisitorEffect()
+
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
             sender.sendMessage(serializer.deserialize("&7- 命令别名已重载 ($reloadedAliases 个别名)"))
-            sender.sendMessage(serializer.deserialize("&7- 维护模式配置已重载"))
-            sender.sendMessage(serializer.deserialize("&7- 体型调整配置已重载"))
+            sender.sendMessage(serializer.deserialize("&7- 所有功能模块配置已重载"))
 
             plugin.logger.info("${sender.name} 重新加载了配置文件")
 

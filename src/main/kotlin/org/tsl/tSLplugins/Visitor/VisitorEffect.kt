@@ -24,10 +24,24 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
 
     private var luckPerms: LuckPerms? = null
     private val visitorPlayers = mutableSetOf<UUID>()
+    private var enabled: Boolean = true
 
     init {
+        loadConfig()
         setupLuckPerms()
     }
+
+    /**
+     * 加载配置
+     */
+    fun loadConfig() {
+        enabled = plugin.config.getBoolean("visitor.enabled", true)
+    }
+
+    /**
+     * 检查 Visitor 功能是否启用
+     */
+    private fun isEnabled(): Boolean = enabled
 
     /**
      * 设置 LuckPerms 集成，监听权限变更事件
@@ -47,6 +61,9 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
 
     @EventHandler
     fun onEntityTarget(event: EntityTargetEvent) {
+        // 检查功能是否启用
+        if (!isEnabled()) return
+
         val player = event.target as? Player ?: return
         if (player.hasPermission("tsl.visitor")) {
             event.isCancelled = true
@@ -55,6 +72,9 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
+        // 检查功能是否启用
+        if (!isEnabled()) return
+
         val player = event.player
         val uuid = player.uniqueId
 

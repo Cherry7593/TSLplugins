@@ -21,6 +21,12 @@ class ScaleCommand(
         label: String,
         args: Array<out String>
     ): Boolean {
+        // 检查功能是否启用
+        if (!scaleManager.isEnabled()) {
+            sender.sendMessage(translateColorCode("&c[TSL喵]&r 体型调整功能已禁用"))
+            return true
+        }
+
         // 需要是玩家
         if (sender !is Player) {
             sender.sendMessage(translateColorCode(scaleManager.getMessage("console-only")))

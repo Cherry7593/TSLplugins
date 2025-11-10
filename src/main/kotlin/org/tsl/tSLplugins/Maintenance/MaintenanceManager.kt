@@ -14,17 +14,31 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
     private val maintenanceFile = File(plugin.dataFolder, "maintenance.dat")
     private val whitelistFile = File(plugin.dataFolder, "maintenance-whitelist.txt")
     private var maintenanceEnabled = false
+    private var featureEnabled = true
     private val whitelist = mutableMapOf<UUID, String>() // UUID -> 玩家名
 
     init {
+        loadConfig()
         loadMaintenanceState()
         loadWhitelist()
+    }
+
+    /**
+     * 加载配置
+     */
+    fun loadConfig() {
+        featureEnabled = plugin.config.getBoolean("maintenance.enabled", true)
     }
 
     /**
      * 获取当前维护模式状态
      */
     fun isMaintenanceEnabled(): Boolean = maintenanceEnabled
+
+    /**
+     * 检查维护模式功能是否启用
+     */
+    fun isFeatureEnabled(): Boolean = featureEnabled
 
     /**
      * 设置维护模式状态

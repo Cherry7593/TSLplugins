@@ -49,6 +49,13 @@ class ScaleManager(private val plugin: JavaPlugin) {
     }
 
     /**
+     * 检查体型调整功能是否启用
+     */
+    fun isEnabled(): Boolean {
+        return plugin.config.getBoolean("scale.enabled", true)
+    }
+
+    /**
      * 获取配置的最小体型
      */
     fun getScaleMin(): Double = scaleMin

@@ -19,13 +19,19 @@ import org.tsl.tSLplugins.Maintenance.MaintenanceMotdListener
 import org.tsl.tSLplugins.Maintenance.MaintenancePermissionListener
 import org.tsl.tSLplugins.Scale.ScaleManager
 import org.tsl.tSLplugins.Scale.ScaleCommand
+import org.tsl.tSLplugins.Hat.HatManager
+import org.tsl.tSLplugins.Hat.HatCommand
 
 class TSLplugins : JavaPlugin() {
 
     private lateinit var countHandler: AdvancementCount
     private lateinit var aliasManager: AliasManager
+    private lateinit var hatManager: HatManager
     private lateinit var maintenanceManager: MaintenanceManager
     private lateinit var scaleManager: ScaleManager
+    private lateinit var advancementMessage: AdvancementMessage
+    private lateinit var farmProtect: FarmProtect
+    private lateinit var visitorEffect: VisitorEffect
 
     override fun onEnable() {
         // 检查并更新配置文件
@@ -38,10 +44,13 @@ class TSLplugins : JavaPlugin() {
         val pm = server.pluginManager
 
         // 注册事件监听器
-        pm.registerEvents(AdvancementMessage(), this)
+        advancementMessage = AdvancementMessage(this)
+        pm.registerEvents(advancementMessage, this)
         pm.registerEvents(FakePlayerMotd(this), this)
-        pm.registerEvents(VisitorEffect(this), this)
-        pm.registerEvents(FarmProtect(), this)
+        visitorEffect = VisitorEffect(this)
+        pm.registerEvents(visitorEffect, this)
+        farmProtect = FarmProtect(this)
+        pm.registerEvents(farmProtect, this)
         pm.registerEvents(PermissionChecker(this), this)
 
 
@@ -59,6 +68,9 @@ class TSLplugins : JavaPlugin() {
         pm.registerEvents(MaintenanceMotdListener(maintenanceManager), this)
         pm.registerEvents(maintenancePermissionListener, this)
 
+        // 初始化 Hat 系统
+        hatManager = HatManager(this)
+
         // 初始化体型调整系统
         scaleManager = ScaleManager(this)
 
@@ -71,6 +83,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("aliasreload", AliasCommand(this, aliasManager))
             dispatcher.registerSubCommand("maintenance", MaintenanceCommand(maintenanceManager, maintenancePermissionListener))
             dispatcher.registerSubCommand("scale", ScaleCommand(this, scaleManager))
+            dispatcher.registerSubCommand("hat", HatCommand(this, hatManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -109,8 +122,7 @@ class TSLplugins : JavaPlugin() {
      * 重新加载维护模式管理器
      */
     fun reloadMaintenanceManager() {
-        // 维护模式会自动从配置文件读取
-        // 这里只需要确保配置已重载
+        maintenanceManager.loadConfig()
     }
 
     /**
@@ -118,5 +130,33 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadScaleManager() {
         scaleManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Hat 管理器
+     */
+    fun reloadHatManager() {
+        hatManager.loadConfig()
+    }
+
+    /**
+     * 重新加载成就消息过滤器
+     */
+    fun reloadAdvancementMessage() {
+        advancementMessage.loadConfig()
+    }
+
+    /**
+     * 重新加载农田保护
+     */
+    fun reloadFarmProtect() {
+        farmProtect.loadConfig()
+    }
+
+    /**
+     * 重新加载访客效果
+     */
+    fun reloadVisitorEffect() {
+        visitorEffect.loadConfig()
     }
 }

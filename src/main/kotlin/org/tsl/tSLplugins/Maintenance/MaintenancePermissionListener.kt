@@ -24,6 +24,10 @@ class MaintenancePermissionListener(
      * 在权限可能发生变更时调用
      */
     fun checkOnlinePlayers() {
+        if (!manager.isFeatureEnabled()) {
+            return
+        }
+
         if (!manager.isMaintenanceEnabled()) {
             return
         }
@@ -55,6 +59,10 @@ class MaintenancePermissionListener(
      */
     @EventHandler
     fun onWorldChange(event: PlayerChangedWorldEvent) {
+        if (!manager.isFeatureEnabled()) {
+            return
+        }
+
         if (!manager.isMaintenanceEnabled()) {
             return
         }
