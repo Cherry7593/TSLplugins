@@ -17,14 +17,15 @@ import org.tsl.tSLplugins.Maintenance.MaintenanceCommand
 import org.tsl.tSLplugins.Maintenance.MaintenanceLoginListener
 import org.tsl.tSLplugins.Maintenance.MaintenanceMotdListener
 import org.tsl.tSLplugins.Maintenance.MaintenancePermissionListener
-import org.tsl.tSLplugins.Bossvoice.BossvoiceListener
+import org.tsl.tSLplugins.Scale.ScaleManager
+import org.tsl.tSLplugins.Scale.ScaleCommand
 
 class TSLplugins : JavaPlugin() {
 
     private lateinit var countHandler: AdvancementCount
     private lateinit var aliasManager: AliasManager
     private lateinit var maintenanceManager: MaintenanceManager
-    private lateinit var bossvoiceListener: BossvoiceListener
+    private lateinit var scaleManager: ScaleManager
 
     override fun onEnable() {
         // 检查并更新配置文件
@@ -43,9 +44,6 @@ class TSLplugins : JavaPlugin() {
         pm.registerEvents(FarmProtect(), this)
         pm.registerEvents(PermissionChecker(this), this)
 
-        // 初始化 Bossvoice 监听器（使用 ProtocolLib）
-        bossvoiceListener = BossvoiceListener(this)
-        bossvoiceListener.enable()
 
         // 初始化成就统计系统
         countHandler = AdvancementCount(this)
@@ -61,6 +59,9 @@ class TSLplugins : JavaPlugin() {
         pm.registerEvents(MaintenanceMotdListener(maintenanceManager), this)
         pm.registerEvents(maintenancePermissionListener, this)
 
+        // 初始化体型调整系统
+        scaleManager = ScaleManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -69,6 +70,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("advcount", AdvancementCommand(this, countHandler))
             dispatcher.registerSubCommand("aliasreload", AliasCommand(this, aliasManager))
             dispatcher.registerSubCommand("maintenance", MaintenanceCommand(maintenanceManager, maintenancePermissionListener))
+            dispatcher.registerSubCommand("scale", ScaleCommand(this, scaleManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -94,13 +96,6 @@ class TSLplugins : JavaPlugin() {
         logger.info("维护模式状态: ${if (maintenanceManager.isMaintenanceEnabled()) "已启用" else "未启用"}")
     }
 
-    override fun onDisable() {
-        // 停用 Bossvoice 监听器
-        if (::bossvoiceListener.isInitialized) {
-            bossvoiceListener.disable()
-        }
-    }
-
     /**
      * 重新加载别名管理器
      * @return 重载的别名数量
@@ -116,5 +111,12 @@ class TSLplugins : JavaPlugin() {
     fun reloadMaintenanceManager() {
         // 维护模式会自动从配置文件读取
         // 这里只需要确保配置已重载
+    }
+
+    /**
+     * 重新加载体型管理器
+     */
+    fun reloadScaleManager() {
+        scaleManager.loadConfig()
     }
 }

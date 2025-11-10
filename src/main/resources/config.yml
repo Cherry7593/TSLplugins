@@ -1,9 +1,9 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 2
+# 版本: 3
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 2
+config-version: 3
 
 # MOTD 假玩家配置
 fakeplayer:
@@ -80,24 +80,23 @@ maintenance:
   # 每一行会显示为一个"玩家"
   hover-message:
     - "&c&l⚠ 服务器维护中 ⚠"
-
-# Boss 声音范围配置
-bossvoice:
-  # 末影龙死亡声音范围（格子/方块）
-  # -1: 全服都能听到（默认行为）
-  # 0: 静音（没有声音）
-  # >0: 指定范围内的玩家才能听到
-  ender-dragon-death: 500
-
-  # 凋零生成声音范围（格子/方块）
-  # -1: 全服都能听到（默认行为）
-  # 0: 静音（没有声音）
-  # >0: 指定范围内的玩家才能听到
-  wither-spawn: 500
-
-  # 末地传送门激活声音范围（格子/方块）
-  # -1: 全服都能听到（默认行为）
-  # 0: 静音（没有声音）
-  # >0: 指定范围内的玩家才能听到
-  end-portal-activate: 500
-
+# 玩家体型调整配置
+scale:
+  # 最小体型
+  min: 0.8
+  # 最大体型
+  max: 1.1
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&c[TSL喵]&r "
+    # 成功调整体型时的消息
+    set: "%prefix%你的体型被调整为了 %scale%"
+    # 体型重置时的消息
+    reset: "%prefix%你的体型恢复默认啦"
+    # 用法提示
+    usage: "%prefix%用法: /tsl scale <数值|reset> (范围: %min% - %max%)"
+    # 权限不足
+    no-permission: "%prefix%你没有权限"
+    # 仅玩家可用
+    console-only: "%prefix%只有玩家才能执行该命令"

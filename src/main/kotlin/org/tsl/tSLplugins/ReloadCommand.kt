@@ -36,10 +36,14 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载维护模式配置
             plugin.reloadMaintenanceManager()
 
+            // 重新加载体型调整配置
+            plugin.reloadScaleManager()
+
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
             sender.sendMessage(serializer.deserialize("&7- 命令别名已重载 ($reloadedAliases 个别名)"))
             sender.sendMessage(serializer.deserialize("&7- 维护模式配置已重载"))
+            sender.sendMessage(serializer.deserialize("&7- 体型调整配置已重载"))
 
             plugin.logger.info("${sender.name} 重新加载了配置文件")
 

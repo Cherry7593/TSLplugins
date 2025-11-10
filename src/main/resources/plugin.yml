@@ -29,4 +29,13 @@ permissions:
   tsl.maintenance.bypass:
     description: 绕过维护模式，允许在维护时进入服务器
     default: op
+  tsl.scale.use:
+    description: 使用体型调整命令的基础权限
+    default: true
+  tsl.scale.bypass:
+    description: 绕过体型范围限制，可以设置任意体型值
+    default: op
+  tsl.reload:
+    description: 重载所有插件配置的权限
+    default: op
 
