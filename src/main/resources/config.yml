@@ -145,4 +145,3 @@ hat:
     console-only: "%prefix%&c只有玩家才能使用此命令"
     # 冷却中
     cooldown: "%prefix%&c请等待 %cooldown% 秒后再使用"
-

@@ -5,7 +5,6 @@ api-version: '1.21'
 authors: [ Zvbj ]
 description: TSL服务器的插件喵
 folia-supported: true
-depend: [ ProtocolLib ]
 softdepend: [ PlaceholderAPI ]
 
 commands:

@@ -71,6 +71,7 @@ class TSLplugins : JavaPlugin() {
         // 初始化 Hat 系统
         hatManager = HatManager(this)
 
+
         // 初始化体型调整系统
         scaleManager = ScaleManager(this)
 
@@ -107,6 +108,11 @@ class TSLplugins : JavaPlugin() {
         logger.info("TSL插件启动成功！")
         logger.info("命令别名系统已加载 ${aliasManager.getAliasCount()} 个别名")
         logger.info("维护模式状态: ${if (maintenanceManager.isMaintenanceEnabled()) "已启用" else "未启用"}")
+    }
+
+    override fun onDisable() {
+
+        logger.info("TSL插件已卸载！")
     }
 
     /**
