@@ -1,9 +1,9 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 4
+# 版本: 6
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 4
+config-version: 6
 
 # MOTD 假玩家配置
 fakeplayer:
@@ -145,3 +145,108 @@ hat:
     console-only: "%prefix%&c只有玩家才能使用此命令"
     # 冷却中
     cooldown: "%prefix%&c请等待 %cooldown% 秒后再使用"
+
+# Ping 延迟查询配置
+ping:
+  # 是否启用 Ping 功能
+  enabled: true
+  # 每页显示的玩家数量
+  entries_per_page: 10
+  # 延迟颜色阈值（毫秒）
+  ping_colors:
+    green: 100    # < 100ms 显示绿色
+    yellow: 200   # 100-200ms 显示黄色
+    # > 200ms 显示红色
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&6[TSL喵]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cPing 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 查看自己的延迟
+    self_ping: "%prefix%&7你的延迟: {color}{ping}ms"
+    # 查看指定玩家的延迟
+    player_ping: "%prefix%&7{player} 的延迟: {color}{ping}ms"
+    # 玩家不在线
+    player_not_found: "%prefix%&c玩家 {player} 不在线"
+    # 没有在线玩家
+    no_players_online: "%prefix%&c当前没有在线玩家"
+    # 平均延迟
+    average_ping: "&7服务器平均延迟: {color}{ping}ms"
+    # 分页标题
+    page_header: "&6&l在线玩家延迟排行 &7- 第 {page}/{total_pages} 页"
+
+# Toss 生物举起功能配置
+toss:
+  # 是否启用 Toss 功能
+  enabled: true
+  # 是否显示操作提示信息（举起、投掷、放下等提示）
+  show_messages: false
+  # 不允许被举起的实体类型
+  blacklist:
+    - WITHER
+    - ENDER_DRAGON
+    - WARDEN
+  # 每个玩家最多能同时举起的生物数量
+  max_lift_count: 3
+  # 玩家默认是否启用举起生物功能
+  default_enabled: true
+  # 投掷生物的速度范围
+  throw_velocity:
+    min: 1.0
+    max: 3.0
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&6[TSL喵]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cToss 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 玩家已禁用功能
+    player_disabled: "%prefix%&c你的举起功能已禁用，使用 /tsl toss toggle 启用"
+    # 实体在黑名单中
+    entity_blacklisted: "%prefix%&c这种生物不能被举起"
+    # 实体已被举起
+    entity_already_lifted: "%prefix%&c这个生物已经被举起了"
+    # 达到最大举起数量
+    max_limit_reached: "%prefix%&c你已达到举起上限({max})"
+    # 循环引用
+    circular_reference: "%prefix%&c检测到循环引用，无法举起"
+    # 实体已在链中
+    entity_in_chain: "%prefix%&c这个生物已经在你的乘客链中"
+    # 举起成功
+    pickup_success: "%prefix%&a举起了 {entity} ({current}/{max})"
+    # 没有举起任何生物
+    no_entity_lifted: "%prefix%&c你没有举起任何生物"
+    # 投掷成功
+    throw_success: "%prefix%&a投掷了 {entity}！剩余：{remaining}"
+    # 放下所有生物
+    drop_all_success: "%prefix%&a放下了 {count} 个生物"
+    # 切换启用
+    toggle_enabled: "%prefix%&a举起功能已启用"
+    # 切换禁用
+    toggle_disabled: "%prefix%&c举起功能已禁用"
+    # 当前状态
+    status: "%prefix%&7举起功能: {status} &7| 投掷速度: {velocity}"
+    # 速度设置成功
+    velocity_set: "%prefix%&a投掷速度已设置为 {velocity}"
+    # 当前速度
+    velocity_current: "%prefix%&7当前投掷速度: {velocity} &7(范围: {min} - {max})"
+    # 速度无效
+    invalid_velocity: "%prefix%&c无效的速度值"
+    # 速度超出范围
+    velocity_out_of_range: "%prefix%&c速度必须在 {min} 到 {max} 之间"
+    # 用法说明
+    usage: |-
+      %prefix%&e使用方法:
+      &7/tsl toss &f- 查看当前状态
+      &7/tsl toss toggle &f- 切换举起功能
+      &7/tsl toss velocity [数值] &f- 查看/设置投掷速度
+

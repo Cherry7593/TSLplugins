@@ -51,6 +51,12 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载访客效果
             plugin.reloadVisitorEffect()
 
+            // 重新加载 Ping 功能
+            plugin.reloadPingManager()
+
+            // 重新加载 Toss 功能
+            plugin.reloadTossManager()
+
 
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))

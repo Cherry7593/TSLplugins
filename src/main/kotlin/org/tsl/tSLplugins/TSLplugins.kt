@@ -21,6 +21,11 @@ import org.tsl.tSLplugins.Scale.ScaleManager
 import org.tsl.tSLplugins.Scale.ScaleCommand
 import org.tsl.tSLplugins.Hat.HatManager
 import org.tsl.tSLplugins.Hat.HatCommand
+import org.tsl.tSLplugins.Ping.PingManager
+import org.tsl.tSLplugins.Ping.PingCommand
+import org.tsl.tSLplugins.Toss.TossManager
+import org.tsl.tSLplugins.Toss.TossCommand
+import org.tsl.tSLplugins.Toss.TossListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -29,6 +34,8 @@ class TSLplugins : JavaPlugin() {
     private lateinit var hatManager: HatManager
     private lateinit var maintenanceManager: MaintenanceManager
     private lateinit var scaleManager: ScaleManager
+    private lateinit var pingManager: PingManager
+    private lateinit var tossManager: TossManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -75,6 +82,14 @@ class TSLplugins : JavaPlugin() {
         // 初始化体型调整系统
         scaleManager = ScaleManager(this)
 
+        // 初始化 Ping 系统
+        pingManager = PingManager(this)
+
+        // 初始化 Toss 系统
+        tossManager = TossManager(this)
+        val tossListener = TossListener(this, tossManager)
+        pm.registerEvents(tossListener, this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -85,6 +100,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("maintenance", MaintenanceCommand(maintenanceManager, maintenancePermissionListener))
             dispatcher.registerSubCommand("scale", ScaleCommand(this, scaleManager))
             dispatcher.registerSubCommand("hat", HatCommand(this, hatManager))
+            dispatcher.registerSubCommand("ping", PingCommand(pingManager))
+            dispatcher.registerSubCommand("toss", TossCommand(tossManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -164,5 +181,19 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadVisitorEffect() {
         visitorEffect.loadConfig()
+    }
+
+    /**
+     * 重新加载 Ping 管理器
+     */
+    fun reloadPingManager() {
+        pingManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Toss 管理器
+     */
+    fun reloadTossManager() {
+        tossManager.loadConfig()
     }
 }

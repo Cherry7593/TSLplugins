@@ -37,6 +37,8 @@ TSLplugins/
 ├── Maintenance/               # 维护模式（登录拦截、MOTD、白名单）
 ├── Scale/                     # 体型调整（Attribute.SCALE）
 ├── Hat/                       # 帽子系统（命令操作、堆叠支持）
+├── Ping/                      # 延迟查询（单人查询、全服排行、分页显示）
+├── Toss/                      # 生物举起（叠罗汉、投掷、个人开关）
 ├── Advancement/               # 成就过滤（公屏消息、PlaceholderAPI）
 ├── Visitor/                   # 访客保护（LuckPerms权限驱动）
 ├── Permission/                # 权限检测（PlaceholderAPI变量）
@@ -116,12 +118,14 @@ class FeatureClass(private val plugin: JavaPlugin) : Listener {
 - `maintenance.enabled` - 维护模式
 - `scale.enabled` - 体型调整
 - `hat.enabled` - 帽子系统
+- `ping.enabled` - 延迟查询
+- `toss.enabled` - 生物举起
 
 ### 3. 配置自动更新
 
 **版本控制** (`ConfigUpdateManager.kt`):
 ```kotlin
-const val CURRENT_CONFIG_VERSION = 4
+const val CURRENT_CONFIG_VERSION = 6
 ```
 
 **工作流程**:
@@ -230,6 +234,62 @@ player.scheduler.run(plugin, { _ ->
 }, null)
 ```
 
+### 9. Ping 延迟查询
+
+**命令系统** (`PingCommand.kt`):
+- `/tsl ping` - 查看自己的延迟
+- `/tsl ping <玩家名>` - 查看指定玩家延迟
+- `/tsl ping all [页码]` - 查看全服延迟排行
+
+**功能特性**:
+- 延迟颜色分级（绿色<100ms, 黄色<200ms, 红色>200ms）
+- 分页显示，可点击翻页按钮
+- 服务器平均延迟统计
+- 按延迟从低到高排序
+
+**分页系统** (`PingPaginator.kt`):
+- Adventure API 实现可点击按钮
+- 自动计算总页数
+- 对齐显示（排名、玩家名、延迟）
+
+**配置管理** (`PingManager.kt`):
+- 功能开关（cached）
+- 每页显示数量配置
+- 延迟颜色阈值配置
+- 消息系统
+
+### 10. Toss 生物举起
+
+**操作方式**:
+- `Shift + 右键生物` - 举起生物（叠罗汉效果）
+- `Shift + 左键` - 投掷最顶端的生物
+- `Shift + 右键空气/地面` - 放下所有生物
+
+**命令系统** (`TossCommand.kt`):
+- `/tsl toss` - 查看当前状态
+- `/tsl toss toggle` - 切换举起功能开关（防误触）
+- `/tsl toss velocity <数值>` - 设置投掷速度
+
+**功能特性**:
+- 叠罗汉效果（多个生物叠成塔）
+- 个人开关（防止误触）
+- 可配置的投掷速度范围（类似 Scale）
+- 实体黑名单（凋零、末影龙、监守者等）
+- 举起数量限制
+
+**投掷系统** (`TossListener.kt`):
+- 物理计算（方向 + 速度 + 抛物线）
+- 循环引用防护
+- 玩家状态管理
+- Folia 兼容的实体调度器
+
+**配置管理** (`TossManager.kt`):
+- 功能开关（cached）
+- 玩家开关状态持久化
+- 玩家投掷速度持久化
+- 速度范围控制
+- 黑名单检查
+
 ---
 
 ## 依赖管理
@@ -244,9 +304,8 @@ implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 ### 可选依赖
 
 ```kotlin
-compileOnly("net.luckperms:api:5.4")                    // 访客模式、权限检测
-compileOnly("me.clip:placeholderapi:2.11.6")           // 成就统计、权限检测
-compileOnly("com.comphenix.protocol:ProtocolLib:5.3.0") // 维护模式 MOTD
+compileOnly("net.luckperms:api:5.4")          // 访客模式、权限检测
+compileOnly("me.clip:placeholderapi:2.11.6")  // 成就统计、权限检测
 ```
 
 ### Maven 仓库
@@ -428,6 +487,9 @@ logger.severe("错误：无法加载配置")
 - [ ] 命令别名：Tab 补全、子命令、中文别名
 - [ ] 维护模式：白名单、MOTD、登录拦截
 - [ ] 体型调整：范围限制、Bypass 权限、Tab 补全
+- [ ] Hat 系统：戴帽、堆叠物品、黑名单
+- [ ] Ping 查询：单人查询、全服排行、分页翻页
+- [ ] Toss 举起：叠罗汉、投掷、速度调整、个人开关
 - [ ] 访客模式：LuckPerms 权限联动、效果生效
 - [ ] 配置重载：所有模块正确重载
 
@@ -511,13 +573,17 @@ if (player.hasPermission("tsl.feature.use")) {
 
 ## 更新记录
 
-- **2025-11-11**: 创建开发笔记
-- **2025-11-10**: Scale 功能集成完成
+- **2025-11-19**: Toss 生物举起功能整合完成
+- **2025-11-18**: Ping 延迟查询功能整合完成
+- **2025-11-18**: 代码清理，移除 ProtocolLib 依赖
+- **2025-11-11**: Hat 帽子系统集成完成
+- **2025-11-10**: Scale 体型调整功能集成完成
 - **2025-11-08**: 配置自动更新系统
 - **2025-11-07**: 初始版本发布
 
 ---
 
-**最后更新**: 2025-11-11  
-**文档版本**: 1.0
+**最后更新**: 2025-11-19  
+**文档版本**: 2.0  
+**配置版本**: 6
 

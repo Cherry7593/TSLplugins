@@ -14,6 +14,11 @@ commands:
       /tsl advcount refresh <player|all>
       /tsl aliasreload
       /tsl maintenance
+      /tsl scale <数值|reset>
+      /tsl hat
+      /tsl ping [玩家名|all [页码]]
+      /tsl toss [toggle|velocity [数值]]
+      /tsl reload
 
 permissions:
   tsl.visitor:
@@ -37,6 +42,24 @@ permissions:
   tsl.hat.use:
     description: 使用 Hat 命令的权限
     default: true
+  tsl.ping.use:
+    description: 使用 Ping 命令查询延迟的权限
+    default: true
+  tsl.ping.all:
+    description: 查看全服玩家延迟排行的权限
+    default: op
+  tsl.toss.use:
+    description: 使用举起生物功能的权限
+    default: true
+  tsl.toss.velocity:
+    description: 设置投掷速度的权限
+    default: true
+  tsl.toss.velocity.bypass:
+    description: 绕过投掷速度范围限制的权限
+    default: op
+  tsl.toss.bypass:
+    description: 绕过实体黑名单限制的权限
+    default: op
   tsl.reload:
     description: 重载所有插件配置的权限
     default: op
