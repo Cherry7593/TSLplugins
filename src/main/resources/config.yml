@@ -1,9 +1,9 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 6
+# 版本: 7
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 6
+config-version: 7
 
 # MOTD 假玩家配置
 fakeplayer:
@@ -249,4 +249,34 @@ toss:
       &7/tsl toss &f- 查看当前状态
       &7/tsl toss toggle &f- 切换举起功能
       &7/tsl toss velocity [数值] &f- 查看/设置投掷速度
+
+# Ride 骑乘生物功能配置
+ride:
+  # 是否启用 Ride 功能
+  enabled: true
+  # 玩家默认是否启用骑乘功能
+  default_enabled: true
+  # 不允许骑乘的实体类型
+  blacklist:
+    - WITHER
+    - ENDER_DRAGON
+    - WARDEN
+    - GHAST
+    - ELDER_GUARDIAN
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&6[TSL喵]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cRide 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 切换启用
+    toggle_enabled: "%prefix%&a骑乘功能已启用"
+    # 切换禁用
+    toggle_disabled: "%prefix%&c骑乘功能已禁用"
+    # 用法说明
+    usage: "%prefix%&e使用方法: &7/tsl ride toggle &f- 切换骑乘功能"
 

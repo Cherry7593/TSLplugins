@@ -26,6 +26,9 @@ import org.tsl.tSLplugins.Ping.PingCommand
 import org.tsl.tSLplugins.Toss.TossManager
 import org.tsl.tSLplugins.Toss.TossCommand
 import org.tsl.tSLplugins.Toss.TossListener
+import org.tsl.tSLplugins.Ride.RideManager
+import org.tsl.tSLplugins.Ride.RideCommand
+import org.tsl.tSLplugins.Ride.RideListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -36,6 +39,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var scaleManager: ScaleManager
     private lateinit var pingManager: PingManager
     private lateinit var tossManager: TossManager
+    private lateinit var rideManager: RideManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -90,6 +94,11 @@ class TSLplugins : JavaPlugin() {
         val tossListener = TossListener(this, tossManager)
         pm.registerEvents(tossListener, this)
 
+        // 初始化 Ride 系统
+        rideManager = RideManager(this)
+        val rideListener = RideListener(this, rideManager)
+        pm.registerEvents(rideListener, this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -102,6 +111,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("hat", HatCommand(this, hatManager))
             dispatcher.registerSubCommand("ping", PingCommand(pingManager))
             dispatcher.registerSubCommand("toss", TossCommand(tossManager))
+            dispatcher.registerSubCommand("ride", RideCommand(rideManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -195,5 +205,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadTossManager() {
         tossManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Ride 管理器
+     */
+    fun reloadRideManager() {
+        rideManager.loadConfig()
     }
 }

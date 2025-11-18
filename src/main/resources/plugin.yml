@@ -18,6 +18,7 @@ commands:
       /tsl hat
       /tsl ping [玩家名|all [页码]]
       /tsl toss [toggle|velocity [数值]]
+      /tsl ride [toggle]
       /tsl reload
 
 permissions:
@@ -59,6 +60,12 @@ permissions:
     default: op
   tsl.toss.bypass:
     description: 绕过实体黑名单限制的权限
+    default: op
+  tsl.ride.use:
+    description: 使用右键骑乘生物功能的权限
+    default: true
+  tsl.ride.bypass:
+    description: 绕过骑乘黑名单限制的权限
     default: op
   tsl.reload:
     description: 重载所有插件配置的权限
