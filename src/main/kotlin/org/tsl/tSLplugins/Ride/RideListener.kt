@@ -28,6 +28,9 @@ class RideListener(
         // 快速检查：功能是否启用
         if (!manager.isEnabled()) return
 
+        // 快速检查：玩家是否按住 Shift（避免与 Toss 功能冲突）
+        if (player.isSneaking) return
+
         // 快速检查：是否为可骑乘的生物实体
         if (!entity.type.isAlive) return
 

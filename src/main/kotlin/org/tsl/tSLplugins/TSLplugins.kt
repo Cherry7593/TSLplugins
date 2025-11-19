@@ -29,6 +29,8 @@ import org.tsl.tSLplugins.Toss.TossListener
 import org.tsl.tSLplugins.Ride.RideManager
 import org.tsl.tSLplugins.Ride.RideCommand
 import org.tsl.tSLplugins.Ride.RideListener
+import org.tsl.tSLplugins.BabyLock.BabyLockManager
+import org.tsl.tSLplugins.BabyLock.BabyLockListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -40,6 +42,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var pingManager: PingManager
     private lateinit var tossManager: TossManager
     private lateinit var rideManager: RideManager
+    private lateinit var babyLockManager: BabyLockManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -98,6 +101,11 @@ class TSLplugins : JavaPlugin() {
         rideManager = RideManager(this)
         val rideListener = RideListener(this, rideManager)
         pm.registerEvents(rideListener, this)
+
+        // 初始化 BabyLock 系统
+        babyLockManager = BabyLockManager(this)
+        val babyLockListener = BabyLockListener(this, babyLockManager)
+        pm.registerEvents(babyLockListener, this)
 
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
@@ -212,5 +220,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadRideManager() {
         rideManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 BabyLock 管理器
+     */
+    fun reloadBabyLockManager() {
+        babyLockManager.loadConfig()
     }
 }

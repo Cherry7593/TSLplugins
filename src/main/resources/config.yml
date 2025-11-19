@@ -1,9 +1,9 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 7
+# 版本: 8
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 7
+config-version: 8
 
 # MOTD 假玩家配置
 fakeplayer:
@@ -296,3 +296,33 @@ ride:
     # 用法说明
     usage: "%prefix%&e使用方法: &7/tsl ride toggle &f- 切换骑乘功能"
 
+# BabyLock 永久幼年生物配置
+babylock:
+  # 是否启用功能
+  enabled: true
+
+  # 名字前缀列表（满足任一前缀即触发锁定）
+  prefixes:
+    - "[幼]"
+    - "[小]"
+    - "[Baby]"
+
+  # 是否区分大小写
+  case_sensitive: false
+
+  # 防止锁定的生物消失
+  prevent_despawn: true
+
+  # 启用的实体类型（白名单）
+  # 留空表示全部 Ageable 生物均启用
+  # 可选值: ALLAY, CHICKEN, COW, SHEEP, PIG, RABBIT, WOLF, CAT, HORSE, DONKEY, MULE,
+  #         LLAMA, TRADER_LLAMA, FOX, BEE, GOAT, AXOLOTL, CAMEL, SNIFFER 等
+  enabled_types: []
+
+  # 消息配置
+  messages:
+    prefix: "&6[TSL喵]&r "
+    # 锁定成功
+    lock: "%prefix%&d这只 &e{entity} &d现在会永远保持幼年啦！"
+    # 解除成功
+    unlock: "%prefix%&e已解除 &7{entity} &e的幼年锁定，它可以继续成长啦。"

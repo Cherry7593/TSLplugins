@@ -21,6 +21,16 @@
 #### Ride & Toss 功能
 - **Ride_Toss_Development_Summary.md** ⭐  
   Ride 和 Toss 功能的综合开发总结
+
+#### BabyLock 功能
+- **BabyLock_Development_Summary.md** ⭐  
+  永久幼年生物功能的完整开发总结
+  - 功能概述和使用方式
+  - 技术实现细节
+  - 工作流程说明
+  - 配置示例
+  - 测试要点
+  - 性能考虑
   - 功能概述
   - 技术实现
   - 修复的问题
@@ -115,6 +125,9 @@ TSLplugins/
 **Ride/Toss 功能全貌**:
 → archive/Ride_Toss_Development_Summary.md
 
+**BabyLock 永久幼年生物**:
+→ archive/BabyLock_Development_Summary.md
+
 **代码优化方法**:
 → archive/SUMMARY_Code_Optimization.md
 
@@ -149,5 +162,5 @@ TSLplugins/
 
 **维护者**: GitHub Copilot  
 **最后清理**: 2025-11-20  
-**文档数量**: 主文档 4 个 + 归档文档 6 个
+**文档数量**: 主文档 4 个 + 归档文档 7 个
 

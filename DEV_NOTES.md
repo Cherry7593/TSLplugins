@@ -40,6 +40,7 @@ TSLplugins/
 ├── Ping/                      # 延迟查询（单人查询、全服排行、分页显示）
 ├── Toss/                      # 生物举起（叠罗汉、投掷、个人开关、速度调节）
 ├── Ride/                      # 生物骑乘（直接骑乘、个人开关、黑名单）
+├── BabyLock/                  # 永久幼年生物（命名锁定、年龄锁定、防止消失）
 ├── Advancement/               # 成就过滤（公屏消息、PlaceholderAPI）
 ├── Visitor/                   # 访客保护（LuckPerms权限驱动）
 ├── Permission/                # 权限检测（PlaceholderAPI变量）
@@ -122,6 +123,7 @@ class FeatureClass(private val plugin: JavaPlugin) : Listener {
 - `ping.enabled` - 延迟查询
 - `toss.enabled` - 生物举起
 - `ride.enabled` - 生物骑乘
+- `babylock.enabled` - 永久幼年生物
 
 ### 3. 配置自动更新
 
@@ -308,6 +310,7 @@ val hasBypass = player.isOp || player.hasPermission("tsl.toss.velocity.bypass")
 
 **操作方式**:
 - `空手右键生物` - 直接骑乘生物
+- **注意**：按住 Shift 时不会骑乘（避免与 Toss 功能冲突）
 
 **命令系统** (`RideCommand.kt`):
 - `/tsl ride toggle` - 切换骑乘功能开关（防误触）
@@ -315,12 +318,14 @@ val hasBypass = player.isOp || player.hasPermission("tsl.toss.velocity.bypass")
 **功能特性**:
 - 简单直观的骑乘方式
 - 个人开关（防止误触）
+- **Shift 时禁用**：避免与 Toss 举起功能冲突
 - 实体黑名单（凋零、末影龙、监守者、幽灵、远古守卫者等）
 - **不检查副手**：副手持物品也可以骑乘（用户需求）
 - 主手必须为空
 
 **骑乘逻辑** (`RideListener.kt`):
 - 快速失败优化（先检查简单条件）
+- **Shift 检查**：按住 Shift 时直接返回，不触发骑乘
 - 并发安全检查（二次验证实体和玩家状态）
 - Folia 兼容的实体调度器
 - 自动取消默认交互（防止打开 GUI）
@@ -333,6 +338,9 @@ val hasBypass = player.isOp || player.hasPermission("tsl.toss.velocity.bypass")
 
 **关键技术点**:
 ```kotlin
+// Shift 时不骑乘（避免与 Toss 冲突）
+if (player.isSneaking) return
+
 // 事件必须显式取消
 if (manager.isEntityBlacklisted(entity.type) && 
     !player.hasPermission("tsl.ride.bypass")) {
@@ -347,6 +355,63 @@ entity.scheduler.run(plugin, { _ ->
         entity.addPassenger(player)
     }
 }, null)
+```
+
+### 12. BabyLock 永久幼年生物
+
+**操作方式**:
+- 给幼年生物命名为指定前缀（如 `[幼]小牛`）即可锁定为永久幼年
+
+**触发机制** (`BabyLockListener.kt`):
+- 监听 `PlayerInteractEntityEvent` - 玩家用命名牌命名
+- 监听 `EntityBreedEvent` - 生物繁殖事件
+- 延迟检查名字变化，自动锁定/解锁
+
+**功能特性**:
+- 自动锁定：幼年生物 + 前缀命名 = 永久幼年
+- 自动解锁：移除前缀 = 恢复正常成长
+- 多前缀支持（`[幼]`, `[小]`, `[Baby]` 等）
+- 实体类型白名单（可限制特定生物，空=全部启用）
+- 防止消失（锁定生物不会自然消失）
+- 不区分大小写（可配置）
+
+**锁定逻辑** (`BabyLockManager.kt`):
+- 使用原版 `Ageable.setAgeLock(true)` API
+- 持久化：插件重启后仍保持锁定
+- 白名单检查：只对配置的生物类型生效
+- 前缀匹配：支持多个前缀和大小写控制
+
+**关键技术点**:
+```kotlin
+// 检查生物是否应该锁定
+fun shouldLock(entity: Ageable): Boolean {
+    if (entity.isAdult) return false  // 必须是幼年
+    if (!isTypeEnabled(entity.type)) return false  // 检查类型白名单
+    
+    val plainName = PlainTextComponentSerializer.plainText()
+        .serialize(entity.customName())
+    return hasLockPrefix(plainName)  // 检查前缀
+}
+
+// 锁定生物
+@Suppress("DEPRECATION")  // ageLock 已弃用但仍可用
+entity.ageLock = true
+entity.isPersistent = true  // 防止消失
+```
+
+**Folia 兼容**:
+- 使用实体调度器处理状态更新
+- 延迟检查避免名字未更新
+- 线程安全的事件处理
+
+**配置示例**:
+```yaml
+babylock:
+  enabled: true
+  prefixes: ["[幼]", "[小]", "[Baby]"]
+  case_sensitive: false
+  prevent_despawn: true
+  enabled_types: []  # 空=全部 Ageable 生物
 ```
 
 ---
@@ -633,6 +698,7 @@ if (player.hasPermission("tsl.feature.use")) {
 
 ## 更新记录
 
+- **2025-11-20**: BabyLock 永久幼年生物功能开发完成
 - **2025-11-20**: 文档整理，删除冗余文档，创建综合开发总结
 - **2025-11-20**: Ride 生物骑乘功能整合完成
 - **2025-11-20**: 修复 Toss 投掷速度和左键空气问题
@@ -648,6 +714,5 @@ if (player.hasPermission("tsl.feature.use")) {
 ---
 
 **最后更新**: 2025-11-20  
-**文档版本**: 2.1  
-**配置版本**: 7
-
+**文档版本**: 2.2  
+**配置版本**: 8
