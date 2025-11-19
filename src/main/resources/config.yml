@@ -195,7 +195,23 @@ toss:
   max_lift_count: 3
   # 玩家默认是否启用举起生物功能
   default_enabled: true
+
   # 投掷生物的速度范围
+  #
+  # 普通玩家限制:
+  #   - 必须在 min-max 范围内设置速度
+  #   - 建议范围: 0.5-5.0
+  #
+  # OP/管理员特权 (tsl.toss.velocity.bypass):
+  #   - 可以无视配置限制，设置任意速度
+  #   - 实际上限: 0.0-10.0 (Minecraft 服务器默认限制)
+  #   - 建议不要超过 10.0，可能导致:
+  #     * 实体传送检测触发
+  #     * 服务器性能问题
+  #     * 实体位置异常
+  #
+  # 使用方法:
+  #   /tsl toss velocity <数值> - 设置投掷速度
   throw_velocity:
     min: 1.0
     max: 3.0

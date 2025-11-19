@@ -59,13 +59,14 @@ class TossManager(private val plugin: JavaPlugin) {
             try {
                 val entityType = EntityType.valueOf(entityName.uppercase())
                 blacklist.add(entityType)
-            } catch (_: IllegalArgumentException) {
+            } catch (e: IllegalArgumentException) {
                 plugin.logger.warning("[Toss] 无效的实体类型: $entityName")
             }
         }
 
         // 读取消息配置
         val prefix = config.getString("toss.messages.prefix", "&6[TSL喵]&r ")
+        messages.clear()
         val messagesSection = config.getConfigurationSection("toss.messages")
         if (messagesSection != null) {
             for (key in messagesSection.getKeys(false)) {
@@ -152,7 +153,7 @@ class TossManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 设置玩家的投掷速度
+     * 设置玩家的投掷速度（受配置限制）
      */
     fun setPlayerThrowVelocity(uuid: UUID, velocity: Double): Boolean {
         if (velocity < throwVelocityMin || velocity > throwVelocityMax) {
@@ -160,6 +161,16 @@ class TossManager(private val plugin: JavaPlugin) {
         }
         playerThrowVelocity[uuid] = velocity
         return true
+    }
+
+    /**
+     * 设置玩家的投掷速度（不受配置限制，用于 OP/管理员）
+     * 仍然会进行基本验证（0.0-10.0 范围）
+     */
+    fun setPlayerThrowVelocityUnrestricted(uuid: UUID, velocity: Double) {
+        // 只进行基本的合理性检查
+        val clampedVelocity = velocity.coerceIn(0.0, 10.0)
+        playerThrowVelocity[uuid] = clampedVelocity
     }
 
     /**

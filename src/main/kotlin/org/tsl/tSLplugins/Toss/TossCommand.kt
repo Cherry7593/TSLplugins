@@ -103,26 +103,45 @@ class TossCommand(
         // 解析速度值
         val velocity = velocityStr.toDoubleOrNull()
         if (velocity == null) {
-            val message = manager.getMessage("invalid_velocity")
-            player.sendMessage(serializer.deserialize(message))
+            player.sendMessage(serializer.deserialize(manager.getMessage("invalid_velocity")))
             return
         }
 
-        // 检查范围（非 bypass 权限的玩家）
-        if (!player.hasPermission("tsl.toss.velocity.bypass")) {
-            if (velocity < manager.getThrowVelocityMin() || velocity > manager.getThrowVelocityMax()) {
+        // 速度值基本验证（防止负数或过大值导致问题）
+        if (velocity < 0.0) {
+            player.sendMessage(serializer.deserialize(manager.getMessage("invalid_velocity")))
+            return
+        }
+
+        // OP 或有 bypass 权限可以无视配置限制
+        val hasBypass = player.isOp || player.hasPermission("tsl.toss.velocity.bypass")
+
+        if (!hasBypass) {
+            // 普通玩家需要遵守配置文件的范围限制
+            val min = manager.getThrowVelocityMin()
+            val max = manager.getThrowVelocityMax()
+
+            if (velocity < min || velocity > max) {
                 val message = manager.getMessage(
                     "velocity_out_of_range",
-                    "min" to String.format("%.1f", manager.getThrowVelocityMin()),
-                    "max" to String.format("%.1f", manager.getThrowVelocityMax())
+                    "min" to String.format("%.1f", min),
+                    "max" to String.format("%.1f", max)
                 )
                 player.sendMessage(serializer.deserialize(message))
                 return
             }
+        } else {
+            // OP/管理员最大限制为 10.0（Minecraft 服务器默认上限）
+            if (velocity > 10.0) {
+                player.sendMessage(serializer.deserialize(
+                    "&c速度过大！建议范围: 0.1-10.0 (当前: ${String.format("%.1f", velocity)})"
+                ))
+                return
+            }
         }
 
-        // 设置速度
-        manager.setPlayerThrowVelocity(player.uniqueId, velocity)
+        // 设置速度（不再受配置文件限制约束）
+        manager.setPlayerThrowVelocityUnrestricted(player.uniqueId, velocity)
 
         val message = manager.getMessage(
             "velocity_set",
@@ -168,10 +187,16 @@ class TossCommand(
                 completions.filter { it.startsWith(args[0], ignoreCase = true) }
             }
             2 -> {
-                if (args[0].equals("velocity", ignoreCase = true)) {
-                    // 提供一些速度值建议
-                    listOf("1.0", "1.5", "2.0", "2.5", "3.0")
-                        .filter { it.startsWith(args[1]) }
+                if (args[0].equals("velocity", ignoreCase = true) && sender.hasPermission("tsl.toss.velocity")) {
+                    // 根据玩家权限提供不同的速度建议
+                    val suggestions = if (sender.isOp || sender.hasPermission("tsl.toss.velocity.bypass")) {
+                        // OP/管理员：提供更多选项
+                        listOf("0.5", "1.0", "1.5", "2.0", "3.0", "5.0", "8.0", "10.0")
+                    } else {
+                        // 普通玩家：只提供配置范围内的值
+                        listOf("0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "4.0", "5.0")
+                    }
+                    suggestions.filter { it.startsWith(args[1]) }
                 } else {
                     emptyList()
                 }

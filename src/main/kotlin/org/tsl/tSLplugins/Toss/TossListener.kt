@@ -24,57 +24,55 @@ class TossListener(
     private val serializer = LegacyComponentSerializer.legacyAmpersand()
 
     /**
+     * 发送消息的辅助方法（减少重复代码）
+     */
+    private fun sendMessage(player: Player, messageKey: String, vararg replacements: Pair<String, String>) {
+        if (manager.isShowMessages()) {
+            val message = manager.getMessage(messageKey, *replacements)
+            player.sendMessage(serializer.deserialize(message))
+        }
+    }
+
+    /**
      * 处理与实体的交互（举起生物）
      */
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
         val player = event.player
         val entity = event.rightClicked
 
-        // 检查是否是可举起的实体
-        if (entity !is LivingEntity || entity is Player) {
-            return
-        }
+        // 快速检查：必须按住 Shift
+        if (!player.isSneaking) return
 
-        // 必须按住 Shift
-        if (!player.isSneaking) {
-            return
-        }
+        // 快速检查：是否是可举起的生物实体
+        if (entity !is LivingEntity || entity is Player) return
 
-        // 检查功能是否启用
-        if (!manager.isEnabled()) {
-            return
-        }
+        // 快速检查：功能是否启用
+        if (!manager.isEnabled()) return
 
-        // 检查权限
+        // 权限检查
         if (!player.hasPermission("tsl.toss.use")) {
-            if (manager.isShowMessages()) {
-                player.sendMessage(serializer.deserialize(manager.getMessage("no_permission")))
-            }
+            sendMessage(player, "no_permission")
             return
         }
 
-        // 检查玩家是否启用了功能
+        // 玩家开关状态检查
         if (!manager.isPlayerEnabled(player.uniqueId)) {
-            if (manager.isShowMessages()) {
-                player.sendMessage(serializer.deserialize(manager.getMessage("player_disabled")))
-            }
+            sendMessage(player, "player_disabled")
             return
         }
 
-        // 检查实体是否在黑名单中
-        if (manager.isEntityBlacklisted(entity.type) && !player.hasPermission("tsl.toss.bypass")) {
-            if (manager.isShowMessages()) {
-                player.sendMessage(serializer.deserialize(manager.getMessage("entity_blacklisted")))
-            }
+        // 黑名单检查
+        if (manager.isEntityBlacklisted(entity.type) &&
+            !player.hasPermission("tsl.toss.bypass")) {
+            sendMessage(player, "entity_blacklisted")
+            event.isCancelled = true
             return
         }
 
-        // 检查实体是否已经在乘客链中
+        // 检查实体是否已在乘客链中
         if (isEntityInPassengerChain(entity)) {
-            if (manager.isShowMessages()) {
-                player.sendMessage(serializer.deserialize(manager.getMessage("entity_already_lifted")))
-            }
+            sendMessage(player, "entity_already_lifted")
             return
         }
 
@@ -89,42 +87,30 @@ class TossListener(
     @EventHandler
     fun onPlayerInteract(event: PlayerInteractEvent) {
         val player = event.player
-        val action = event.action
 
-        // 必须按住 Shift
-        if (!player.isSneaking) {
-            return
-        }
+        // 快速检查：必须按住 Shift
+        if (!player.isSneaking) return
 
-        // 检查功能是否启用
-        if (!manager.isEnabled()) {
-            return
-        }
+        // 快速检查：功能是否启用
+        if (!manager.isEnabled()) return
 
-        // 检查权限
-        if (!player.hasPermission("tsl.toss.use")) {
-            return
-        }
+        // 权限检查
+        if (!player.hasPermission("tsl.toss.use")) return
 
-        // 检查玩家是否启用了功能
-        if (!manager.isPlayerEnabled(player.uniqueId)) {
-            return
-        }
+        // 玩家开关状态检查
+        if (!manager.isPlayerEnabled(player.uniqueId)) return
 
         // 检查玩家是否举起了生物
-        val passengerCount = getPassengerChainCount(player)
-        if (passengerCount == 0) {
-            return
-        }
+        if (getPassengerChainCount(player) == 0) return
 
-        when (action) {
+        when (event.action) {
             Action.LEFT_CLICK_AIR, Action.LEFT_CLICK_BLOCK -> {
                 // Shift + 左键：投掷生物
                 throwTopEntity(player)
                 event.isCancelled = true
             }
             Action.RIGHT_CLICK_AIR, Action.RIGHT_CLICK_BLOCK -> {
-                // Shift + 右键空气/地面：放下所有生物
+                // Shift + 右键：放下所有生物
                 dropAllEntities(player)
                 event.isCancelled = true
             }
@@ -146,58 +132,46 @@ class TossListener(
      */
     private fun pickupEntity(player: Player, entity: LivingEntity) {
         player.scheduler.run(plugin, { _ ->
+            // 验证实体和玩家仍然有效
+            if (!entity.isValid || !player.isOnline) return@run
+
             // 获取当前乘客链数量
             val currentCount = getPassengerChainCount(player)
 
             // 检查是否已达上限
             if (currentCount >= manager.getMaxLiftCount()) {
-                if (manager.isShowMessages()) {
-                    val message = manager.getMessage(
-                        "max_limit_reached",
-                        "max" to manager.getMaxLiftCount().toString()
-                    )
-                    player.sendMessage(serializer.deserialize(message))
-                }
+                sendMessage(player, "max_limit_reached",
+                    "max" to manager.getMaxLiftCount().toString())
                 return@run
             }
 
             // 找到乘客链的顶端
             val topEntity = getTopPassenger(player)
 
-            // 将新实体添加到顶端
             if (topEntity != null) {
-                // 安全检查：避免循环引用
-                if (topEntity == entity) {
-                    if (manager.isShowMessages()) {
-                        player.sendMessage(serializer.deserialize(manager.getMessage("circular_reference")))
+                // 安全检查：避免循环引用和重复添加
+                when {
+                    topEntity == entity -> {
+                        sendMessage(player, "circular_reference")
+                        return@run
                     }
-                    return@run
-                }
-
-                // 检查实体是否已在链中
-                if (isEntityInPlayerPassengerChain(player, entity)) {
-                    if (manager.isShowMessages()) {
-                        player.sendMessage(serializer.deserialize(manager.getMessage("entity_in_chain")))
+                    isEntityInPlayerPassengerChain(player, entity) -> {
+                        sendMessage(player, "entity_in_chain")
+                        return@run
                     }
-                    return@run
                 }
-
                 topEntity.addPassenger(entity)
             } else {
                 // 没有乘客，直接骑在玩家头上
                 player.addPassenger(entity)
             }
 
-            val newCount = currentCount + 1
-            if (manager.isShowMessages()) {
-                val message = manager.getMessage(
-                    "pickup_success",
-                    "entity" to getEntityDisplayName(entity),
-                    "current" to newCount.toString(),
-                    "max" to manager.getMaxLiftCount().toString()
-                )
-                player.sendMessage(serializer.deserialize(message))
-            }
+            // 发送成功消息
+            sendMessage(player, "pickup_success",
+                "entity" to getEntityDisplayName(entity),
+                "current" to (currentCount + 1).toString(),
+                "max" to manager.getMaxLiftCount().toString()
+            )
         }, null)
     }
 
@@ -208,9 +182,7 @@ class TossListener(
         player.scheduler.run(plugin, { _ ->
             val topEntity = getTopPassenger(player)
             if (topEntity == null) {
-                if (manager.isShowMessages()) {
-                    player.sendMessage(serializer.deserialize(manager.getMessage("no_entity_lifted")))
-                }
+                sendMessage(player, "no_entity_lifted")
                 return@run
             }
 
@@ -223,21 +195,17 @@ class TossListener(
             val velocity = manager.getPlayerThrowVelocity(player.uniqueId)
             val throwVelocity = direction.multiply(velocity)
 
-            // 添加向上的分量
-            throwVelocity.y = throwVelocity.y + 0.3
+            // 添加向上的分量（使用 setY 方法）
+            throwVelocity.setY(throwVelocity.y + 0.3)
 
             // 设置实体速度
             topEntity.velocity = throwVelocity
 
-            val remainingCount = getPassengerChainCount(player)
-            if (manager.isShowMessages()) {
-                val message = manager.getMessage(
-                    "throw_success",
-                    "entity" to getEntityDisplayName(topEntity),
-                    "remaining" to remainingCount.toString()
-                )
-                player.sendMessage(serializer.deserialize(message))
-            }
+            // 发送成功消息
+            sendMessage(player, "throw_success",
+                "entity" to getEntityDisplayName(topEntity),
+                "remaining" to getPassengerChainCount(player).toString()
+            )
         }, null)
     }
 
@@ -247,30 +215,24 @@ class TossListener(
     private fun dropAllEntities(player: Player) {
         player.scheduler.run(plugin, { _ ->
             val allPassengers = getAllPassengers(player)
+
             if (allPassengers.isEmpty()) {
-                if (manager.isShowMessages()) {
-                    player.sendMessage(serializer.deserialize(manager.getMessage("no_entity_lifted")))
-                }
+                sendMessage(player, "no_entity_lifted")
                 return@run
             }
 
-            // 移除所有乘客关系并轻柔放下
-            for (entity in allPassengers) {
+            // 移除所有乘客并轻柔放下
+            val direction = player.location.direction.normalize().multiply(0.2)
+            allPassengers.forEach { entity ->
                 if (entity.isValid) {
-                    val vehicle = entity.vehicle
-                    vehicle?.removePassenger(entity)
-
-                    // 给实体一个轻微的向前速度
-                    val direction = player.location.direction.normalize().multiply(0.2)
+                    entity.vehicle?.removePassenger(entity)
                     entity.velocity = direction
                 }
             }
 
-            val count = allPassengers.size
-            if (manager.isShowMessages()) {
-                val message = manager.getMessage("drop_all_success", "count" to count.toString())
-                player.sendMessage(serializer.deserialize(message))
-            }
+            // 发送成功消息
+            sendMessage(player, "drop_all_success",
+                "count" to allPassengers.size.toString())
         }, null)
     }
 
@@ -279,14 +241,10 @@ class TossListener(
      */
     private fun cleanupPlayerEntities(player: Player) {
         player.scheduler.run(plugin, { _ ->
-            val allPassengers = getAllPassengers(player)
-            for (entity in allPassengers) {
+            val direction = player.location.direction.normalize().multiply(0.2)
+            getAllPassengers(player).forEach { entity ->
                 if (entity.isValid) {
-                    val vehicle = entity.vehicle
-                    vehicle?.removePassenger(entity)
-
-                    // 给实体一个轻微的速度避免卡在玩家身体里
-                    val direction = player.location.direction.normalize().multiply(0.2)
+                    entity.vehicle?.removePassenger(entity)
                     entity.velocity = direction
                 }
             }
@@ -296,20 +254,23 @@ class TossListener(
     /**
      * 获取玩家乘客链的数量
      */
-    private fun getPassengerChainCount(player: Player): Int {
-        return getAllPassengers(player).size
-    }
+    private fun getPassengerChainCount(player: Player): Int = getAllPassengers(player).size
 
     /**
-     * 获取玩家的所有乘客（递归）
+     * 获取实体的所有乘客（递归，尾递归优化）
      */
     private fun getAllPassengers(entity: Entity): List<Entity> {
-        val passengers = mutableListOf<Entity>()
-        for (passenger in entity.passengers) {
-            passengers.add(passenger)
-            passengers.addAll(getAllPassengers(passenger))
+        val result = mutableListOf<Entity>()
+
+        fun collectPassengers(current: Entity) {
+            current.passengers.forEach { passenger ->
+                result.add(passenger)
+                collectPassengers(passenger)
+            }
         }
-        return passengers
+
+        collectPassengers(entity)
+        return result
     }
 
     /**
@@ -317,41 +278,32 @@ class TossListener(
      */
     private fun getTopPassenger(entity: Entity): Entity? {
         val passengers = entity.passengers
-        if (passengers.isEmpty()) {
-            return null
-        }
+        if (passengers.isEmpty()) return null
 
-        var top = passengers[0]
-        while (top.passengers.isNotEmpty()) {
-            top = top.passengers[0]
+        var current: Entity = passengers.first()
+        while (current.passengers.isNotEmpty()) {
+            current = current.passengers.first()
         }
-        return top
+        return current
     }
 
     /**
      * 检查实体是否在任何乘客链中
      */
-    private fun isEntityInPassengerChain(entity: Entity): Boolean {
-        // 检查实体是否有乘客或是否是乘客
-        return entity.vehicle != null || entity.passengers.isNotEmpty()
-    }
+    private fun isEntityInPassengerChain(entity: Entity): Boolean =
+        entity.vehicle != null || entity.passengers.isNotEmpty()
 
     /**
      * 检查实体是否在玩家的乘客链中
      */
-    private fun isEntityInPlayerPassengerChain(player: Player, entity: Entity): Boolean {
-        return getAllPassengers(player).contains(entity)
-    }
+    private fun isEntityInPlayerPassengerChain(player: Player, entity: Entity): Boolean =
+        getAllPassengers(player).contains(entity)
 
     /**
      * 获取实体的显示名称
      */
     private fun getEntityDisplayName(entity: Entity): String {
-        return if (entity.customName() != null) {
-            entity.customName()?.let { serializer.serialize(it) } ?: entity.type.name
-        } else {
-            entity.type.name
-        }
+        return entity.customName()?.let { serializer.serialize(it) } ?: entity.type.name
     }
 }
 

@@ -42,13 +42,14 @@ class RideManager(private val plugin: JavaPlugin) {
             try {
                 val entityType = EntityType.valueOf(entityName.uppercase())
                 blacklist.add(entityType)
-            } catch (_: IllegalArgumentException) {
+            } catch (e: IllegalArgumentException) {
                 plugin.logger.warning("[Ride] 无效的实体类型: $entityName")
             }
         }
 
         // 读取消息配置
         val prefix = config.getString("ride.messages.prefix", "&6[TSL喵]&r ")
+        messages.clear()
         val messagesSection = config.getConfigurationSection("ride.messages")
         if (messagesSection != null) {
             for (key in messagesSection.getKeys(false)) {
