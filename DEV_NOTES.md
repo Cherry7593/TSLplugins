@@ -38,7 +38,8 @@ TSLplugins/
 ├── Scale/                     # 体型调整（Attribute.SCALE）
 ├── Hat/                       # 帽子系统（命令操作、堆叠支持）
 ├── Ping/                      # 延迟查询（单人查询、全服排行、分页显示）
-├── Toss/                      # 生物举起（叠罗汉、投掷、个人开关）
+├── Toss/                      # 生物举起（叠罗汉、投掷、个人开关、速度调节）
+├── Ride/                      # 生物骑乘（直接骑乘、个人开关、黑名单）
 ├── Advancement/               # 成就过滤（公屏消息、PlaceholderAPI）
 ├── Visitor/                   # 访客保护（LuckPerms权限驱动）
 ├── Permission/                # 权限检测（PlaceholderAPI变量）
@@ -120,6 +121,7 @@ class FeatureClass(private val plugin: JavaPlugin) : Listener {
 - `hat.enabled` - 帽子系统
 - `ping.enabled` - 延迟查询
 - `toss.enabled` - 生物举起
+- `ride.enabled` - 生物骑乘
 
 ### 3. 配置自动更新
 
@@ -273,22 +275,79 @@ player.scheduler.run(plugin, { _ ->
 **功能特性**:
 - 叠罗汉效果（多个生物叠成塔）
 - 个人开关（防止误触）
-- 可配置的投掷速度范围（类似 Scale）
+- 可配置的投掷速度范围
+- OP 速度无限制（0.0-10.0，普通玩家遵守配置）
 - 实体黑名单（凋零、末影龙、监守者等）
-- 举起数量限制
+- 举起数量限制（默认3个）
 
 **投掷系统** (`TossListener.kt`):
 - 物理计算（方向 + 速度 + 抛物线）
 - 循环引用防护
 - 玩家状态管理
 - Folia 兼容的实体调度器
+- **注意**: `PlayerInteractEvent` 不使用 `ignoreCancelled=true`（确保左键空气也能触发）
 
 **配置管理** (`TossManager.kt`):
 - 功能开关（cached）
 - 玩家开关状态持久化
 - 玩家投掷速度持久化
-- 速度范围控制
+- 速度范围控制（普通玩家受限，OP 无限制）
 - 黑名单检查
+
+**关键技术点**:
+```kotlin
+// Vector 速度设置（y 是只读属性）
+throwVelocity.setY(throwVelocity.y + 0.3)  // ✅ 正确
+throwVelocity.y = throwVelocity.y + 0.3    // ❌ 错误
+
+// OP 速度无限制
+val hasBypass = player.isOp || player.hasPermission("tsl.toss.velocity.bypass")
+```
+
+### 11. Ride 生物骑乘
+
+**操作方式**:
+- `空手右键生物` - 直接骑乘生物
+
+**命令系统** (`RideCommand.kt`):
+- `/tsl ride toggle` - 切换骑乘功能开关（防误触）
+
+**功能特性**:
+- 简单直观的骑乘方式
+- 个人开关（防止误触）
+- 实体黑名单（凋零、末影龙、监守者、幽灵、远古守卫者等）
+- **不检查副手**：副手持物品也可以骑乘（用户需求）
+- 主手必须为空
+
+**骑乘逻辑** (`RideListener.kt`):
+- 快速失败优化（先检查简单条件）
+- 并发安全检查（二次验证实体和玩家状态）
+- Folia 兼容的实体调度器
+- 自动取消默认交互（防止打开 GUI）
+
+**配置管理** (`RideManager.kt`):
+- 功能开关（cached）
+- 玩家开关状态持久化
+- 黑名单检查
+- 消息系统
+
+**关键技术点**:
+```kotlin
+// 事件必须显式取消
+if (manager.isEntityBlacklisted(entity.type) && 
+    !player.hasPermission("tsl.ride.bypass")) {
+    event.isCancelled = true  // ✅ 必须！
+    return
+}
+
+// 并发安全检查
+entity.scheduler.run(plugin, { _ ->
+    if (entity.isValid && player.isOnline && 
+        entity.passengers.isEmpty() && player.vehicle == null) {
+        entity.addPassenger(player)
+    }
+}, null)
+```
 
 ---
 
@@ -489,7 +548,8 @@ logger.severe("错误：无法加载配置")
 - [ ] 体型调整：范围限制、Bypass 权限、Tab 补全
 - [ ] Hat 系统：戴帽、堆叠物品、黑名单
 - [ ] Ping 查询：单人查询、全服排行、分页翻页
-- [ ] Toss 举起：叠罗汉、投掷、速度调整、个人开关
+- [ ] Toss 举起：叠罗汉、投掷、速度调整、个人开关、黑名单
+- [ ] Ride 骑乘：直接骑乘、个人开关、黑名单、副手检查
 - [ ] 访客模式：LuckPerms 权限联动、效果生效
 - [ ] 配置重载：所有模块正确重载
 
@@ -573,7 +633,11 @@ if (player.hasPermission("tsl.feature.use")) {
 
 ## 更新记录
 
-- **2025-11-19**: Toss 生物举起功能整合完成
+- **2025-11-20**: 文档整理，删除冗余文档，创建综合开发总结
+- **2025-11-20**: Ride 生物骑乘功能整合完成
+- **2025-11-20**: 修复 Toss 投掷速度和左键空气问题
+- **2025-11-19**: Toss 生物举起功能整合完成，OP 速度无限制
+- **2025-11-19**: 黑名单功能修复，代码优化完成
 - **2025-11-18**: Ping 延迟查询功能整合完成
 - **2025-11-18**: 代码清理，移除 ProtocolLib 依赖
 - **2025-11-11**: Hat 帽子系统集成完成
@@ -583,7 +647,7 @@ if (player.hasPermission("tsl.feature.use")) {
 
 ---
 
-**最后更新**: 2025-11-19  
-**文档版本**: 2.0  
-**配置版本**: 6
+**最后更新**: 2025-11-20  
+**文档版本**: 2.1  
+**配置版本**: 7
 
