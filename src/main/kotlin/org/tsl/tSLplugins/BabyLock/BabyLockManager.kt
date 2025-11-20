@@ -110,8 +110,12 @@ class BabyLockManager(private val plugin: JavaPlugin) {
      * 检查实体是否应该被锁定
      */
     fun shouldLock(entity: Ageable): Boolean {
-        // 必须是幼年
-        if (entity.isAdult) return false
+        // 必须是幼年 - 检查 age 属性而不是 isAdult
+        // 在 Minecraft 中，幼年生物的 age < 0
+        // 成年生物的 age >= 0
+        val isBaby = entity.age < 0
+
+        if (!isBaby) return false
 
         // 检查实体类型
         if (!isTypeEnabled(entity.type)) return false
