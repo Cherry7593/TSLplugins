@@ -82,7 +82,7 @@ class TossListener(
     }
 
     /**
-     * 处理玩家交互（投掷和放下）
+     * 处理玩家交互（投掷生物）
      */
     @EventHandler
     fun onPlayerInteract(event: PlayerInteractEvent) {
@@ -103,18 +103,11 @@ class TossListener(
         // 检查玩家是否举起了生物
         if (getPassengerChainCount(player) == 0) return
 
-        when (event.action) {
-            Action.LEFT_CLICK_AIR, Action.LEFT_CLICK_BLOCK -> {
-                // Shift + 左键：投掷生物
-                throwTopEntity(player)
-                event.isCancelled = true
-            }
-            Action.RIGHT_CLICK_AIR, Action.RIGHT_CLICK_BLOCK -> {
-                // Shift + 右键：放下所有生物
-                dropAllEntities(player)
-                event.isCancelled = true
-            }
-            else -> {}
+        // 只处理左键投掷
+        if (event.action == Action.LEFT_CLICK_AIR || event.action == Action.LEFT_CLICK_BLOCK) {
+            // Shift + 左键：投掷顶端生物
+            throwTopEntity(player)
+            event.isCancelled = true
         }
     }
 

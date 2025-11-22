@@ -43,15 +43,17 @@ class RideListener(
         // 玩家开关状态检查
         if (!manager.isPlayerEnabled(player.uniqueId)) return
 
-        // 黑名单检查（优化：合并条件）
+        // 黑名单检查
         if (manager.isEntityBlacklisted(entity.type) &&
             !player.hasPermission("tsl.ride.bypass")) {
-            event.isCancelled = true
             return
         }
 
         // 状态检查：实体已有乘客或玩家已在骑乘
         if (entity.passengers.isNotEmpty() || player.vehicle != null) return
+
+        // 取消默认交互行为（必须在执行骑乘前取消）
+        event.isCancelled = true
 
         // 执行骑乘操作
         entity.scheduler.run(plugin, { _ ->
@@ -61,9 +63,6 @@ class RideListener(
                 entity.addPassenger(player)
             }
         }, null)
-
-        // 取消默认交互行为
-        event.isCancelled = true
     }
 
     /**
