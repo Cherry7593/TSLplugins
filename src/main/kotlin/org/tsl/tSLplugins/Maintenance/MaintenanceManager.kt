@@ -1,6 +1,7 @@
 package org.tsl.tSLplugins.Maintenance
 
 import org.bukkit.configuration.file.FileConfiguration
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.util.UUID
@@ -11,16 +12,15 @@ import java.util.UUID
  */
 class MaintenanceManager(private val plugin: JavaPlugin) {
 
-    private val maintenanceFile = File(plugin.dataFolder, "maintenance.dat")
-    private val whitelistFile = File(plugin.dataFolder, "maintenance-whitelist.txt")
+    private val dataFile = File(plugin.dataFolder, "maintenance.yml")
+    private lateinit var dataConfig: YamlConfiguration
     private var maintenanceEnabled = false
     private var featureEnabled = true
     private val whitelist = mutableMapOf<UUID, String>() // UUID -> 玩家名
 
     init {
         loadConfig()
-        loadMaintenanceState()
-        loadWhitelist()
+        loadData()
     }
 
     /**
@@ -45,7 +45,7 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
      */
     fun setMaintenanceEnabled(enabled: Boolean) {
         maintenanceEnabled = enabled
-        saveMaintenanceState()
+        saveData()
     }
 
     /**
@@ -53,7 +53,7 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
      */
     fun toggleMaintenance(): Boolean {
         maintenanceEnabled = !maintenanceEnabled
-        saveMaintenanceState()
+        saveData()
         return maintenanceEnabled
     }
 
@@ -67,7 +67,7 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
      */
     fun addToWhitelist(uuid: UUID, name: String) {
         whitelist[uuid] = name
-        saveWhitelist()
+        saveData()
     }
 
     /**
@@ -76,7 +76,7 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
     fun removeFromWhitelist(uuid: UUID): Boolean {
         val removed = whitelist.remove(uuid) != null
         if (removed) {
-            saveWhitelist()
+            saveData()
         }
         return removed
     }
@@ -89,43 +89,99 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 从文件加载维护模式状态
+     * 从文件加载维护模式数据
      */
-    private fun loadMaintenanceState() {
-        if (maintenanceFile.exists()) {
-            try {
-                maintenanceEnabled = maintenanceFile.readText().trim().toBoolean()
-                plugin.logger.info("维护模式状态已加载: $maintenanceEnabled")
-            } catch (e: Exception) {
-                plugin.logger.warning("无法读取维护模式状态文件: ${e.message}")
-                maintenanceEnabled = false
+    private fun loadData() {
+        // 迁移旧格式文件
+        migrateOldFiles()
+
+        if (!dataFile.exists()) {
+            dataConfig = YamlConfiguration()
+            saveData()
+            return
+        }
+
+        try {
+            dataConfig = YamlConfiguration.loadConfiguration(dataFile)
+
+            // 加载维护模式状态
+            maintenanceEnabled = dataConfig.getBoolean("enabled", false)
+
+            // 加载白名单
+            whitelist.clear()
+            val whitelistSection = dataConfig.getConfigurationSection("whitelist")
+            if (whitelistSection != null) {
+                whitelistSection.getKeys(false).forEach { uuidString ->
+                    try {
+                        val uuid = UUID.fromString(uuidString)
+                        val name = whitelistSection.getString(uuidString) ?: "Unknown"
+                        whitelist[uuid] = name
+                    } catch (e: IllegalArgumentException) {
+                        plugin.logger.warning("无效的白名单 UUID: $uuidString")
+                    }
+                }
             }
+
+            plugin.logger.info("维护模式数据已加载 - 状态: $maintenanceEnabled, 白名单: ${whitelist.size} 个玩家")
+        } catch (e: Exception) {
+            plugin.logger.severe("无法加载维护模式数据: ${e.message}")
+            dataConfig = YamlConfiguration()
         }
     }
 
     /**
-     * 保存维护模式状态到文件
+     * 保存维护模式数据到文件
      */
-    private fun saveMaintenanceState() {
+    private fun saveData() {
         try {
             if (!plugin.dataFolder.exists()) {
                 plugin.dataFolder.mkdirs()
             }
-            maintenanceFile.writeText(maintenanceEnabled.toString())
+
+            dataConfig.set("enabled", maintenanceEnabled)
+
+            // 清空旧的白名单
+            dataConfig.set("whitelist", null)
+
+            // 保存白名单
+            whitelist.forEach { (uuid, name) ->
+                dataConfig.set("whitelist.$uuid", name)
+            }
+
+            dataConfig.save(dataFile)
         } catch (e: Exception) {
-            plugin.logger.severe("无法保存维护模式状态: ${e.message}")
+            plugin.logger.severe("无法保存维护模式数据: ${e.message}")
         }
     }
 
     /**
-     * 从文件加载白名单
-     * 格式: UUID:玩家名
+     * 迁移旧格式文件到新格式
      */
-    private fun loadWhitelist() {
-        whitelist.clear()
-        if (whitelistFile.exists()) {
+    private fun migrateOldFiles() {
+        val oldMaintenanceFile = File(plugin.dataFolder, "maintenance.dat")
+        val oldWhitelistFile = File(plugin.dataFolder, "maintenance-whitelist.txt")
+
+        var migrated = false
+
+        // 迁移维护模式状态
+        if (oldMaintenanceFile.exists()) {
             try {
-                whitelistFile.readLines().forEach { line ->
+                val enabled = oldMaintenanceFile.readText().trim().toBoolean()
+                if (!dataFile.exists()) {
+                    maintenanceEnabled = enabled
+                    migrated = true
+                }
+                oldMaintenanceFile.delete()
+                plugin.logger.info("已迁移旧的维护模式状态文件")
+            } catch (e: Exception) {
+                plugin.logger.warning("迁移旧维护模式状态文件失败: ${e.message}")
+            }
+        }
+
+        // 迁移白名单
+        if (oldWhitelistFile.exists()) {
+            try {
+                oldWhitelistFile.readLines().forEach { line ->
                     val trimmed = line.trim()
                     if (trimmed.isNotEmpty()) {
                         val parts = trimmed.split(":", limit = 2)
@@ -134,32 +190,22 @@ class MaintenanceManager(private val plugin: JavaPlugin) {
                                 val uuid = UUID.fromString(parts[0])
                                 val name = parts[1]
                                 whitelist[uuid] = name
+                                migrated = true
                             } catch (e: IllegalArgumentException) {
-                                plugin.logger.warning("无效的白名单条目: $trimmed")
+                                plugin.logger.warning("跳过无效的白名单条目: $trimmed")
                             }
                         }
                     }
                 }
-                plugin.logger.info("维护模式白名单已加载: ${whitelist.size} 个玩家")
+                oldWhitelistFile.delete()
+                plugin.logger.info("已迁移旧的白名单文件")
             } catch (e: Exception) {
-                plugin.logger.warning("无法读取白名单文件: ${e.message}")
+                plugin.logger.warning("迁移旧白名单文件失败: ${e.message}")
             }
         }
-    }
 
-    /**
-     * 保存白名单到文件
-     * 格式: UUID:玩家名
-     */
-    private fun saveWhitelist() {
-        try {
-            if (!plugin.dataFolder.exists()) {
-                plugin.dataFolder.mkdirs()
-            }
-            val content = whitelist.entries.joinToString("\n") { "${it.key}:${it.value}" }
-            whitelistFile.writeText(content)
-        } catch (e: Exception) {
-            plugin.logger.severe("无法保存白名单文件: ${e.message}")
+        if (migrated) {
+            saveData()
         }
     }
 

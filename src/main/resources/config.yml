@@ -1,34 +1,29 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 9
+# 版本: 10
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 9
-
+config-version: 10
 # MOTD 假玩家配置
 fakeplayer:
   # 是否启用假玩家功能
   enabled: true
   # 显示的在线人数 = 实际在线 + count（可为负，最小为 0）
   count: 3
-
 # 命令别名配置
 alias:
   # 是否启用命令别名功能
   enabled: true
   # 请在 aliases.yml 文件中配置命令别名
   # 使用 /tsl aliasreload 重载别名配置
-
 # 成就消息配置
 advancement:
   # 是否启用成就消息过滤功能
   enabled: true
-
 # 农田保护配置
 farmprotect:
   # 是否启用农田保护功能
   enabled: true
-
 # Visitor 模式配置
 visitor:
   # 是否启用 Visitor 功能
@@ -45,7 +40,6 @@ visitor:
     title: "&c访客模式"
     subtitle: "&7已禁用"
     sound: "block.note_block.bass"
-
 # 权限检测配置
 permission-checker:
   # 是否启用权限检测
@@ -62,7 +56,6 @@ permission-checker:
   # 可以配置多条命令
   commands:
     - "say 欢迎 %player% 加入服务器！"
-
 # 维护模式配置
 maintenance:
   # 是否启用维护模式功能
@@ -118,7 +111,6 @@ scale:
     no-permission: "%prefix%你没有权限"
     # 仅玩家可用
     console-only: "%prefix%只有玩家才能执行该命令"
-
 # Hat 功能配置
 hat:
   # 是否启用 Hat 功能
@@ -144,7 +136,6 @@ hat:
     console-only: "%prefix%&c只有玩家才能使用此命令"
     # 冷却中
     cooldown: "%prefix%&c请等待 %cooldown% 秒后再使用"
-
 # Ping 延迟查询配置
 ping:
   # 是否启用 Ping 功能
@@ -178,7 +169,6 @@ ping:
     average_ping: "&7服务器平均延迟: {color}{ping}ms"
     # 分页标题
     page_header: "&6&l在线玩家延迟排行 &7- 第 {page}/{total_pages} 页"
-
 # Toss 生物举起功能配置
 toss:
   # 是否启用 Toss 功能
@@ -194,7 +184,6 @@ toss:
   max_lift_count: 3
   # 玩家默认是否启用举起生物功能
   default_enabled: true
-
   # 投掷生物的速度范围
   #
   # 普通玩家限制:
@@ -261,10 +250,53 @@ toss:
     # 用法说明
     usage: |-
       %prefix%&e使用方法:
-      &7/tsl toss &f- 查看当前状态
-      &7/tsl toss toggle &f- 切换举起功能
-      &7/tsl toss velocity [数值] &f- 查看/设置投掷速度
-
+      &7/tsl kiss <玩家> &f- 亲吻玩家
+      &7/tsl kiss toggle &f- 切换亲吻功能
+      &7Shift + 右键玩家 &f- 亲吻玩家
+# Freeze 冻结玩家功能配置
+freeze:
+  # 是否启用 Freeze 功能
+  enabled: true
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&c[冻结]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cFreeze 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 玩家不存在
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 目标有 bypass 权限
+    target_bypass: "%prefix%&c{player} 拥有冻结豁免权限"
+    # 冻结成功
+    freeze_success: "%prefix%&a已冻结 &e{player} &a持续时间: &e{duration}"
+    # 被冻结提示
+    frozen: "%prefix%&c你已被冻结！持续时间: &e{duration}"
+    # 解冻成功
+    unfreeze_success: "%prefix%&a已解冻 &e{player}"
+    # 被解冻提示
+    unfrozen: "%prefix%&a你已被解冻！"
+    # 冻结过期
+    expired: "%prefix%&a你的冻结时间已结束！"
+    # 玩家未被冻结
+    not_frozen: "%prefix%&c{player} 未被冻结"
+    # 无法使用指令
+    cannot_use_commands: "%prefix%&c你被冻结期间无法使用指令！"
+    # 列表标题
+    list_header: "%prefix%&e当前被冻结的玩家:"
+    # 没有被��结的玩家
+    no_frozen_players: "%prefix%&7当前没有被冻结的玩家"
+    # 列表条目
+    list_entry: "&7- &e{player} &7[&6{status}&7] &8剩余: &f{time}"
+    # ActionBar 提示
+    actionbar: "&c&l⚠ 你已被冻结 ⚠ &8| &f{time}"
+    # 用法说明
+    usage: |-
+      %prefix%&e使用方法:
+      &7/tsl freeze <玩家> [时间] &f- 冻结玩家（时间单位:秒，不填为永久）
+      &7/tsl freeze unfreeze <玩家> &f- 解冻玩家
+      &7/tsl freeze list &f- 列出被冻结的玩家
 # Ride 骑乘生物功能配置
 ride:
   # 是否启用 Ride 功能
@@ -294,30 +326,24 @@ ride:
     toggle_disabled: "%prefix%&c骑乘功能已禁用"
     # 用法说明
     usage: "%prefix%&e使用方法: &7/tsl ride toggle &f- 切换骑乘功能"
-
 # BabyLock 永久幼年生物配置
 babylock:
   # 是否启用功能
   enabled: true
-
   # 名字前缀列表（满足任一前缀即触发锁定）
   prefixes:
     - "[幼]"
     - "[小]"
     - "[Baby]"
-
   # 是否区分大小写
   case_sensitive: false
-
   # 防止锁定的生物消失
   prevent_despawn: true
-
   # 启用的实体类型（白名单）
   # 留空表示全部 Ageable 生物均启用
   # 可选值: ALLAY, CHICKEN, COW, SHEEP, PIG, RABBIT, WOLF, CAT, HORSE, DONKEY, MULE,
   #         LLAMA, TRADER_LLAMA, FOX, BEE, GOAT, AXOLOTL, CAMEL, SNIFFER 等
   enabled_types: []
-
   # 消息配置
   messages:
     prefix: "&6[TSL喵]&r "
@@ -325,7 +351,6 @@ babylock:
     lock: "%prefix%&d这只 &e{entity} &d现在会永远保持幼年啦！"
     # 解除成功
     unlock: "%prefix%&e已解除 &7{entity} &e的幼年锁定，它可以继续成长啦。"
-
 # Kiss 亲吻功能配置
 kiss:
   # 是否启用 Kiss 功能

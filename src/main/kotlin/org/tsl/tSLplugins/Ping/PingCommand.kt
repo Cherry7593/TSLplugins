@@ -103,16 +103,10 @@ class PingCommand(
             return
         }
 
-        // 必须是玩家才能使用（需要可点击的分页按钮）
-        if (sender !is Player) {
-            sender.sendMessage(serializer.deserialize(manager.getMessage("console_only")))
-            return
-        }
-
         // 解析页码
         val page = paginator.parsePage(args, 1, 1)
 
-        // 显示延迟列表
+        // 显示延迟列表（支持玩家和控制台）
         paginator.showPingList(sender, page)
     }
 

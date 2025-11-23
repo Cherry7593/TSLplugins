@@ -75,19 +75,20 @@ class HatCommand(
         // 使用 Folia 实体调度器执行物品交换
         sender.scheduler.run(plugin, { _ ->
             val helmet = sender.inventory.helmet
+            val itemInHandCurrent = sender.inventory.itemInMainHand
 
             // 如果手持物品数量大于1，只戴1个
-            val itemToEquip = itemInHand.clone()
+            val itemToEquip = itemInHandCurrent.clone()
             itemToEquip.amount = 1
 
             // 将1个物品戴到头上
             sender.inventory.setHelmet(itemToEquip)
 
             // 处理手中剩余的物品
-            if (itemInHand.amount > 1) {
+            if (itemInHandCurrent.amount > 1) {
                 // 手中还有剩余
-                val remainingItem = itemInHand.clone()
-                remainingItem.amount = itemInHand.amount - 1
+                val remainingItem = itemInHandCurrent.clone()
+                remainingItem.amount = itemInHandCurrent.amount - 1
                 sender.inventory.setItemInMainHand(remainingItem)
 
                 // 如果原来有头盔，尝试放回背包
@@ -101,8 +102,14 @@ class HatCommand(
                     }
                 }
             } else {
-                // 手中只有1个，直接交换
-                sender.inventory.setItemInMainHand(helmet)
+                // 手中只有1个
+                if (helmet != null && helmet.type != Material.AIR) {
+                    // 有旧头盔，尝试放入主手
+                    sender.inventory.setItemInMainHand(helmet)
+                } else {
+                    // 没有旧头盔，清空主手
+                    sender.inventory.setItemInMainHand(null)
+                }
             }
         }, null)
 

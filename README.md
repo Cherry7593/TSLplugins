@@ -4,559 +4,260 @@
 [![Paper](https://img.shields.io/badge/Paper-1.21.8-green.svg)](https://papermc.io)
 [![Folia](https://img.shields.io/badge/Folia-Supported-brightgreen.svg)](https://papermc.io/software/folia)
 
-> TSL服务器的Minecraft插件集合 - 完全使用 Kotlin 编写，支持 Folia 1.21.8
+> Minecraft Folia 1.21.8 多功能整合插件 - 使用 Kotlin 开发
 
 ---
 
-## 项目简介
+## 📖 简介
 
-TSLplugins 是一个模块化的 Minecraft 服务器插件，使用 Kotlin 开发，完美支持 Paper 和 Folia 1.21.8。
+TSLplugins 是一个功能丰富的 Minecraft 服务器插件，集成了 13 个实用功能模块。完全使用 Kotlin 编写，完美支持 Paper 和 Folia 1.21.8。
 
-### 核心特性
+### ✨ 核心特性
 
-- ✅ **模块化设计** - 11 个独立功能模块，可单独禁用
-- ✅ **Kotlin 实现** - 简洁、安全、高效
-- ✅ **Folia 兼容** - 完美支持多线程服务器
-- ✅ **配置热重载** - 无需重启即可应用更改
-- ✅ **智能配置更新** - 自动合并新版本配置项
-- ✅ **性能优化** - 配置缓存机制，事件处理零开销
-
-### 功能模块
-
-1. **命令别名系统** - 自定义命令快捷方式，支持 Tab 补全
-2. **维护模式** - 服务器维护管理，白名单、自定义 MOTD
-3. **玩家体型调整** - 调整玩家体型大小（可配置范围）
-4. **Hat 帽子系统** - 将任意物品戴在头上
-5. **Ping 延迟查询** - 查询玩家延迟，全服排行榜
-6. **Toss 生物举起** - 举起生物、叠罗汉、投掷
-7. **成就系统** - 成就消息过滤和统计
-8. **访客模式** - 新玩家保护，怪物免疫
-9. **权限检测器** - 自动权限分配
-10. **农田保护** - 防止踩踏农田
-11. **MOTD 假玩家** - 调整服务器列表显示人数
+- 🎯 **13 个功能模块** - 涵盖管理、互动、保护等多个方面
+- 🔧 **模块化设计** - 每个功能独立，可单独启用/禁用
+- ⚡ **Folia 原生支持** - 完美兼容多线程服务器
+- 🔄 **配置热重载** - 无需重启即可应用更改
+- 💾 **离线数据持久化** - 玩家配置永久保存
+- 🎨 **完全可配置** - 所有功能行为和消息均可自定义
 
 ---
 
-## 快速开始
+## 🎮 功能概览
 
-### 安装
+### 管理工具
+
+#### 🔧 维护模式
+- 服务器维护期间阻止玩家登录
+- 白名单管理（UUID 验证）
+- 自定义维护 MOTD
+- 命令：`/tsl maintenance`
+
+#### ❄️ 玩家冻结
+- 冻结玩家所有操作（管理员工具）
+- 支持永久或定时冻结
+- ActionBar 实时倒计时
+- 命令：`/tsl freeze <玩家> [秒]`
+
+#### 📋 命令别名
+- 自定义命令快捷方式
+- 支持中文别名
+- 完整 Tab 补全
+- 命令：`/tsl aliasreload`
+
+---
+
+### 玩家互动
+
+#### 💋 玩家亲吻
+- Shift + 右键玩家亲吻
+- 爱心粒子 + 音效
+- 个人开关防骚扰
+- 命令：`/tsl kiss <玩家>`
+
+#### 🎩 帽子系统
+- 将任意物品戴在头上
+- 支持堆叠物品（自动只戴 1 个）
+- 背包满时自动掉落
+- 命令：`/tsl hat`
+
+#### 📏 体型调整
+- 调整玩家体型大小
+- 可配置范围限制
+- 支持小数精度
+- 命令：`/tsl scale <数值>`
+
+#### 📊 延迟查询
+- 查看单人或全服延迟
+- 延迟排行榜（可点击翻页）
+- 颜色分级显示
+- 命令：`/tsl ping [玩家|all]`
+
+---
+
+### 生物互动
+
+#### 🐾 生物举起（Toss）
+- **Shift + 右键生物** - 举起生物
+- **左键** - 投掷生物
+- 叠罗汉效果（最多 3 个）
+- 可调节投掷速度
+- 个人开关防误触
+- 命令：`/tsl toss toggle`
+
+#### 🐎 生物骑乘（Ride）
+- **右键生物** - 直接骑乘
+- 支持骑乘任意生物
+- 黑名单配置
+- 个人开关控制
+- 命令：`/tsl ride toggle`
+
+#### 👶 永久幼年（BabyLock）
+- 给幼年生物命名特殊前缀锁定
+- 前缀：`[幼]`、`[小]`、`[Baby]`
+- 防止成长和消失
+- 自动检测和锁定
+
+---
+
+### 保护功能
+
+#### 🌾 农田保护
+- 防止玩家踩踏农田
+- 自动保护所有耕地
+- 无需命令，自动生效
+
+#### 👤 访客保护
+- LuckPerms 权限驱动
+- 怪物不会攻击访客
+- 访客发光效果
+- 权限：`tsl.visitor`
+
+---
+
+### 系统增强
+
+#### 🏆 成就过滤
+- 过滤成就公屏消息
+- 保留挑战成就公告
+- 个人成就统计
+- PlaceholderAPI 变量
+
+#### 👥 MOTD 假玩家
+- 调整服务器列表人数显示
+- 正数增加，负数减少
+- 配置：`fakeplayer.count`
+
+---
+
+## 🚀 快速开始
+
+### 安装要求
+
+- **服务器**: Paper 或 Folia 1.21.8+
+- **Java**: 21
+- **必需插件**: 无
+- **可选插件**: 
+  - [LuckPerms](https://luckperms.net/) - 访客保护
+  - [PlaceholderAPI](https://www.spigotmc.org/resources/6245/) - 变量支持
+
+### 安装步骤
 
 1. 下载 `TSLplugins-1.0.jar`
 2. 放入服务器 `plugins` 目录
-3. 安装依赖：[LuckPerms](https://luckperms.net/)（必需）
-4. 重启服务器
+3. 重启服务器（自动生成配置文件）
+4. 根据需要编辑 `plugins/TSLplugins/config.yml`
+5. 执行 `/tsl reload` 应用配置
 
-### 基础使用
+### 基础命令
 
 ```bash
-# 查看所有命令
-/tsl
-
-# 重载配置
-/tsl reload
-
-# 维护模式
-/tsl maintenance toggle
-
-# 调整体型
-/tsl scale 1.2
-
-# 戴帽子
-/tsl hat
-
-# 查询延迟
-/tsl ping all
-
-# 举起生物（Shift + 右键）
-/tsl toss toggle
+/tsl reload              # 重载所有配置
+/tsl hat                 # 戴帽子
+/tsl scale 1.2           # 调整体型
+/tsl ping all            # 查看延迟排行
+/tsl kiss <玩家>         # 亲吻玩家
+/tsl freeze <玩家> 300   # 冻结玩家 5 分钟
+/tsl maintenance toggle  # 切换维护模式
 ```
 
 ---
 
-## 文档
+## 📚 文档
 
-### 📋 [项目概览](OVERVIEW.md)
-快速了解项目功能和命令
-
-### 📖 [用户指南](USER_GUIDE.md)
-详细的功能说明和配置示例
-
-### 🔧 [开发笔记](DEV_NOTES.md)
-技术架构和开发指南
-
-### 📁 [文档结构说明](DOCS_STRUCTURE.md)
-了解各个文档的用途
+- **[WIKI.md](WIKI.md)** - 详细功能说明、配置示例、权限列表
+- **[开发者指南.md](开发者指南.md)** - 架构设计、代码规范、开发指南
 
 ---
 
-## 技术栈
+## ⚙️ 配置文件
+
+### config.yml
+主配置文件，包含所有功能模块的配置：
+- 功能开关（每个模块独立控制）
+- 参数设置（范围、时间、黑名单等）
+- 消息文本（完全自定义）
+
+### aliases.yml
+命令别名配置：
+```yaml
+aliases:
+  - "t:tpa"          # /t → /tpa
+  - "传送:tpa"       # 支持中文
+  - "h:home"         # /h → /home
+```
+
+### maintenance.yml
+维护模式白名单（自动生成和管理）
+
+---
+
+## 🎯 核心功能亮点
+
+### 🔄 配置热重载
+修改配置后执行 `/tsl reload` 即可应用，无需重启服务器。
+
+### 💾 离线数据持久化
+使用 PersistentDataContainer (PDC) 技术：
+- Kiss/Ride/Toss 的个人开关永久保存
+- Toss 投掷速度设置永久保存
+- 服务器重启不丢失数据
+
+### 🎨 完全可配置
+所有功能行为、消息文本、参数范围均可通过配置文件自定义。
+
+### ⚡ 性能优化
+- 配置缓存机制（事件处理零开销）
+- Folia 原生调度器（完美多线程支持）
+- 事件驱动架构（无轮询任务）
+
+---
+
+## 📊 PlaceholderAPI 变量
+
+安装 PlaceholderAPI 后可使用以下变量：
+
+```
+%tsl_adv_count%        # 玩家成就数量
+%tsl_kiss_count%       # 玩家亲吻次数
+%tsl_kissed_count%     # 被亲吻次数
+%tsl_kiss_toggle%      # Kiss 功能状态
+%tsl_ride_toggle%      # Ride 功能状态
+%tsl_toss_toggle%      # Toss 功能状态
+%tsl_toss_velocity%    # Toss 投掷速度
+```
+
+---
+
+## 🛠️ 技术栈
 
 - **语言**: Kotlin 1.9.21
-- **服务器**: Paper/Folia 1.21.8
-- **Java**: 21
-- **构建**: Gradle 8.5 + Kotlin DSL
-
-### 主要依赖
-
-- LuckPerms API 5.4（访客模式、权限检测）
-- PlaceholderAPI 2.11.6（成就统计）
+- **构建工具**: Gradle 8.5 + Kotlin DSL
+- **目标平台**: Paper/Folia 1.21.8
+- **Java 版本**: 21
 
 ---
 
-## 构建
+## 📝 许可证
 
-```bash
-# 克隆项目
-git clone <repository-url>
-cd TSLplugins
-
-# 构建插件
-./gradlew clean shadowJar
-
-# 输出位置
-# build/libs/TSLplugins-1.0.jar
-```
-
-### Windows 环境
-
-```cmd
-gradlew.bat clean shadowJar
-```
+本项目仅供 TSL 服务器使用。
 
 ---
 
-## 项目结构
-
-```
-TSLplugins/
-├── src/main/kotlin/org/tsl/tSLplugins/
-│   ├── TSLplugins.kt              # 主插件类
-│   ├── TSLCommand.kt              # 统一命令入口
-│   ├── ReloadCommand.kt           # 配置重载
-│   ├── ConfigUpdateManager.kt     # 配置版本控制
-│   │
-│   ├── Alias/                     # 命令别名系统
-│   ├── Maintenance/               # 维护模式
-│   ├── Scale/                     # 体型调整
-│   ├── Hat/                       # 帽子系统
-│   ├── Ping/                      # 延迟查询
-│   ├── Toss/                      # 生物举起
-│   ├── Advancement/               # 成就系统
-│   ├── Visitor/                   # 访客模式
-│   ├── Permission/                # 权限检测
-│   ├── Farmprotect/              # 农田保护
-│   └── Motd/                     # MOTD 模块
-│
-└── src/main/resources/
-    ├── config.yml                 # 主配置文件
-    ├── aliases.yml                # 别名配置
-    └── plugin.yml                 # 插件描述
-```
-
----
-
-## 贡献
+## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
 ---
 
-## 许可证
+## 📮 联系方式
 
-MIT License
-
----
-
-## 联系方式
-
-- 作者: Zvbj
-- 项目: TSLplugins
+- **作者**: Zvbj
+- **服务器**: TSL Minecraft Server
 
 ---
 
-**最后更新**: 2025-11-19  
-**版本**: 1.0  
-**配置版本**: 6
-  
-  # 是否显示为不兼容版本（显示红色X）
-  show-incompatible-version: true
-  
-  # 是否显示假玩家数量
-  show-fake-players: true
-  
-  # 假在线人数
-  fake-online: 0
-  
-  # 假最大人数
-  fake-max: 0
-  
-  # 玩家列表悬浮提示（鼠标放到人数上显示的内容）
-  hover-message:
-    - "&c&l⚠ 服务器维护中 ⚠"
-    - ""
-    - "&7维护原因: &f例行维护升级"
-    - "&7维护时间: &f约30分钟"
-    - ""
-    - "&e请关注我们的社区"
-    - "&e获取最新维护进度"
-```
+## 🎉 致谢
 
-#### 工作流程
+感谢所有 TSL 服务器玩家的支持和反馈！
 
-1. 管理员执行 `/tsl maintenance` 命令
-2. 维护状态保存到 `maintenance.dat` 文件
-3. 所有没有 `tsl.maintenance.bypass` 权限的玩家被踢出
-4. 服务器列表显示自定义的维护信息：
-   - MOTD 显示维护中
-   - 版本栏显示 "维护✖"
-   - 玩家数显示为 0/0（可自定义）
-   - 鼠标悬停显示详细维护信息
-5. 玩家尝试进入时会被踢出并显示维护消息
-6. 有绕过权限的玩家可以正常进入服务器
-
-#### 权限说明
-
-| 权限 | 说明 | 默认 |
-|------|------|------|
-| `tsl.maintenance.toggle` | 切换维护模式 | OP |
-| `tsl.maintenance.bypass` | 绕过维护模式限制 | OP |
-
----
-
-### 成就系统
-
-#### 功能特性
-
-- ✅ 自动隐藏普通成就的公屏消息
-- ✅ 保留挑战成就的公屏消息（稀有成就）
-- ✅ 玩家个人仍能看到自己的成就通知
-- ✅ 提供 PlaceholderAPI 占位符：`%tsl_adv_count%`
-- ✅ 支持手动刷新统计：`/tsl advcount refresh <player|all>`
-
-#### 配置
-
-无需配置，开箱即用。
-
----
-
-### 访客模式
-
-#### 功能特性
-
-- ✅ 拥有 `tsl.visitor` 权限的玩家获得特殊保护
-- ✅ 怪物不会主动攻击访客
-- ✅ 访客会自动获得发光效果（便于识别）
-- ✅ 支持自定义提示消息、标题和音效
-
-#### 配置示例
-
-**config.yml - visitor 部分：**
-```yaml
-visitor:
-  gained:
-    chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
-    title: "&a访客模式"
-    subtitle: "&7已启用"
-    sound: "entity.player.levelup"
-  lost:
-    chat: "&c[访客模式] &7你已退出访客模式，怪物现在可以攻击你了！"
-    title: "&c访客模式"
-    subtitle: "&7已禁用"
-    sound: "block.note_block.bass"
-```
-
-#### 使用方法
-
-```bash
-# 给予访客权限
-/lp user <玩家> permission set tsl.visitor true
-
-# 移除访客权限
-/lp user <玩家> permission unset tsl.visitor
-```
-
----
-
-### 权限检测器
-
-#### 功能特性
-
-- ✅ 基于 PlaceholderAPI 变量自动分配权限组
-- ✅ 支持玩家加入时自动检测
-- ✅ 可配置目标权限组和触发条件
-- ✅ 可选执行自定义命令
-
-#### 配置示例
-
-**config.yml - permission-checker 部分：**
-```yaml
-permission-checker:
-  enabled: true
-  target-group: "normal"
-  variable-name: "%player_gamemode%"
-  variable-value: "SURVIVAL"
-  execute-command: false
-  commands:
-    - "say 欢迎 %player% 加入服务器！"
-    - "give %player% diamond 1"
-```
-
----
-
-### 农田保护
-
-#### 功能特性
-
-- ✅ 防止玩家和生物踩踏农田
-- ✅ 无需配置，开箱即用
-
----
-
-### MOTD 假玩家显示
-
-#### 功能特性
-
-- ✅ 可开启/关闭假玩家显示功能
-- ✅ 在服务器列表中调整显示的在线人数
-- ✅ 显示人数 = 实际在线 + 配置的偏移量
-- ✅ 最小显示为 0（不会显示负数）
-
-#### 配置示例
-
-**config.yml：**
-```yaml
-fakeplayer:
-  enabled: true      # 是否启用假玩家功能
-  count: 3          # 显示人数会增加 3 人（可为负数）
-```
-
----
-
-## 配置文件
-
-### config.yml
-
-主配置文件，包含所有功能模块的配置：
-
-```yaml
-# MOTD 假玩家配置
-fakeplayer:
-  enabled: true    # 是否启用假玩家功能
-  count: 3        # 显示的在线人数 = 实际在线 + count（可为负，最小为 0）
-
-# Visitor 模式配置
-visitor:
-  gained:
-    chat: "&a[访客模式] &7你已进入访客模式！"
-    title: "&a访客模式"
-    subtitle: "&7已启用"
-    sound: "entity.player.levelup"
-  lost:
-    chat: "&c[访客模式] &7你已退出访客模式！"
-    title: "&c访客模式"
-    subtitle: "&7已禁用"
-    sound: "block.note_block.bass"
-
-# 权限检测配置
-permission-checker:
-  enabled: true
-  target-group: "normal"
-  variable-name: "%player_gamemode%"
-  variable-value: "SURVIVAL"
-  execute-command: false
-  commands:
-    - "say 欢迎 %player% 加入服务器！"
-
-# 维护模式配置
-maintenance:
-  messages:
-    enabled: "&a[维护模式] &7服务器维护模式已启用！"
-    disabled: "&c[维护模式] &7服务器维护模式已关闭！"
-    no-permission: "&c你没有权限使用此命令！"
-  kick-message:
-    - "&c&l⚠ 服务器维护中 ⚠"
-    - ""
-    - "&7服务器正在进行维护升级"
-    - "&7请稍后再试！"
-  motd:
-    - "&c&l⚠ 服务器维护中 ⚠"
-    - "&7正在进行维护升级，请稍后再试"
-  version-text: "&c维护中 ✖"
-  show-incompatible-version: true
-  show-fake-players: true
-  fake-online: 0
-  fake-max: 0
-  hover-message:
-    - "&c&l⚠ 服务器维护中 ⚠"
-    - ""
-    - "&7维护原因: &f例行维护升级"
-    - "&7维护时间: &f约30分钟"
-```
-
-### aliases.yml
-
-命令别名配置文件：
-
-```yaml
-aliases:
-  - "t:tpa"
-  - "传送:tpa"
-  - "h:home"
-  - "stp tp:teleport"
-```
-
----
-
-## 命令和权限
-
-### 命令列表
-
-| 命令 | 说明 | 权限 |
-|------|------|------|
-| `/tsl reload` | 重新加载所有配置文件 | OP |
-| `/tsl advcount refresh <player\|all>` | 刷新成就统计 | - |
-| `/tsl aliasreload` | 重载别名配置 | `tsl.alias.reload` |
-| `/tsl maintenance on` | 开启维护模式 | `tsl.maintenance.manage` |
-| `/tsl maintenance off` | 关闭维护模式 | `tsl.maintenance.manage` |
-| `/tsl maintenance add <玩家名>` | 添加玩家到白名单 | `tsl.maintenance.manage` |
-| `/tsl maintenance remove <玩家名>` | 从白名单移除玩家 | `tsl.maintenance.manage` |
-| `/tsl maintenance whitelist` | 查看白名单列表 | `tsl.maintenance.manage` |
-
-### 权限列表
-
-| 权限 | 说明 | 默认 |
-|------|------|------|
-| `tsl.visitor` | 访客权限（怪物不攻击、发光） | false |
-| `tsl.reload` | 重新加载插件配置 | OP |
-| `tsl.alias.reload` | 重载命令别名配置 | OP |
-| `tsl.maintenance.manage` | 管理维护模式（所有命令） | OP |
-
-### PlaceholderAPI 占位符
-
-| 占位符 | 说明 |
-|--------|------|
-| `%tsl_adv_count%` | 玩家的成就数量 |
-
----
-
-## 技术架构
-
-### 技术栈
-
-- **语言**: Kotlin 1.9.21
-- **服务器**: Paper/Folia API 1.21.8
-- **依赖**: 
-  - LuckPerms API 5.4
-  - PlaceholderAPI 2.11.6
-- **构建**: Gradle 8.x + Kotlin DSL
-
-### Folia 兼容性
-
-本插件完全兼容 Folia 多线程服务器：
-
-- ✅ 使用实体调度器而非全局调度器
-- ✅ 使用区域调度器进行定期任务
-- ✅ 避免跨区域实体操作
-- ✅ 所有代码都通过 Folia 测试
-
-### 核心架构
-
-```
-TSLplugins (主类)
-├── AliasManager (别名管理)
-├── MaintenanceManager (维护模式管理)
-├── AdvancementCount (成就统计)
-├── VisitorEffect (访客效果)
-├── PermissionChecker (权限检测)
-├── FarmProtect (农田保护)
-└── FakePlayerMotd (MOTD修改)
-```
-
----
-
-## 开发指南
-
-### 构建项目
-
-```bash
-# 克隆项目
-git clone <repository-url>
-cd TSLplugins
-
-# 构建插件
-./gradlew clean build
-
-# 生成的 JAR 位于
-# build/libs/TSLplugins-1.0.jar
-```
-
-### 开发环境
-
-- **IDE**: IntelliJ IDEA
-- **JDK**: Java 21
-- **Kotlin**: 1.9.21
-- **Gradle**: 8.5
-
-### 添加新功能
-
-1. 在 `src/main/kotlin/org/tsl/tSLplugins/` 创建新包
-2. 实现功能类（通常实现 `Listener` 接口）
-3. 在 `TSLplugins.kt` 的 `onEnable()` 中注册
-4. 在 `plugin.yml` 添加命令和权限（如需要）
-5. 在 `config.yml` 添加配置选项（如需要）
-
-### 代码风格
-
-- 使用 Kotlin 标准代码风格
-- 类名使用 PascalCase
-- 函数名使用 camelCase
-- 私有字段使用 camelCase
-- 常量使用 UPPER_SNAKE_CASE
-
----
-
-## 常见问题
-
-### Q: 别名命令显示红色怎么办？
-A: 新版本（V2）已修复，别名会显示为白色。确保使用 `/tsl aliasreload` 重载配置。
-
-### Q: 维护模式下OP也进不去？
-A: 检查 OP 是否有 `tsl.maintenance.bypass` 权限。默认 OP 应该自动拥有此权限。
-
-### Q: PlaceholderAPI 占位符不工作？
-A: 确保安装了 PlaceholderAPI 插件，并在插件启动时看到 "PlaceholderAPI 扩展已注册" 消息。
-
-```
-
----
-
-## 许可证
-
-本项目遵循 MIT 许可证。
-
----
-
-## 更新日志
-
-### v1.0 (2025-11-10)
-- ✅ 命令别名系统（支持 Tab 补全）
-- ✅ 维护模式系统（白名单、MOTD）
-- ✅ 玩家体型调整（Bypass 权限）
-- ✅ 成就系统（智能过滤）
-- ✅ 访客模式（怪物免疫、发光）
-- ✅ 权限检测器（自动分配）
-- ✅ 农田保护
-- ✅ MOTD 假玩家显示
-- ✅ 完全支持 Folia 1.21.8
-- ✅ 智能配置更新系统
-
----
-
-**感谢使用 TSLplugins！** 🎉
-
-如有问题或建议，请查看 [用户指南](USER_GUIDE.md) 或联系插件开发者。
-
----
-
-**最后更新**: 2025-11-11  
-**文档版本**: 1.0

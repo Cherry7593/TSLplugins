@@ -7,13 +7,13 @@ import java.io.InputStreamReader
 
 /**
  * 配置文件更新管理器
- * 负责检测和更新配置文件版本，只添加新键值，不修改用户的现有配置
+ * 负责检测和更新配置文件版本，保留注释并优化格式
  */
 class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     companion object {
         // 当前配置文件版本
-        const val CURRENT_CONFIG_VERSION = 9
+        const val CURRENT_CONFIG_VERSION = 10
     }
 
     /**
@@ -42,42 +42,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
         // 需要更新
         plugin.logger.info("检测到配置文件版本不同（当前: v$currentVersion, 最新: v$CURRENT_CONFIG_VERSION）")
-        plugin.logger.info("开始更新配置文件，保持配置顺序并保留现有配置值...")
-
-        // 读取默认配置（插件 JAR 内的配置）
-        val defaultConfig = YamlConfiguration.loadConfiguration(
-            InputStreamReader(plugin.getResource("config.yml")!!)
-        )
-
-        // 创建新的配置对象，按照默认配置的顺序构建
-        val newConfig = YamlConfiguration()
-
-        // 首先设置版本号（确保版本号始终在最上方）
-        newConfig.set("config-version", CURRENT_CONFIG_VERSION)
-
-        // 按照默认配置的顺序，合并配置值
-        var addedCount = 0
-        var updatedCount = 0
-
-        // 获取默认配置的所有键（保持顺序）
-        for (key in defaultConfig.getKeys(true)) {
-            // 跳过版本号键（已经设置）
-            if (key == "config-version") continue
-
-            // 如果是配置节点（有子节点），跳过
-            if (defaultConfig.isConfigurationSection(key)) continue
-
-            if (currentConfig.contains(key)) {
-                // 保留用户的旧配置值
-                newConfig.set(key, currentConfig.get(key))
-                updatedCount++
-            } else {
-                // 添加新的配置项
-                newConfig.set(key, defaultConfig.get(key))
-                addedCount++
-                plugin.logger.info("  + 添加新配置项: $key")
-            }
-        }
+        plugin.logger.info("开始更新配置文件，保留注释并优化格式...")
 
         // 备份旧配置文件
         val backupFile = File(plugin.dataFolder, "config.yml.backup")
@@ -88,12 +53,27 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             plugin.logger.warning("备份配置文件失败: ${e.message}")
         }
 
+        // 读取默认配置的原始文本（保留注释）
+        val defaultConfigText = plugin.getResource("config.yml")?.let {
+            InputStreamReader(it).readText()
+        } ?: run {
+            plugin.logger.severe("无法读取默认配置文件！")
+            return false
+        }
+
+        // 读取用户配置的值
+        val userValues = mutableMapOf<String, Any?>()
+        extractAllValues(currentConfig, "", userValues)
+
+        // 合并配置：使用默认配置的格式和注释，但替换为用户的值
+        val updatedConfigText = mergeConfigWithComments(defaultConfigText, userValues, currentConfig)
+
         // 保存更新后的配置
         try {
-            newConfig.save(configFile)
+            configFile.writeText(updatedConfigText)
             plugin.logger.info("配置文件更新完成！")
-            plugin.logger.info("  - 保留了 $updatedCount 个现有配置项")
-            plugin.logger.info("  - 添加了 $addedCount 个新配置项")
+            plugin.logger.info("  - 已保留所有注释和格式")
+            plugin.logger.info("  - 已保留用户的配置值")
             plugin.logger.info("  - 配置文件已更新到版本 $CURRENT_CONFIG_VERSION")
             return true
         } catch (e: Exception) {
@@ -108,6 +88,145 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 }
             }
             return false
+        }
+    }
+
+    /**
+     * 递归提取所有配置值
+     */
+    private fun extractAllValues(config: YamlConfiguration, prefix: String, values: MutableMap<String, Any?>) {
+        for (key in config.getKeys(false)) {
+            val fullKey = if (prefix.isEmpty()) key else "$prefix.$key"
+            val value = config.get(key)
+
+            if (value is org.bukkit.configuration.ConfigurationSection) {
+                // 递归处理子节点
+                extractAllValues(
+                    YamlConfiguration().apply {
+                        value.getKeys(false).forEach { subKey ->
+                            this.set(subKey, value.get(subKey))
+                        }
+                    },
+                    fullKey,
+                    values
+                )
+            } else {
+                values[fullKey] = value
+            }
+        }
+    }
+
+    /**
+     * 合并配置：使用默认配置的格式，但替换为用户的值
+     */
+    private fun mergeConfigWithComments(
+        defaultText: String,
+        userValues: Map<String, Any?>,
+        userConfig: YamlConfiguration
+    ): String {
+        val lines = defaultText.lines().toMutableList()
+        val result = mutableListOf<String>()
+
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            val trimmed = line.trim()
+
+            // 保留空行和纯注释行
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                result.add(line)
+                i++
+                continue
+            }
+
+            // 解析键值对
+            if (line.contains(":")) {
+                val (processedLine, keyPath) = processConfigLine(line, userValues, userConfig)
+                result.add(processedLine)
+            } else {
+                result.add(line)
+            }
+
+            i++
+        }
+
+        return result.joinToString("\n")
+    }
+
+    /**
+     * 处理单行配置，保留注释并替换值
+     */
+    private fun processConfigLine(
+        line: String,
+        userValues: Map<String, Any?>,
+        userConfig: YamlConfiguration
+    ): Pair<String, String?> {
+        val colonIndex = line.indexOf(":")
+        if (colonIndex == -1) return Pair(line, null)
+
+        val beforeColon = line.substring(0, colonIndex)
+        val afterColon = line.substring(colonIndex + 1)
+
+        // 提取缩进
+        val indent = beforeColon.takeWhile { it.isWhitespace() }
+        val key = beforeColon.trim()
+
+        // 计算完整的键路径（基于缩进级别）
+        val keyPath = key
+
+        // 检查是否有行尾注释
+        val commentMatch = """#.*$""".toRegex().find(afterColon)
+        val comment = commentMatch?.value ?: ""
+        val valuePartWithoutComment = if (comment.isNotEmpty()) {
+            afterColon.substring(0, afterColon.indexOf('#')).trim()
+        } else {
+            afterColon.trim()
+        }
+
+        // 如果用户配置中有这个键，使用用户的值
+        val userValue = if (userConfig.contains(keyPath)) {
+            userConfig.get(keyPath)
+        } else {
+            null
+        }
+
+        // 如果有用户值且值部分不为空（不是节点标题）
+        if (userValue != null && valuePartWithoutComment.isNotEmpty()) {
+            val formattedValue = formatValue(userValue)
+            // 保留行尾注释，将注释放在值后面
+            val newLine = if (comment.isNotEmpty()) {
+                "$indent$key: $formattedValue  $comment"
+            } else {
+                "$indent$key: $formattedValue"
+            }
+            return Pair(newLine, keyPath)
+        }
+
+        return Pair(line, keyPath)
+    }
+
+    /**
+     * 格式化值为 YAML 格式
+     */
+    private fun formatValue(value: Any?): String {
+        return when (value) {
+            null -> "null"
+            is String -> {
+                // 如果字符串包含特殊字符或颜色代码，使用引号
+                if (value.contains("&") || value.contains("#") || value.contains(":") ||
+                    value.contains("[") || value.contains("]") || value.contains("\"")) {
+                    "\"$value\""
+                } else {
+                    value
+                }
+            }
+            is Boolean -> value.toString()
+            is Number -> value.toString()
+            is List<*> -> {
+                if (value.isEmpty()) "[]"
+                else "\n" + value.joinToString("\n") { "  - $it" }
+            }
+            else -> value.toString()
         }
     }
 

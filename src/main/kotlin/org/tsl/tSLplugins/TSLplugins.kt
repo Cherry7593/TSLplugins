@@ -38,6 +38,9 @@ import org.tsl.tSLplugins.Kiss.KissListener
 import org.tsl.tSLplugins.Kiss.KissPlaceholder
 import org.tsl.tSLplugins.Ride.RidePlaceholder
 import org.tsl.tSLplugins.Toss.TossPlaceholder
+import org.tsl.tSLplugins.Freeze.FreezeManager
+import org.tsl.tSLplugins.Freeze.FreezeCommand
+import org.tsl.tSLplugins.Freeze.FreezeListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -52,6 +55,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var rideManager: RideManager
     private lateinit var babyLockManager: BabyLockManager
     private lateinit var kissManager: KissManager
+    private lateinit var freezeManager: FreezeManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -125,6 +129,11 @@ class TSLplugins : JavaPlugin() {
         val kissListener = KissListener(this, kissManager, kissExecutor)
         pm.registerEvents(kissListener, this)
 
+        // 初始化 Freeze 系统
+        freezeManager = FreezeManager(this)
+        val freezeListener = FreezeListener(this, freezeManager)
+        pm.registerEvents(freezeListener, this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -139,6 +148,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("toss", TossCommand(tossManager))
             dispatcher.registerSubCommand("ride", RideCommand(rideManager))
             dispatcher.registerSubCommand("kiss", KissCommand(kissManager, kissExecutor))
+            dispatcher.registerSubCommand("freeze", FreezeCommand(freezeManager))
+            dispatcher.registerSubCommand("unfreeze", FreezeCommand(freezeManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -256,5 +267,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadKissManager() {
         kissManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Freeze 管理器
+     */
+    fun reloadFreezeManager() {
+        freezeManager.loadConfig()
     }
 }

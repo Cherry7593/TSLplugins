@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 
 /**
@@ -17,11 +18,11 @@ class PingPaginator(private val manager: PingManager) {
     /**
      * 显示分页的 ping 列表
      */
-    fun showPingList(player: Player, page: Int) {
+    fun showPingList(sender: CommandSender, page: Int) {
         val allPlayers = manager.getAllPlayersPing()
 
         if (allPlayers.isEmpty()) {
-            player.sendMessage(serializer.deserialize(manager.getMessage("no_players_online")))
+            sender.sendMessage(serializer.deserialize(manager.getMessage("no_players_online")))
             return
         }
 
@@ -30,7 +31,7 @@ class PingPaginator(private val manager: PingManager) {
         val currentPage = page.coerceIn(1, totalPages)
 
         // 显示标题分割线
-        player.sendMessage(serializer.deserialize("&7&m                                                "))
+        sender.sendMessage(serializer.deserialize("&7&m                                                "))
 
         // 显示平均延迟
         val averagePing = manager.getAveragePing()
@@ -39,7 +40,7 @@ class PingPaginator(private val manager: PingManager) {
             "average_ping",
             "ping" to String.format("%.1f", averagePing)
         ).replace("{color}", avgColorCode)
-        player.sendMessage(serializer.deserialize(avgMessage))
+        sender.sendMessage(serializer.deserialize(avgMessage))
 
         // 显示页码标题
         val headerMessage = manager.getMessage(
@@ -47,7 +48,7 @@ class PingPaginator(private val manager: PingManager) {
             "page" to currentPage.toString(),
             "total_pages" to totalPages.toString()
         )
-        player.sendMessage(serializer.deserialize(headerMessage))
+        sender.sendMessage(serializer.deserialize(headerMessage))
         // 计算当前页的数据范围
         val startIndex = (currentPage - 1) * entriesPerPage
         val endIndex = minOf(startIndex + entriesPerPage, allPlayers.size)
@@ -57,17 +58,22 @@ class PingPaginator(private val manager: PingManager) {
             val info = allPlayers[i]
             val rank = i + 1
             val entry = createFormattedPingEntry(rank, info.playerName, info.ping)
-            player.sendMessage(entry)
+            sender.sendMessage(entry)
         }
 
-        // 显示分页按钮
+        // 显示分页按钮（仅玩家可用）
         if (totalPages > 1) {
-            val paginationButtons = createPaginationButtons(currentPage, totalPages)
-            player.sendMessage(paginationButtons)
+            if (sender is Player) {
+                val paginationButtons = createPaginationButtons(currentPage, totalPages)
+                sender.sendMessage(paginationButtons)
+            } else {
+                // 控制台显示纯文本分页提示
+                sender.sendMessage(serializer.deserialize("&7第 $currentPage/$totalPages 页 | 使用 /tsl ping all <页码> 查看其他页"))
+            }
         }
 
         // 显示底部分割线
-        player.sendMessage(serializer.deserialize("&7&m                                                "))
+        sender.sendMessage(serializer.deserialize("&7&m                                                "))
     }
 
     /**
