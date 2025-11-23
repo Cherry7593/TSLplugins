@@ -41,6 +41,7 @@ TSLplugins/
 ├── Toss/                      # 生物举起（叠罗汉、投掷、个人开关、速度调节）
 ├── Ride/                      # 生物骑乘（直接骑乘、个人开关、黑名单）
 ├── BabyLock/                  # 永久幼年生物（命名锁定、年龄锁定、防止消失）
+├── Kiss/                      # 玩家亲吻（命令/快捷键、粒子效果、统计系统）
 ├── Advancement/               # 成就过滤（公屏消息、PlaceholderAPI）
 ├── Visitor/                   # 访客保护（LuckPerms权限驱动）
 ├── Permission/                # 权限检测（PlaceholderAPI变量）

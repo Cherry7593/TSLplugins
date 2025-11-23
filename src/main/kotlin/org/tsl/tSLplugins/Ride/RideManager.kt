@@ -1,23 +1,25 @@
 package org.tsl.tSLplugins.Ride
 
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.PlayerDataManager
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Ride 功能管理器
  * 负责管理骑乘功能的配置和玩家状态
  */
-class RideManager(private val plugin: JavaPlugin) {
+class RideManager(
+    private val plugin: JavaPlugin,
+    private val dataManager: PlayerDataManager
+) {
 
     private var enabled: Boolean = true
     private var defaultEnabled: Boolean = true
     private val blacklist: MutableSet<EntityType> = mutableSetOf()
     private val messages: MutableMap<String, String> = mutableMapOf()
 
-    // 玩家开关状态（UUID -> 是否启用）
-    private val playerToggleStatus = ConcurrentHashMap<UUID, Boolean>()
 
     init {
         loadConfig()
@@ -92,29 +94,28 @@ class RideManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 检查玩家是否启用了骑乘功能
+     * 检查玩家是否启用了骑乘功能（从 PDC 读取）
      */
-    fun isPlayerEnabled(uuid: UUID): Boolean {
-        return playerToggleStatus.getOrDefault(uuid, defaultEnabled)
+    fun isPlayerEnabled(player: Player): Boolean {
+        return dataManager.getRideToggle(player, defaultEnabled)
     }
 
     /**
-     * 切换玩家的开关状态
+     * 切换玩家的开关状态（写入 PDC）
      */
-    fun togglePlayer(uuid: UUID): Boolean {
-        val currentStatus = isPlayerEnabled(uuid)
+    fun togglePlayer(player: Player): Boolean {
+        val currentStatus = isPlayerEnabled(player)
         val newStatus = !currentStatus
-        playerToggleStatus[uuid] = newStatus
+        dataManager.setRideToggle(player, newStatus)
         return newStatus
     }
 
     /**
-     * 玩家离线时清理数据（保留开关状态）
+     * 玩家离线时清理数据（PDC 自动保留）
      */
     @Suppress("UNUSED_PARAMETER")
     fun cleanupPlayer(uuid: UUID) {
-        // 不清理 playerToggleStatus
-        // 保持玩家的偏好设置
+        // PDC 数据自动保留，无需清理
     }
 }
 

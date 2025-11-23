@@ -1,15 +1,19 @@
 package org.tsl.tSLplugins.Toss
 
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.PlayerDataManager
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Toss 功能管理器
  * 负责管理生物举起功能的配置和玩家状态
  */
-class TossManager(private val plugin: JavaPlugin) {
+class TossManager(
+    private val plugin: JavaPlugin,
+    private val dataManager: PlayerDataManager
+) {
 
     private var enabled: Boolean = true
     private var showMessages: Boolean = false
@@ -20,11 +24,6 @@ class TossManager(private val plugin: JavaPlugin) {
     private val blacklist: MutableSet<EntityType> = mutableSetOf()
     private val messages: MutableMap<String, String> = mutableMapOf()
 
-    // 玩家开关状态（UUID -> 是否启用）
-    private val playerToggleStatus = ConcurrentHashMap<UUID, Boolean>()
-
-    // 玩家投掷速度（UUID -> 速度值）
-    private val playerThrowVelocity = ConcurrentHashMap<UUID, Double>()
 
     init {
         loadConfig()
@@ -129,37 +128,37 @@ class TossManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 检查玩家是否启用了举起功能
+     * 检查玩家是否启用了举起功能（从 PDC 读取）
      */
-    fun isPlayerEnabled(uuid: UUID): Boolean {
-        return playerToggleStatus.getOrDefault(uuid, defaultEnabled)
+    fun isPlayerEnabled(player: Player): Boolean {
+        return dataManager.getTossToggle(player, defaultEnabled)
     }
 
     /**
-     * 切换玩家的开关状态
+     * 切换玩家的开关状态（写入 PDC）
      */
-    fun togglePlayer(uuid: UUID): Boolean {
-        val currentStatus = isPlayerEnabled(uuid)
+    fun togglePlayer(player: Player): Boolean {
+        val currentStatus = isPlayerEnabled(player)
         val newStatus = !currentStatus
-        playerToggleStatus[uuid] = newStatus
+        dataManager.setTossToggle(player, newStatus)
         return newStatus
     }
 
     /**
-     * 获取玩家的投掷速度
+     * 获取玩家的投掷速度（从 PDC 读取）
      */
-    fun getPlayerThrowVelocity(uuid: UUID): Double {
-        return playerThrowVelocity.getOrDefault(uuid, throwVelocityMin)
+    fun getPlayerThrowVelocity(player: Player): Double {
+        return dataManager.getTossVelocity(player, throwVelocityMin)
     }
 
     /**
      * 设置玩家的投掷速度（受配置限制）
      */
-    fun setPlayerThrowVelocity(uuid: UUID, velocity: Double): Boolean {
+    fun setPlayerThrowVelocity(player: Player, velocity: Double): Boolean {
         if (velocity < throwVelocityMin || velocity > throwVelocityMax) {
             return false
         }
-        playerThrowVelocity[uuid] = velocity
+        dataManager.setTossVelocity(player, velocity)
         return true
     }
 
@@ -167,19 +166,18 @@ class TossManager(private val plugin: JavaPlugin) {
      * 设置玩家的投掷速度（不受配置限制，用于 OP/管理员）
      * 仍然会进行基本验证（0.0-10.0 范围）
      */
-    fun setPlayerThrowVelocityUnrestricted(uuid: UUID, velocity: Double) {
+    fun setPlayerThrowVelocityUnrestricted(player: Player, velocity: Double) {
         // 只进行基本的合理性检查
         val clampedVelocity = velocity.coerceIn(0.0, 10.0)
-        playerThrowVelocity[uuid] = clampedVelocity
+        dataManager.setTossVelocity(player, clampedVelocity)
     }
 
     /**
-     * 玩家离线时清理数据（保留开关状态和速度设置）
+     * 玩家离线时清理数据（PDC 自动保留）
      */
     @Suppress("UNUSED_PARAMETER")
     fun cleanupPlayer(uuid: UUID) {
-        // 不清理 playerToggleStatus 和 playerThrowVelocity
-        // 保持玩家的偏好设置
+        // PDC 数据自动保留，无需清理
     }
 }
 

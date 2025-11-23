@@ -63,6 +63,9 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 BabyLock 功能
             plugin.reloadBabyLockManager()
 
+            // 重新加载 Kiss 功能
+            plugin.reloadKissManager()
+
 
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))

@@ -1,9 +1,9 @@
 # ========================================
 # TSLplugins 配置文件
-# 版本: 8
+# 版本: 9
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 8
+config-version: 9
 
 # MOTD 假玩家配置
 fakeplayer:
@@ -62,7 +62,6 @@ permission-checker:
   # 可以配置多条命令
   commands:
     - "say 欢迎 %player% 加入服务器！"
-    - "give %player% diamond 1"
 
 # 维护模式配置
 maintenance:
@@ -326,3 +325,30 @@ babylock:
     lock: "%prefix%&d这只 &e{entity} &d现在会永远保持幼年啦！"
     # 解除成功
     unlock: "%prefix%&e已解除 &7{entity} &e的幼年锁定，它可以继续成长啦。"
+
+# Kiss 亲吻功能配置
+kiss:
+  # 是否启用 Kiss 功能
+  enabled: true
+  # 指令冷却时间（秒）
+  cooldown: 1.0
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&d♥ &r"
+    # 功能已禁用
+    disabled: "%prefix%&cKiss 功能已禁用"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 玩家不存在
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 不能亲自己
+    cannot_kiss_self: "%prefix%&c你不能亲自己哦~"
+    # 亲吻成功（发送给发起者）
+    kiss_sent: "%prefix%&d你亲了 &e{player} &d一口~ ♥"
+    # 被亲吻（发送给目标）
+    kiss_received: "%prefix%&d{player} &d亲了你一口~ ♥"
+    # 切换启用
+    toggle_enabled: "%prefix%&a亲吻功能已启用"
+    # 切换禁用
+    toggle_disabled: "%prefix%&c亲吻功能已禁用"

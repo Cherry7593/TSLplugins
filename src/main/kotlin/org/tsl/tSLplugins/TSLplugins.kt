@@ -31,9 +31,17 @@ import org.tsl.tSLplugins.Ride.RideCommand
 import org.tsl.tSLplugins.Ride.RideListener
 import org.tsl.tSLplugins.BabyLock.BabyLockManager
 import org.tsl.tSLplugins.BabyLock.BabyLockListener
+import org.tsl.tSLplugins.Kiss.KissManager
+import org.tsl.tSLplugins.Kiss.KissCommand
+import org.tsl.tSLplugins.Kiss.KissExecutor
+import org.tsl.tSLplugins.Kiss.KissListener
+import org.tsl.tSLplugins.Kiss.KissPlaceholder
+import org.tsl.tSLplugins.Ride.RidePlaceholder
+import org.tsl.tSLplugins.Toss.TossPlaceholder
 
 class TSLplugins : JavaPlugin() {
 
+    private lateinit var playerDataManager: PlayerDataManager
     private lateinit var countHandler: AdvancementCount
     private lateinit var aliasManager: AliasManager
     private lateinit var hatManager: HatManager
@@ -43,6 +51,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var tossManager: TossManager
     private lateinit var rideManager: RideManager
     private lateinit var babyLockManager: BabyLockManager
+    private lateinit var kissManager: KissManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -54,6 +63,9 @@ class TSLplugins : JavaPlugin() {
 
         // 重新加载配置（确保获取最新的配置）
         reloadConfig()
+
+        // 初始化玩家数据管理器（PDC）
+        playerDataManager = PlayerDataManager(this)
 
         val pm = server.pluginManager
 
@@ -93,12 +105,12 @@ class TSLplugins : JavaPlugin() {
         pingManager = PingManager(this)
 
         // 初始化 Toss 系统
-        tossManager = TossManager(this)
+        tossManager = TossManager(this, playerDataManager)
         val tossListener = TossListener(this, tossManager)
         pm.registerEvents(tossListener, this)
 
         // 初始化 Ride 系统
-        rideManager = RideManager(this)
+        rideManager = RideManager(this, playerDataManager)
         val rideListener = RideListener(this, rideManager)
         pm.registerEvents(rideListener, this)
 
@@ -106,6 +118,12 @@ class TSLplugins : JavaPlugin() {
         babyLockManager = BabyLockManager(this)
         val babyLockListener = BabyLockListener(this, babyLockManager)
         pm.registerEvents(babyLockListener, this)
+
+        // 初始化 Kiss 系统
+        kissManager = KissManager(this, playerDataManager)
+        val kissExecutor = KissExecutor(this, kissManager)
+        val kissListener = KissListener(this, kissManager, kissExecutor)
+        pm.registerEvents(kissListener, this)
 
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
@@ -120,6 +138,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("ping", PingCommand(pingManager))
             dispatcher.registerSubCommand("toss", TossCommand(tossManager))
             dispatcher.registerSubCommand("ride", RideCommand(rideManager))
+            dispatcher.registerSubCommand("kiss", KissCommand(kissManager, kissExecutor))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -130,6 +149,9 @@ class TSLplugins : JavaPlugin() {
         // 注册 PlaceholderAPI 扩展（如果 PlaceholderAPI 已加载）
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             TSLPlaceholderExpansion(this, countHandler).register()
+            KissPlaceholder(this, kissManager).register()
+            RidePlaceholder(this, rideManager).register()
+            TossPlaceholder(this, tossManager).register()
             logger.info("PlaceholderAPI 扩展已注册！")
         } else {
             logger.warning("未检测到 PlaceholderAPI，占位符功能将不可用。")
@@ -227,5 +249,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadBabyLockManager() {
         babyLockManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Kiss 管理器
+     */
+    fun reloadKissManager() {
+        kissManager.loadConfig()
     }
 }

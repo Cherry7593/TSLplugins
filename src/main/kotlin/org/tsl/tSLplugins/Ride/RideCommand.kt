@@ -52,7 +52,7 @@ class RideCommand(
      * 处理切换开关
      */
     private fun handleToggle(player: Player) {
-        val newStatus = manager.togglePlayer(player.uniqueId)
+        val newStatus = manager.togglePlayer(player)
 
         val message = if (newStatus) {
             manager.getMessage("toggle_enabled")

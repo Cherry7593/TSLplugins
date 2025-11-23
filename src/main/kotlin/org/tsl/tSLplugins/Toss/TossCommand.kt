@@ -64,8 +64,8 @@ class TossCommand(
      * 显示当前状态
      */
     private fun showStatus(player: Player) {
-        val enabled = manager.isPlayerEnabled(player.uniqueId)
-        val velocity = manager.getPlayerThrowVelocity(player.uniqueId)
+        val enabled = manager.isPlayerEnabled(player)
+        val velocity = manager.getPlayerThrowVelocity(player)
 
         val statusMessage = manager.getMessage(
             "status",
@@ -79,7 +79,7 @@ class TossCommand(
      * 处理切换开关
      */
     private fun handleToggle(player: Player) {
-        val newStatus = manager.togglePlayer(player.uniqueId)
+        val newStatus = manager.togglePlayer(player)
 
         val message = if (newStatus) {
             manager.getMessage("toggle_enabled")
@@ -141,7 +141,7 @@ class TossCommand(
         }
 
         // 设置速度（不再受配置文件限制约束）
-        manager.setPlayerThrowVelocityUnrestricted(player.uniqueId, velocity)
+        manager.setPlayerThrowVelocityUnrestricted(player, velocity)
 
         val message = manager.getMessage(
             "velocity_set",
@@ -154,7 +154,7 @@ class TossCommand(
      * 显示当前投掷速度
      */
     private fun showVelocity(player: Player) {
-        val velocity = manager.getPlayerThrowVelocity(player.uniqueId)
+        val velocity = manager.getPlayerThrowVelocity(player)
         val message = manager.getMessage(
             "velocity_current",
             "velocity" to String.format("%.1f", velocity),

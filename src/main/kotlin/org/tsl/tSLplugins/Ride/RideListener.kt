@@ -41,7 +41,7 @@ class RideListener(
         if (!player.hasPermission("tsl.ride.use")) return
 
         // 玩家开关状态检查
-        if (!manager.isPlayerEnabled(player.uniqueId)) return
+        if (!manager.isPlayerEnabled(player)) return
 
         // 黑名单检查
         if (manager.isEntityBlacklisted(entity.type) &&

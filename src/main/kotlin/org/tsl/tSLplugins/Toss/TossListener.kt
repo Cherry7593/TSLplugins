@@ -57,7 +57,7 @@ class TossListener(
         }
 
         // 玩家开关状态检查
-        if (!manager.isPlayerEnabled(player.uniqueId)) {
+        if (!manager.isPlayerEnabled(player)) {
             sendMessage(player, "player_disabled")
             return
         }
@@ -98,7 +98,7 @@ class TossListener(
         if (!player.hasPermission("tsl.toss.use")) return
 
         // 玩家开关状态检查
-        if (!manager.isPlayerEnabled(player.uniqueId)) return
+        if (!manager.isPlayerEnabled(player)) return
 
         // 检查玩家是否举起了生物
         if (getPassengerChainCount(player) == 0) return
@@ -185,7 +185,7 @@ class TossListener(
 
             // 计算投掷方向和速度
             val direction = player.location.direction.normalize()
-            val velocity = manager.getPlayerThrowVelocity(player.uniqueId)
+            val velocity = manager.getPlayerThrowVelocity(player)
             val throwVelocity = direction.multiply(velocity)
 
             // 添加向上的分量（使用 setY 方法）
