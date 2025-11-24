@@ -5,7 +5,6 @@ import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.Advancement.AdvancementMessage
 import org.tsl.tSLplugins.Advancement.AdvancementCount
 import org.tsl.tSLplugins.Advancement.AdvancementCommand
-import org.tsl.tSLplugins.Advancement.TSLPlaceholderExpansion
 import org.tsl.tSLplugins.Motd.FakePlayerMotd
 import org.tsl.tSLplugins.Visitor.VisitorEffect
 import org.tsl.tSLplugins.Farmprotect.FarmProtect
@@ -35,12 +34,10 @@ import org.tsl.tSLplugins.Kiss.KissManager
 import org.tsl.tSLplugins.Kiss.KissCommand
 import org.tsl.tSLplugins.Kiss.KissExecutor
 import org.tsl.tSLplugins.Kiss.KissListener
-import org.tsl.tSLplugins.Kiss.KissPlaceholder
-import org.tsl.tSLplugins.Ride.RidePlaceholder
-import org.tsl.tSLplugins.Toss.TossPlaceholder
 import org.tsl.tSLplugins.Freeze.FreezeManager
 import org.tsl.tSLplugins.Freeze.FreezeCommand
 import org.tsl.tSLplugins.Freeze.FreezeListener
+import org.tsl.tSLplugins.BlockStats.BlockStatsManager
 
 class TSLplugins : JavaPlugin() {
 
@@ -56,6 +53,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var babyLockManager: BabyLockManager
     private lateinit var kissManager: KissManager
     private lateinit var freezeManager: FreezeManager
+    private lateinit var blockStatsManager: BlockStatsManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -134,6 +132,9 @@ class TSLplugins : JavaPlugin() {
         val freezeListener = FreezeListener(this, freezeManager)
         pm.registerEvents(freezeListener, this)
 
+        // 初始化 BlockStats 系统
+        blockStatsManager = BlockStatsManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -149,7 +150,6 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("ride", RideCommand(rideManager))
             dispatcher.registerSubCommand("kiss", KissCommand(kissManager, kissExecutor))
             dispatcher.registerSubCommand("freeze", FreezeCommand(freezeManager))
-            dispatcher.registerSubCommand("unfreeze", FreezeCommand(freezeManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -159,10 +159,16 @@ class TSLplugins : JavaPlugin() {
 
         // 注册 PlaceholderAPI 扩展（如果 PlaceholderAPI 已加载）
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            TSLPlaceholderExpansion(this, countHandler).register()
-            KissPlaceholder(this, kissManager).register()
-            RidePlaceholder(this, rideManager).register()
-            TossPlaceholder(this, tossManager).register()
+            // 只注册一个统一的扩展，包含所有变量
+            TSLPlaceholderExpansion(
+                this,
+                countHandler,
+                pingManager,
+                kissManager,
+                rideManager,
+                tossManager,
+                blockStatsManager
+            ).register()
             logger.info("PlaceholderAPI 扩展已注册！")
         } else {
             logger.warning("未检测到 PlaceholderAPI，占位符功能将不可用。")
@@ -274,5 +280,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadFreezeManager() {
         freezeManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 BlockStats 管理器
+     */
+    fun reloadBlockStatsManager() {
+        blockStatsManager.loadConfig()
     }
 }

@@ -13,7 +13,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     companion object {
         // 当前配置文件版本
-        const val CURRENT_CONFIG_VERSION = 10
+        const val CURRENT_CONFIG_VERSION = 11
     }
 
     /**
@@ -126,6 +126,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
     ): String {
         val lines = defaultText.lines().toMutableList()
         val result = mutableListOf<String>()
+        val keyStack = mutableListOf<Pair<String, Int>>() // (key, indentLevel)
 
         var i = 0
         while (i < lines.size) {
@@ -141,7 +142,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
             // 解析键值对
             if (line.contains(":")) {
-                val (processedLine, keyPath) = processConfigLine(line, userValues, userConfig)
+                val processedLine = processConfigLine(line, userConfig, keyStack)
                 result.add(processedLine)
             } else {
                 result.add(line)
@@ -158,21 +159,31 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
      */
     private fun processConfigLine(
         line: String,
-        userValues: Map<String, Any?>,
-        userConfig: YamlConfiguration
-    ): Pair<String, String?> {
+        userConfig: YamlConfiguration,
+        keyStack: MutableList<Pair<String, Int>>
+    ): String {
         val colonIndex = line.indexOf(":")
-        if (colonIndex == -1) return Pair(line, null)
+        if (colonIndex == -1) return line
 
         val beforeColon = line.substring(0, colonIndex)
         val afterColon = line.substring(colonIndex + 1)
 
-        // 提取缩进
+        // 提取缩进级别
         val indent = beforeColon.takeWhile { it.isWhitespace() }
+        val indentLevel = indent.length
         val key = beforeColon.trim()
 
-        // 计算完整的键路径（基于缩进级别）
-        val keyPath = key
+        // 更新键栈
+        while (keyStack.isNotEmpty() && keyStack.last().second >= indentLevel) {
+            keyStack.removeAt(keyStack.size - 1)
+        }
+
+        // 构建完整键路径
+        val fullKey = if (keyStack.isEmpty()) {
+            key
+        } else {
+            keyStack.joinToString(".") { it.first } + ".$key"
+        }
 
         // 检查是否有行尾注释
         val commentMatch = """#.*$""".toRegex().find(afterColon)
@@ -183,26 +194,30 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             afterColon.trim()
         }
 
-        // 如果用户配置中有这个键，使用用户的值
-        val userValue = if (userConfig.contains(keyPath)) {
-            userConfig.get(keyPath)
+        // 如果值部分为空或只是冒号后没内容，说明这是一个节点标题
+        if (valuePartWithoutComment.isEmpty()) {
+            keyStack.add(Pair(key, indentLevel))
+            return line // 保留节点标题不变
+        }
+
+        // 检查用户配置中是否有这个键的值
+        val userValue = if (userConfig.contains(fullKey)) {
+            userConfig.get(fullKey)
         } else {
             null
         }
 
-        // 如果有用户值且值部分不为空（不是节点标题）
-        if (userValue != null && valuePartWithoutComment.isNotEmpty()) {
+        // 如果有用户值，使用用户的值
+        return if (userValue != null) {
             val formattedValue = formatValue(userValue)
-            // 保留行尾注释，将注释放在值后面
-            val newLine = if (comment.isNotEmpty()) {
+            if (comment.isNotEmpty()) {
                 "$indent$key: $formattedValue  $comment"
             } else {
                 "$indent$key: $formattedValue"
             }
-            return Pair(newLine, keyPath)
+        } else {
+            line // 保留默认值
         }
-
-        return Pair(line, keyPath)
     }
 
     /**

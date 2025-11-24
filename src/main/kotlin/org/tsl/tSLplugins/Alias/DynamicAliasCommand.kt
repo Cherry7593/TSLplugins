@@ -43,27 +43,45 @@ class DynamicAliasCommand(
     }
 
     override fun tabComplete(sender: CommandSender, alias: String, args: Array<out String>): List<String> {
-        // 获取目标命令的 tab 补全
-        val targetCmd = Bukkit.getPluginCommand(targetCommand.split(" ")[0])
-            ?: Bukkit.getServer().getPluginCommand(targetCommand.split(" ")[0])
+        // 解析目标命令（可能包含子命令）
+        val targetParts = targetCommand.split(" ")
+        val baseCommand = targetParts[0]
+        val subCommands = targetParts.drop(1)
+
+        // 获取基础命令
+        val targetCmd = Bukkit.getPluginCommand(baseCommand)
+            ?: Bukkit.getServer().getPluginCommand(baseCommand)
 
         if (targetCmd != null) {
             try {
-                // 尝试使用目标命令的 tab 补全
                 val tabCompleter = targetCmd.tabCompleter
                 if (tabCompleter != null) {
-                    return tabCompleter.onTabComplete(sender, targetCmd, alias, args) ?: emptyList()
+                    // 构建完整的参数数组（包含子命令）
+                    val fullArgs = if (subCommands.isNotEmpty()) {
+                        // 如果别名包含子命令，将子命令和用户输入的参数合并
+                        (subCommands + args.toList()).toTypedArray()
+                    } else {
+                        args
+                    }
+
+                    // 使用目标命令的 tab 补全
+                    val completions = tabCompleter.onTabComplete(sender, targetCmd, baseCommand, fullArgs)
+                    if (completions != null && completions.isNotEmpty()) {
+                        return completions
+                    }
                 }
             } catch (e: Exception) {
                 plugin.logger.fine("获取 $targetCommand 的 tab 补全时出错: ${e.message}")
             }
         }
 
-        // 如果无法获取目标命令的补全，返回在线玩家列表
-        if (sender is Player) {
+        // 如果无法获取目标命令的补全，返回在线玩家列表作为后备
+        if (args.isNotEmpty()) {
+            val lastArg = args.last()
             return Bukkit.getOnlinePlayers()
                 .map { it.name }
-                .filter { it.startsWith(args.lastOrNull() ?: "", ignoreCase = true) }
+                .filter { it.startsWith(lastArg, ignoreCase = true) }
+                .sorted()
         }
 
         return emptyList()

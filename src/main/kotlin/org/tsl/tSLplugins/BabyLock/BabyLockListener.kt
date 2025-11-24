@@ -8,7 +8,9 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityBreedEvent
+import org.bukkit.event.entity.EntitySpawnEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
+import org.bukkit.event.world.EntitiesLoadEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -62,6 +64,69 @@ class BabyLockListener(
         entity.scheduler.runDelayed(plugin, { _ ->
             checkAndUpdateLock(entity, event.breeder as? Player)
         }, null, 10L)  // 延迟 0.5 秒
+    }
+
+    /**
+     * 监听实体生成事件（包括重启后的实体加载）
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onEntitySpawn(event: EntitySpawnEvent) {
+        // 检查功能是否启用
+        if (!manager.isEnabled()) return
+
+        val entity = event.entity
+        if (entity !is Ageable) return
+
+        // 延迟检查，确保实体完全加载
+        entity.scheduler.run(plugin, { _ ->
+            checkAndReapplyLock(entity)
+        }, null)
+    }
+
+    /**
+     * 监听实体批量加载事件（区块加载）
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun onEntitiesLoad(event: EntitiesLoadEvent) {
+        // 检查功能是否启用
+        if (!manager.isEnabled()) return
+
+        // 检查所有加载的实体
+        event.entities.forEach { entity ->
+            if (entity is Ageable) {
+                entity.scheduler.run(plugin, { _ ->
+                    checkAndReapplyLock(entity)
+                }, null)
+            }
+        }
+    }
+
+    /**
+     * 检查并重新应用锁定（用于实体加载）
+     */
+    private fun checkAndReapplyLock(entity: Ageable) {
+        // 验证实体仍然有效
+        if (!entity.isValid) return
+
+        val customName = entity.customName()
+        if (customName == null) return
+
+        val plainName = plainSerializer.serialize(customName)
+
+        // 检查是否有锁定前缀
+        if (manager.hasLockPrefix(plainName)) {
+            // 检查实体类型是否启用
+            if (!manager.isTypeEnabled(entity.type)) return
+
+            // 确保是幼年或已锁定的实体
+            val isBaby = entity.age < 0 || entity.ageLock
+
+            if (isBaby && !entity.ageLock) {
+                // 重新应用锁定
+                manager.lockBaby(entity)
+                plugin.logger.fine("[BabyLock] 重新锁定生物: ${entity.type} - $plainName")
+            }
+        }
     }
 
     /**
