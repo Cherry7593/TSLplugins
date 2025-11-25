@@ -1,9 +1,9 @@
 ﻿# ========================================
 # TSLplugins 配置文件
-# 版本: 10
+# 版本: 12
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 10
+config-version: 12
 # MOTD 假玩家配置
 fakeplayer:
   # 是否启用假玩家功能
@@ -389,4 +389,46 @@ kiss:
 blockstats:
   # 是否启用 BlockStats 功能
   enabled: true
+
+# ========================================
+# ChatBubble 聊天气泡功能配置
+# ========================================
+chatbubble:
+  # 是否启用 ChatBubble 功能
+  enabled: true
+
+  # 气泡位置偏移（玩家头顶上方的距离）
+  yOffset: 0.75
+
+  # 气泡存在时间（单位：tick，20 tick = 1 秒）
+  timeSpan: 100
+
+  # 气泡朝向模式
+  # 可选值: FIXED(固定), VERTICAL(垂直), HORIZONTAL(水平), CENTER(居中)
+  billboard: "VERTICAL"
+
+  # 是否显示阴影
+  shadow: false
+
+  # 可视范围（单位：方块）
+  viewRange: 16.0
+
+  # 更新频率（单位：tick，数值越小更新越频繁，性能消耗越大）
+  updateTicks: 2
+
+  # 位置移动过渡时间（单位：tick）
+  movementTicks: 4
+
+  # 不透明度配置（取值范围：0.0-1.0）
+  opacity:
+    default: 1.0      # 正常状态
+    sneaking: 0.25    # 潜行状态
+
+  # 背景颜色配置（RGBA，取值范围：0-255）
+  # 如果 red 设置为 -1，则使用默认背景
+  background:
+    red: -1
+    green: 0
+    blue: 0
+    alpha: 0
 

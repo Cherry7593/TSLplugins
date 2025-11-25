@@ -38,6 +38,9 @@ import org.tsl.tSLplugins.Freeze.FreezeManager
 import org.tsl.tSLplugins.Freeze.FreezeCommand
 import org.tsl.tSLplugins.Freeze.FreezeListener
 import org.tsl.tSLplugins.BlockStats.BlockStatsManager
+import org.tsl.tSLplugins.ChatBubble.ChatBubbleManager
+import org.tsl.tSLplugins.ChatBubble.ChatBubbleCommand
+import org.tsl.tSLplugins.ChatBubble.ChatBubbleListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -54,6 +57,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var kissManager: KissManager
     private lateinit var freezeManager: FreezeManager
     private lateinit var blockStatsManager: BlockStatsManager
+    private lateinit var chatBubbleManager: ChatBubbleManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -61,10 +65,12 @@ class TSLplugins : JavaPlugin() {
     override fun onEnable() {
         // 检查并更新配置文件
         val configUpdateManager = ConfigUpdateManager(this)
-        configUpdateManager.checkAndUpdate()
+        val configUpdated = configUpdateManager.checkAndUpdate()
 
-        // 重新加载配置（确保获取最新的配置）
-        reloadConfig()
+        // 如果配置文件被更新，重新加载配置（确保获取最新的配置）
+        if (configUpdated) {
+            reloadConfig()
+        }
 
         // 初始化玩家数据管理器（PDC）
         playerDataManager = PlayerDataManager(this)
@@ -135,6 +141,11 @@ class TSLplugins : JavaPlugin() {
         // 初始化 BlockStats 系统
         blockStatsManager = BlockStatsManager(this)
 
+        // 初始化 ChatBubble 系统
+        chatBubbleManager = ChatBubbleManager(this)
+        val chatBubbleListener = ChatBubbleListener(this, chatBubbleManager)
+        pm.registerEvents(chatBubbleListener, this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -150,6 +161,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("ride", RideCommand(rideManager))
             dispatcher.registerSubCommand("kiss", KissCommand(kissManager, kissExecutor))
             dispatcher.registerSubCommand("freeze", FreezeCommand(freezeManager))
+            dispatcher.registerSubCommand("chatbubble", ChatBubbleCommand(chatBubbleManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -185,6 +197,10 @@ class TSLplugins : JavaPlugin() {
     }
 
     override fun onDisable() {
+        // 清理 ChatBubble 系统
+        if (::chatBubbleManager.isInitialized) {
+            chatBubbleManager.cleanupAll()
+        }
 
         logger.info("TSL插件已卸载！")
     }
@@ -287,5 +303,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadBlockStatsManager() {
         blockStatsManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 ChatBubble 管理器
+     */
+    fun reloadChatBubbleManager() {
+        chatBubbleManager.loadConfig()
     }
 }

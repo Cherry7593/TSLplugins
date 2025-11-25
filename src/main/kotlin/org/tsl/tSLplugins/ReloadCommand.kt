@@ -72,6 +72,9 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 BlockStats 功能
             plugin.reloadBlockStatsManager()
 
+            // 重新加载 ChatBubble 功能
+            plugin.reloadChatBubbleManager()
+
 
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
