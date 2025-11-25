@@ -1,382 +1,388 @@
 ﻿# ========================================
-# TSLplugins 閰嶇疆鏂囦欢
-# 鐗堟湰: 10
+# TSLplugins 配置文件
+# 版本: 10
 # ========================================
-# 娉ㄦ剰: 璇峰嬁淇敼 config-version锛屽畠鐢ㄤ簬鑷姩鏇存柊閰嶇疆鏂囦欢
+# 注意: 请勿修改 config-version，它用于自动更新配置文件
 config-version: 10
-# MOTD 鍋囩帺瀹堕厤缃?
+# MOTD 假玩家配置
 fakeplayer:
-  # 鏄惁鍚敤鍋囩帺瀹跺姛鑳?
+  # 是否启用假玩家功能
   enabled: true
-  # 鏄剧ず鐨勫湪绾夸汉鏁?= 瀹為檯鍦ㄧ嚎 + count锛堝彲涓鸿礋锛屾渶灏忎负 0锛?
+  # 显示的在线人数 = 实际在线 + count（可为负，最小为 0）
   count: 3
-# 鍛戒护鍒悕閰嶇疆
+# 命令别名配置
 alias:
-  # 鏄惁鍚敤鍛戒护鍒悕鍔熻兘
+  # 是否启用命令别名功能
   enabled: true
-  # 璇峰湪 aliases.yml 鏂囦欢涓厤缃懡浠ゅ埆鍚?
-  # 浣跨敤 /tsl aliasreload 閲嶈浇鍒悕閰嶇疆
-# 鎴愬氨娑堟伅閰嶇疆
+  # 请在 aliases.yml 文件中配置命令别名
+  # 使用 /tsl aliasreload 重载别名配置
+# 成就消息配置
 advancement:
-  # 鏄惁鍚敤鎴愬氨娑堟伅杩囨护鍔熻兘
+  # 是否启用成就消息过滤功能
   enabled: true
-# 鍐滅敯淇濇姢閰嶇疆
+# 农田保护配置
 farmprotect:
-  # 鏄惁鍚敤鍐滅敯淇濇姢鍔熻兘
+  # 是否启用农田保护功能
   enabled: true
-# Visitor 妯″紡閰嶇疆
+# Visitor 模式配置
 visitor:
-  # 鏄惁鍚敤 Visitor 鍔熻兘
+  # 是否启用 Visitor 功能
   enabled: true
-  # 鑾峰緱璁垮鏉冮檺鏃剁殑鎻愮ず
+  # 获得访客权限时的提示
   gained:
-    chat: "&a[璁垮妯″紡] &7浣犲凡杩涘叆璁垮妯″紡锛屾€墿灏嗕笉浼氭敾鍑讳綘锛屽苟涓斾綘浼氬彂鍏夛紒"
-    title: "&a璁垮妯″紡"
-    subtitle: "&7宸插惎鐢?
+    chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
+    title: "&a访客模式"
+    subtitle: "&7已启用"
     sound: "entity.player.levelup"
-  # 澶卞幓璁垮鏉冮檺鏃剁殑鎻愮ず
+  # 失去访客权限时的提示
   lost:
-    chat: "&c[璁垮妯″紡] &7浣犲凡閫€鍑鸿瀹㈡ā寮忥紝鎬墿鐜板湪鍙互鏀诲嚮浣犱簡锛?
-    title: "&c璁垮妯″紡"
-    subtitle: "&7宸茬鐢?
+    chat: "&c[访客模式] &7你已退出访客模式，怪物现在可以攻击你了！"
+    title: "&c访客模式"
+    subtitle: "&7已禁用"
     sound: "block.note_block.bass"
-# 鏉冮檺妫€娴嬮厤缃?
+# 权限检测配置
 permission-checker:
-  # 鏄惁鍚敤鏉冮檺妫€娴?
+  # 是否启用权限检测
   enabled: true
-  # 鐩爣鏉冮檺缁勫悕绉帮紙浼氭浛鎹㈢帺瀹跺綋鍓嶇殑鎵€鏈夋潈闄愮粍锛?
+  # 目标权限组名称（会替换玩家当前的所有权限组）
   target-group: "normal"
-  # 鍙橀噺鍚嶇О锛堝湪 PlaceholderAPI 涓娇鐢紝渚嬪 %vault_eco_balance%锛?
+  # 变量名称（在 PlaceholderAPI 中使用，例如 %vault_eco_balance%）
   variable-name: "%player_gamemode%"
-  # 鍙橀噺鏈熸湜鍊硷紙褰撳彉閲忕瓑浜庢鍊兼椂鎵嶆墽琛屾潈闄愮粍淇敼锛?
+  # 变量期望值（当变量等于此值时才执行权限组修改）
   variable-value: "SURVIVAL"
-  # 鏄惁鍚敤鍛戒护鎵ц
+  # 是否启用命令执行
   execute-command: false
-  # 鐜╁鏉冮檺缁勮缃悗鎵ц鐨勫懡浠わ紙%player% 灏嗚鏇挎崲涓虹帺瀹跺悕锛?
-  # 鍙互閰嶇疆澶氭潯鍛戒护
+  # 玩家权限组设置后执行的命令（%player% 将被替换为玩家名）
+  # 可以配置多条命令
   commands:
-    - "say 娆㈣繋 %player% 鍔犲叆鏈嶅姟鍣紒"
-# 缁存姢妯″紡閰嶇疆
+    - "say 欢迎 %player% 加入服务器！"
+# 维护模式配置
 maintenance:
-  # 鏄惁鍚敤缁存姢妯″紡鍔熻兘
+  # 是否启用维护模式功能
   enabled: true
-  # 鍛戒护鐩稿叧娑堟伅
+  # 命令相关消息
   messages:
-    # 鍚敤缁存姢妯″紡鏃剁殑鎻愮ず
-    enabled: "&a[缁存姢妯″紡] &7鏈嶅姟鍣ㄧ淮鎶ゆā寮忓凡鍚敤锛?
-    # 鍏抽棴缁存姢妯″紡鏃剁殑鎻愮ず
-    disabled: "&c[缁存姢妯″紡] &7鏈嶅姟鍣ㄧ淮鎶ゆā寮忓凡鍏抽棴锛?
-    # 娌℃湁鏉冮檺鏃剁殑鎻愮ず
-    no-permission: "&c浣犳病鏈夋潈闄愪娇鐢ㄦ鍛戒护锛?
-  # 鐜╁琚涪鍑烘椂鏄剧ず鐨勬秷鎭紙澶氳锛?
+    # 启用维护模式时的提示
+    enabled: "&a[维护模式] &7服务器维护模式已启用！"
+    # 关闭维护模式时的提示
+    disabled: "&c[维护模式] &7服务器维护模式已关闭！"
+    # 没有权限时的提示
+    no-permission: "&c你没有权限使用此命令！"
+  # 玩家被踢出时显示的消息（多行）
   kick-message:
-    - "&c&l鈿?鏈嶅姟鍣ㄧ淮鎶や腑 鈿?
-  # 鏈嶅姟鍣ㄥ垪琛?MOTD锛堢淮鎶ゆā寮忎笅鏄剧ず锛?
+    - "&c&l⚠ 服务器维护中 ⚠"
+  # 服务器列表 MOTD（维护模式下显示）
   motd:
-    - "&c&l鈿?鏈嶅姟鍣ㄧ淮鎶や腑 鈿?
-    - "&7姝ｅ湪杩涜缁存姢锛岃绋嶅悗鍐嶈瘯"
-  # 鐗堟湰鏍忔枃鏈紙鏇夸唬鍘熸湰鐨?"1.21.x"锛?
-  version-text: "&c缁存姢涓?鉁?
-  # 鏄惁鏄剧ず涓轰笉鍏煎鐗堟湰锛堟樉绀虹孩鑹瞂锛?
+    - "&c&l⚠ 服务器维护中 ⚠"
+    - "&7正在进行维护，请稍后再试"
+  # 版本栏文本（替代原本的 "1.21.x"）
+  version-text: "&c维护中 ✖"
+  # 是否显示为不兼容版本（显示红色X）
   show-incompatible-version: true
-  # 鏄惁鏄剧ず鍋囩帺瀹舵暟閲?
+  # 是否显示假玩家数量
   show-fake-players: true
-  # 鍋囧湪绾夸汉鏁?
+  # 假在线人数
   fake-online: 0
-  # 鍋囨渶澶т汉鏁?
+  # 假最大人数
   fake-max: 0
-  # 鐜╁鍒楄〃鎮诞鎻愮ず锛堥紶鏍囨斁鍒颁汉鏁颁笂鏄剧ず鐨勫唴瀹癸級
-  # 姣忎竴琛屼細鏄剧ず涓轰竴涓?鐜╁"
+  # 玩家列表悬浮提示（鼠标放到人数上显示的内容）
+  # 每一行会显示为一个"玩家"
   hover-message:
-    - "&c&l鈿?鏈嶅姟鍣ㄧ淮鎶や腑 鈿?
-# 鐜╁浣撳瀷璋冩暣閰嶇疆
+    - "&c&l⚠ 服务器维护中 ⚠"
+# 玩家体型调整配置
 scale:
-  # 鏄惁鍚敤浣撳瀷璋冩暣鍔熻兘
+  # 是否启用体型调整功能
   enabled: true
-  # 鏈€灏忎綋鍨?
+  # 最小体型
   min: 0.8
-  # 鏈€澶т綋鍨?
+  # 最大体型
   max: 1.1
-  # 娑堟伅閰嶇疆
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
-    prefix: "&c[TSL鍠礭&r "
-    # 鎴愬姛璋冩暣浣撳瀷鏃剁殑娑堟伅
-    set: "%prefix%浣犵殑浣撳瀷琚皟鏁翠负浜?%scale%"
-    # 浣撳瀷閲嶇疆鏃剁殑娑堟伅
-    reset: "%prefix%浣犵殑浣撳瀷鎭㈠榛樿鍟?
-    # 鐢ㄦ硶鎻愮ず
-    usage: "%prefix%鐢ㄦ硶: /tsl scale <鏁板€紎reset> (鑼冨洿: %min% - %max%)"
-    # 鏉冮檺涓嶈冻
-    no-permission: "%prefix%浣犳病鏈夋潈闄?
-    # 浠呯帺瀹跺彲鐢?
-    console-only: "%prefix%鍙湁鐜╁鎵嶈兘鎵ц璇ュ懡浠?
-# Hat 鍔熻兘閰嶇疆
+    # 命令前缀
+    prefix: "&c[TSL喵]&r "
+    # 成功调整体型时的消息
+    set: "%prefix%你的体型被调整为了 %scale%"
+    # 体型重置时的消息
+    reset: "%prefix%你的体型恢复默认啦"
+    # 用法提示
+    usage: "%prefix%用法: /tsl scale <数值|reset> (范围: %min% - %max%)"
+    # 权限不足
+    no-permission: "%prefix%你没有权限"
+    # 仅玩家可用
+    console-only: "%prefix%只有玩家才能执行该命令"
+# Hat 功能配置
 hat:
-  # 鏄惁鍚敤 Hat 鍔熻兘
+  # 是否启用 Hat 功能
   enabled: true
-  # 鍐峰嵈鏃堕棿锛堢锛夛紝璁剧疆涓?0 琛ㄧず鏃犲喎鍗?
+  # 冷却时间（秒），设置为 0 表示无冷却
   cooldown: 0.0
-  # 榛戝悕鍗曠墿鍝侊紙绂佹鎴村湪澶翠笂鐨勭墿鍝佺被鍨嬶級
+  # 黑名单物品（禁止戴在头上的物品类型）
   blacklist:
     - COMMAND_BLOCK
-  # 娑堟伅閰嶇疆
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
+    # 命令前缀
     prefix: "&c[Hat]&r "
-    # 鍔熻兘宸茬鐢?
-    disabled: "%prefix%&cHat 鍔熻兘宸茬鐢?
-    # 娌℃湁鎵嬫寔鐗╁搧
-    no-item: "%prefix%&c璇峰厛鎵嬫寔涓€涓墿鍝?
-    # 鐗╁搧鍦ㄩ粦鍚嶅崟涓?
-    blacklisted: "%prefix%&c璇ョ墿鍝佷笉鑳芥埓鍦ㄥご涓?
-    # 鏉冮檺涓嶈冻
-    no-permission: "%prefix%&c浣犳病鏈夋潈闄愪娇鐢ㄦ鍛戒护"
-    # 浠呯帺瀹跺彲鐢?
-    console-only: "%prefix%&c鍙湁鐜╁鎵嶈兘浣跨敤姝ゅ懡浠?
-    # 鍐峰嵈涓?
-    cooldown: "%prefix%&c璇风瓑寰?%cooldown% 绉掑悗鍐嶄娇鐢?
-# Ping 寤惰繜鏌ヨ閰嶇疆
+    # 功能已禁用
+    disabled: "%prefix%&cHat 功能已禁用"
+    # 没有手持物品
+    no-item: "%prefix%&c请先手持一个物品"
+    # 物品在黑名单中
+    blacklisted: "%prefix%&c该物品不能戴在头上"
+    # 权限不足
+    no-permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console-only: "%prefix%&c只有玩家才能使用此命令"
+    # 冷却中
+    cooldown: "%prefix%&c请等待 %cooldown% 秒后再使用"
+# Ping 延迟查询配置
 ping:
-  # 鏄惁鍚敤 Ping 鍔熻兘
+  # 是否启用 Ping 功能
   enabled: true
-  # 姣忛〉鏄剧ず鐨勭帺瀹舵暟閲?
+  # 每页显示的玩家数量
   entries_per_page: 10
-  # 寤惰繜棰滆壊闃堝€硷紙姣锛?
+  # 延迟颜色阈值（毫秒）
   ping_colors:
-    green: 100    # < 100ms 鏄剧ず缁胯壊
-    yellow: 200   # 100-200ms 鏄剧ず榛勮壊
-    # > 200ms 鏄剧ず绾㈣壊
-  # 娑堟伅閰嶇疆
+    green: 100    # < 100ms 显示绿色
+    yellow: 200   # 100-200ms 显示黄色
+    # > 200ms 显示红色
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
-    prefix: "&6[TSL鍠礭&r "
-    # 鍔熻兘宸茬鐢?
-    disabled: "%prefix%&cPing 鍔熻兘宸茬鐢?
-    # 娌℃湁鏉冮檺
-    no_permission: "%prefix%&c浣犳病鏈夋潈闄愪娇鐢ㄦ鍛戒护"
-    # 浠呯帺瀹跺彲鐢?
-    console_only: "%prefix%&c姝ゅ懡浠ゅ彧鑳界敱鐜╁鎵ц"
-    # 鏌ョ湅鑷繁鐨勫欢杩?
-    self_ping: "%prefix%&7浣犵殑寤惰繜: {color}{ping}ms"
-    # 鏌ョ湅鎸囧畾鐜╁鐨勫欢杩?
-    player_ping: "%prefix%&7{player} 鐨勫欢杩? {color}{ping}ms"
-    # 鐜╁涓嶅湪绾?
-    player_not_found: "%prefix%&c鐜╁ {player} 涓嶅湪绾?
-    # 娌℃湁鍦ㄧ嚎鐜╁
-    no_players_online: "%prefix%&c褰撳墠娌℃湁鍦ㄧ嚎鐜╁"
-    # 骞冲潎寤惰繜
-    average_ping: "&7鏈嶅姟鍣ㄥ钩鍧囧欢杩? {color}{ping}ms"
-    # 鍒嗛〉鏍囬
-    page_header: "&6&l鍦ㄧ嚎鐜╁寤惰繜鎺掕 &7- 绗?{page}/{total_pages} 椤?
-# Toss 鐢熺墿涓捐捣鍔熻兘閰嶇疆
+    # 命令前缀
+    prefix: "&6[TSL喵]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cPing 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 查看自己的延迟
+    self_ping: "%prefix%&7你的延迟: {color}{ping}ms"
+    # 查看指定玩家的延迟
+    player_ping: "%prefix%&7{player} 的延迟: {color}{ping}ms"
+    # 玩家不在线
+    player_not_found: "%prefix%&c玩家 {player} 不在线"
+    # 没有在线玩家
+    no_players_online: "%prefix%&c当前没有在线玩家"
+    # 平均延迟
+    average_ping: "&7服务器平均延迟: {color}{ping}ms"
+    # 分页标题
+    page_header: "&6&l在线玩家延迟排行 &7- 第 {page}/{total_pages} 页"
+# Toss 生物举起功能配置
 toss:
-  # 鏄惁鍚敤 Toss 鍔熻兘
+  # 是否启用 Toss 功能
   enabled: true
-  # 鏄惁鏄剧ず鎿嶄綔鎻愮ず淇℃伅锛堜妇璧枫€佹姇鎺枫€佹斁涓嬬瓑鎻愮ず锛?
+  # 是否显示操作提示信息（举起、投掷、放下等提示）
   show_messages: false
-  # 涓嶅厑璁歌涓捐捣鐨勫疄浣撶被鍨?
+  # 不允许被举起的实体类型
   blacklist:
     - WITHER
     - ENDER_DRAGON
     - WARDEN
-  # 姣忎釜鐜╁鏈€澶氳兘鍚屾椂涓捐捣鐨勭敓鐗╂暟閲?
-  max_lift_count: 3
-  # 鐜╁榛樿鏄惁鍚敤涓捐捣鐢熺墿鍔熻兘
-  default_enabled: true
-  # 鎶曟幏鐢熺墿鐨勯€熷害鑼冨洿
+    - VILLAGER
+    - SHULKER
+  # 每个玩家最多能同时举起的生物数量
+  max_lift_count: 5
+  # 玩家默认是否启用举起生物功能
+  default_enabled: false
+  # 投掷生物的速度范围
   #
-  # 鏅€氱帺瀹堕檺鍒?
-  #   - 蹇呴』鍦?min-max 鑼冨洿鍐呰缃€熷害
-  #   - 寤鸿鑼冨洿: 0.5-5.0
+  # 普通玩家限制:
+  #   - 必须在 min-max 范围内设置速度
+  #   - 建议范围: 0.5-5.0
   #
-  # OP/绠＄悊鍛樼壒鏉?(tsl.toss.velocity.bypass):
-  #   - 鍙互鏃犺閰嶇疆闄愬埗锛岃缃换鎰忛€熷害
-  #   - 瀹為檯涓婇檺: 0.0-10.0 (Minecraft 鏈嶅姟鍣ㄩ粯璁ら檺鍒?
-  #   - 寤鸿涓嶈瓒呰繃 10.0锛屽彲鑳藉鑷?
-  #     * 瀹炰綋浼犻€佹娴嬭Е鍙?
-  #     * 鏈嶅姟鍣ㄦ€ц兘闂
-  #     * 瀹炰綋浣嶇疆寮傚父
+  # OP/管理员特权 (tsl.toss.velocity.bypass):
+  #   - 可以无视配置限制，设置任意速度
+  #   - 实际上限: 0.0-10.0 (Minecraft 服务器默认限制)
+  #   - 建议不要超过 10.0，可能导致:
+  #     * 实体传送检测触发
+  #     * 服务器性能问题
+  #     * 实体位置异常
   #
-  # 浣跨敤鏂规硶:
-  #   /tsl toss velocity <鏁板€? - 璁剧疆鎶曟幏閫熷害
+  # 使用方法:
+  #   /tsl toss velocity <数值> - 设置投掷速度
   throw_velocity:
     min: 1.0
     max: 3.0
-  # 娑堟伅閰嶇疆
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
-    prefix: "&6[TSL鍠礭&r "
-    # 鍔熻兘宸茬鐢?
-    disabled: "%prefix%&cToss 鍔熻兘宸茬鐢?
-    # 娌℃湁鏉冮檺
-    no_permission: "%prefix%&c浣犳病鏈夋潈闄愪娇鐢ㄦ鍛戒护"
-    # 浠呯帺瀹跺彲鐢?
-    console_only: "%prefix%&c姝ゅ懡浠ゅ彧鑳界敱鐜╁鎵ц"
-    # 鐜╁宸茬鐢ㄥ姛鑳?
-    player_disabled: "%prefix%&c浣犵殑涓捐捣鍔熻兘宸茬鐢紝浣跨敤 /tsl toss toggle 鍚敤"
-    # 瀹炰綋鍦ㄩ粦鍚嶅崟涓?
-    entity_blacklisted: "%prefix%&c杩欑鐢熺墿涓嶈兘琚妇璧?
-    # 瀹炰綋宸茶涓捐捣
-    entity_already_lifted: "%prefix%&c杩欎釜鐢熺墿宸茬粡琚妇璧蜂簡"
-    # 杈惧埌鏈€澶т妇璧锋暟閲?
-    max_limit_reached: "%prefix%&c浣犲凡杈惧埌涓捐捣涓婇檺({max})"
-    # 寰幆寮曠敤
-    circular_reference: "%prefix%&c妫€娴嬪埌寰幆寮曠敤锛屾棤娉曚妇璧?
-    # 瀹炰綋宸插湪閾句腑
-    entity_in_chain: "%prefix%&c杩欎釜鐢熺墿宸茬粡鍦ㄤ綘鐨勪箻瀹㈤摼涓?
-    # 涓捐捣鎴愬姛
-    pickup_success: "%prefix%&a涓捐捣浜?{entity} ({current}/{max})"
-    # 娌℃湁涓捐捣浠讳綍鐢熺墿
-    no_entity_lifted: "%prefix%&c浣犳病鏈変妇璧蜂换浣曠敓鐗?
-    # 鎶曟幏鎴愬姛
-    throw_success: "%prefix%&a鎶曟幏浜?{entity}锛佸墿浣欙細{remaining}"
-    # 鏀句笅鎵€鏈夌敓鐗?
-    drop_all_success: "%prefix%&a鏀句笅浜?{count} 涓敓鐗?
-    # 鍒囨崲鍚敤
-    toggle_enabled: "%prefix%&a涓捐捣鍔熻兘宸插惎鐢?
-    # 鍒囨崲绂佺敤
-    toggle_disabled: "%prefix%&c涓捐捣鍔熻兘宸茬鐢?
-    # 褰撳墠鐘舵€?
-    status: "%prefix%&7涓捐捣鍔熻兘: {status} &7| 鎶曟幏閫熷害: {velocity}"
-    # 閫熷害璁剧疆鎴愬姛
-    velocity_set: "%prefix%&a鎶曟幏閫熷害宸茶缃负 {velocity}"
-    # 褰撳墠閫熷害
-    velocity_current: "%prefix%&7褰撳墠鎶曟幏閫熷害: {velocity} &7(鑼冨洿: {min} - {max})"
-    # 閫熷害鏃犳晥
-    invalid_velocity: "%prefix%&c鏃犳晥鐨勯€熷害鍊?
-    # 閫熷害瓒呭嚭鑼冨洿
-    velocity_out_of_range: "%prefix%&c閫熷害蹇呴』鍦?{min} 鍒?{max} 涔嬮棿"
-    # 鐢ㄦ硶璇存槑
+    # 命令前缀
+    prefix: "&6[TSL喵]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cToss 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 玩家已禁用功能
+    player_disabled: "%prefix%&c你的举起功能已禁用，使用 /tsl toss toggle 启用"
+    # 实体在黑名单中
+    entity_blacklisted: "%prefix%&c这种生物不能被举起"
+    # 实体已被举起
+    entity_already_lifted: "%prefix%&c这个生物已经被举起了"
+    # 达到最大举起数量
+    max_limit_reached: "%prefix%&c你已达到举起上限({max})"
+    # 循环引用
+    circular_reference: "%prefix%&c检测到循环引用，无法举起"
+    # 实体已在链中
+    entity_in_chain: "%prefix%&c这个生物已经在你的乘客链中"
+    # 举起成功
+    pickup_success: "%prefix%&a举起了 {entity} ({current}/{max})"
+    # 没有举起任何生物
+    no_entity_lifted: "%prefix%&c你没有举起任何生物"
+    # 投掷成功
+    throw_success: "%prefix%&a投掷了 {entity}！剩余：{remaining}"
+    # 放下所有生物
+    drop_all_success: "%prefix%&a放下了 {count} 个生物"
+    # 切换启用
+    toggle_enabled: "%prefix%&a举起功能已启用"
+    # 切换禁用
+    toggle_disabled: "%prefix%&c举起功能已禁用"
+    # 当前状态
+    status: "%prefix%&7举起功能: {status} &7| 投掷速度: {velocity}"
+    # 速度设置成功
+    velocity_set: "%prefix%&a投掷速度已设置为 {velocity}"
+    # 当前速度
+    velocity_current: "%prefix%&7当前投掷速度: {velocity} &7(范围: {min} - {max})"
+    # 速度无效
+    invalid_velocity: "%prefix%&c无效的速度值"
+    # 速度超出范围
+    velocity_out_of_range: "%prefix%&c速度必须在 {min} 到 {max} 之间"
+    # 用法说明
     usage: |-
-      %prefix%&e浣跨敤鏂规硶:
-      &7/tsl kiss <鐜╁> &f- 浜插惢鐜╁
-      &7/tsl kiss toggle &f- 鍒囨崲浜插惢鍔熻兘
-      &7Shift + 鍙抽敭鐜╁ &f- 浜插惢鐜╁
-# Freeze 鍐荤粨鐜╁鍔熻兘閰嶇疆
+      %prefix%&e使用方法:
+      &7/tsl toss toggle &f- 切换举起功能
+      &7/tsl toss velocity <数值> &f- 设置投掷速度
+      &7Shift + 右键生物 &f- 举起生物
+      &7右键空气 &f- 投掷生物
+      &7Shift + 右键空气 &f- 放下所有生物
+# Freeze 冻结玩家功能配置
 freeze:
-  # 鏄惁鍚敤 Freeze 鍔熻兘
+  # 是否启用 Freeze 功能
   enabled: true
-  # 娑堟伅閰嶇疆
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
-    prefix: "&c[鍐荤粨]&r "
-    # 鍔熻兘宸茬鐢?
-    disabled: "%prefix%&cFreeze 鍔熻兘宸茬鐢?
-    # 娌℃湁鏉冮檺
-    no_permission: "%prefix%&c浣犳病鏈夋潈闄愪娇鐢ㄦ鍛戒护"
-    # 鐜╁涓嶅瓨鍦?
-    player_not_found: "%prefix%&c鐜╁ &e{player} &c涓嶅湪绾?
-    # 鐩爣鏈?bypass 鏉冮檺
-    target_bypass: "%prefix%&c{player} 鎷ユ湁鍐荤粨璞佸厤鏉冮檺"
-    # 鍐荤粨鎴愬姛
-    freeze_success: "%prefix%&a宸插喕缁?&e{player} &a鎸佺画鏃堕棿: &e{duration}"
-    # 琚喕缁撴彁绀?
-    frozen: "%prefix%&c浣犲凡琚喕缁擄紒鎸佺画鏃堕棿: &e{duration}"
-    # 瑙ｅ喕鎴愬姛
-    unfreeze_success: "%prefix%&a宸茶В鍐?&e{player}"
-    # 琚В鍐绘彁绀?
-    unfrozen: "%prefix%&a浣犲凡琚В鍐伙紒"
-    # 鍐荤粨杩囨湡
-    expired: "%prefix%&a浣犵殑鍐荤粨鏃堕棿宸茬粨鏉燂紒"
-    # 鐜╁鏈鍐荤粨
-    not_frozen: "%prefix%&c{player} 鏈鍐荤粨"
-    # 鏃犳硶浣跨敤鎸囦护
-    cannot_use_commands: "%prefix%&c浣犺鍐荤粨鏈熼棿鏃犳硶浣跨敤鎸囦护锛?
-    # 鍒楄〃鏍囬
-    list_header: "%prefix%&e褰撳墠琚喕缁撶殑鐜╁:"
-    # 娌℃湁琚拷锟界粨鐨勭帺瀹?
-    no_frozen_players: "%prefix%&7褰撳墠娌℃湁琚喕缁撶殑鐜╁"
-    # 鍒楄〃鏉＄洰
-    list_entry: "&7- &e{player} &7[&6{status}&7] &8鍓╀綑: &f{time}"
-    # ActionBar 鎻愮ず
-    actionbar: "&c&l鈿?浣犲凡琚喕缁?鈿?&8| &f{time}"
-    # 鐢ㄦ硶璇存槑
+    # 命令前缀
+    prefix: "&c[冻结]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cFreeze 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 玩家不存在
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 目标有 bypass 权限
+    target_bypass: "%prefix%&c{player} 拥有冻结豁免权限"
+    # 冻结成功
+    freeze_success: "%prefix%&a已冻结 &e{player} &a持续时间: &e{duration}"
+    # 被冻结提示
+    frozen: "%prefix%&c你已被冻结！持续时间: &e{duration}"
+    # 解冻成功
+    unfreeze_success: "%prefix%&a已解冻 &e{player}"
+    # 被解冻提示
+    unfrozen: "%prefix%&a你已被解冻！"
+    # 冻结过期
+    expired: "%prefix%&a你的冻结时间已结束！"
+    # 玩家未被冻结
+    not_frozen: "%prefix%&c{player} 未被冻结"
+    # 无法使用指令
+    cannot_use_commands: "%prefix%&c你被冻结期间无法使用指令！"
+    # 列表标题
+    list_header: "%prefix%&e当前被冻结的玩家:"
+    # 没有被冻结的玩家
+    no_frozen_players: "%prefix%&7当前没有被冻结的玩家"
+    # 列表条目
+    list_entry: "&7- &e{player} &7[&6{status}&7] &8剩余: &f{time}"
+    # ActionBar 提示
+    actionbar: "&c&l⚠ 你已被冻结 ⚠ &8| &f{time}"
+    # 用法说明
     usage: |-
-      %prefix%&e浣跨敤鏂规硶:
-      &7/tsl freeze <鐜╁> [鏃堕棿] &f- 鍒囨崲鍐荤粨鐘舵€侊紙鑷姩鍐荤粨/瑙ｅ喕锛?
-      &7/tsl freeze list &f- 鍒楀嚭琚喕缁撶殑鐜╁
-      &8鎻愮ず: 濡傛灉鐜╁宸插喕缁撳垯瑙ｅ喕锛屾湭鍐荤粨鍒欏喕缁?
-# Ride 楠戜箻鐢熺墿鍔熻兘閰嶇疆
+      %prefix%&e使用方法:
+      &7/tsl freeze <玩家> [时间] &f- 切换冻结状态（自动冻结/解冻）
+      &7/tsl freeze list &f- 列出被冻结的玩家
+      &8提示: 如果玩家已冻结则解冻，未冻结则冻结
+# Ride 骑乘生物功能配置
 ride:
-  # 鏄惁鍚敤 Ride 鍔熻兘
+  # 是否启用 Ride 功能
   enabled: true
-  # 鐜╁榛樿鏄惁鍚敤楠戜箻鍔熻兘
-  default_enabled: true
-  # 涓嶅厑璁搁獞涔樼殑瀹炰綋绫诲瀷
+  # 玩家默认是否启用骑乘功能
+  default_enabled: false
+  # 不允许骑乘的实体类型
   blacklist:
     - WITHER
     - ENDER_DRAGON
     - WARDEN
     - GHAST
     - ELDER_GUARDIAN
-  # 娑堟伅閰嶇疆
+    - VILLAGER
+    - SHULKER
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
-    prefix: "&6[TSL鍠礭&r "
-    # 鍔熻兘宸茬鐢?
-    disabled: "%prefix%&cRide 鍔熻兘宸茬鐢?
-    # 娌℃湁鏉冮檺
-    no_permission: "%prefix%&c浣犳病鏈夋潈闄愪娇鐢ㄦ鍛戒护"
-    # 浠呯帺瀹跺彲鐢?
-    console_only: "%prefix%&c姝ゅ懡浠ゅ彧鑳界敱鐜╁鎵ц"
-    # 鍒囨崲鍚敤
-    toggle_enabled: "%prefix%&a楠戜箻鍔熻兘宸插惎鐢?
-    # 鍒囨崲绂佺敤
-    toggle_disabled: "%prefix%&c楠戜箻鍔熻兘宸茬鐢?
-    # 鐢ㄦ硶璇存槑
-    usage: "%prefix%&e浣跨敤鏂规硶: &7/tsl ride toggle &f- 鍒囨崲楠戜箻鍔熻兘"
-# BabyLock 姘镐箙骞煎勾鐢熺墿閰嶇疆
+    # 命令前缀
+    prefix: "&6[TSL喵]&r "
+    # 功能已禁用
+    disabled: "%prefix%&cRide 功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 切换启用
+    toggle_enabled: "%prefix%&a骑乘功能已启用"
+    # 切换禁用
+    toggle_disabled: "%prefix%&c骑乘功能已禁用"
+    # 用法说明
+    usage: "%prefix%&e使用方法: &7/tsl ride toggle &f- 切换骑乘功能"
+# BabyLock 永久幼年生物配置
 babylock:
-  # 鏄惁鍚敤鍔熻兘
+  # 是否启用功能
   enabled: true
-  # 鍚嶅瓧鍓嶇紑鍒楄〃锛堟弧瓒充换涓€鍓嶇紑鍗宠Е鍙戦攣瀹氾級
+  # 名字前缀列表（满足任一前缀即触发锁定）
   prefixes:
-    - "[骞糫"
-    - "[灏廬"
+    - "[幼]"
+    - "[小]"
     - "[Baby]"
-  # 鏄惁鍖哄垎澶у皬鍐?
+  # 是否区分大小写
   case_sensitive: false
-  # 闃叉閿佸畾鐨勭敓鐗╂秷澶?
+  # 防止锁定的生物消失
   prevent_despawn: true
-  # 鍚敤鐨勫疄浣撶被鍨嬶紙鐧藉悕鍗曪級
-  # 鐣欑┖琛ㄧず鍏ㄩ儴 Ageable 鐢熺墿鍧囧惎鐢?
-  # 鍙€夊€? ALLAY, CHICKEN, COW, SHEEP, PIG, RABBIT, WOLF, CAT, HORSE, DONKEY, MULE,
-  #         LLAMA, TRADER_LLAMA, FOX, BEE, GOAT, AXOLOTL, CAMEL, SNIFFER 绛?
+  # 启用的实体类型（白名单）
+  # 留空表示全部 Ageable 生物均启用
+  # 可选值: ALLAY, CHICKEN, COW, SHEEP, PIG, RABBIT, WOLF, CAT, HORSE, DONKEY, MULE,
+  #         LLAMA, TRADER_LLAMA, FOX, BEE, GOAT, AXOLOTL, CAMEL, SNIFFER 等
   enabled_types: []
-  # 娑堟伅閰嶇疆
+  # 消息配置
   messages:
-    prefix: "&6[TSL鍠礭&r "
-    # 閿佸畾鎴愬姛
-    lock: "%prefix%&d杩欏彧 &e{entity} &d鐜板湪浼氭案杩滀繚鎸佸辜骞村暒锛?
-    # 瑙ｉ櫎鎴愬姛
-    unlock: "%prefix%&e宸茶В闄?&7{entity} &e鐨勫辜骞撮攣瀹氾紝瀹冨彲浠ョ户缁垚闀垮暒銆?
-# Kiss 浜插惢鍔熻兘閰嶇疆
+    prefix: "&6[TSL喵]&r "
+    # 锁定成功
+    lock: "%prefix%&d这只 &e{entity} &d现在会永远保持幼年啦！"
+    # 解除成功
+    unlock: "%prefix%&e已解除 &7{entity} &e的幼年锁定，它可以继续成长啦。"
+# Kiss 亲吻功能配置
 kiss:
-  # 鏄惁鍚敤 Kiss 鍔熻兘
+  # 是否启用 Kiss 功能
   enabled: true
-  # 鎸囦护鍐峰嵈鏃堕棿锛堢锛?
+  # 指令冷却时间（秒）
   cooldown: 1.0
-  # 娑堟伅閰嶇疆
+  # 消息配置
   messages:
-    # 鍛戒护鍓嶇紑
-    prefix: "&d鈾?&r"
-    # 鍔熻兘宸茬鐢?
-    disabled: "%prefix%&cKiss 鍔熻兘宸茬鐢?
-    # 浠呯帺瀹跺彲鐢?
-    console_only: "%prefix%&c姝ゅ懡浠ゅ彧鑳界敱鐜╁鎵ц"
-    # 鐜╁涓嶅瓨鍦?
-    player_not_found: "%prefix%&c鐜╁ &e{player} &c涓嶅湪绾?
-    # 涓嶈兘浜茶嚜宸?
-    cannot_kiss_self: "%prefix%&c浣犱笉鑳戒翰鑷繁鍝"
-    # 浜插惢鎴愬姛锛堝彂閫佺粰鍙戣捣鑰咃級
-    kiss_sent: "%prefix%&d浣犱翰浜?&e{player} &d涓€鍙 鈾?
-    # 琚翰鍚伙紙鍙戦€佺粰鐩爣锛?
-    kiss_received: "%prefix%&d{player} &d浜蹭簡浣犱竴鍙 鈾?
-    # 鍒囨崲鍚敤
-    toggle_enabled: "%prefix%&a浜插惢鍔熻兘宸插惎鐢?
-    # 鍒囨崲绂佺敤
-    toggle_disabled: "%prefix%&c浜插惢鍔熻兘宸茬鐢?
+    # 命令前缀
+    prefix: "&d♥ &r"
+    # 功能已禁用
+    disabled: "%prefix%&cKiss 功能已禁用"
+    # 仅玩家可用
+    console_only: "%prefix%&c此命令只能由玩家执行"
+    # 玩家不存在
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 不能亲自己
+    cannot_kiss_self: "%prefix%&c你不能亲自己哦~"
+    # 亲吻成功（发送给发起者）
+    kiss_sent: "%prefix%&d你亲了 &e{player} &d一口~ ♥"
+    # 被亲吻（发送给目标）
+    kiss_received: "%prefix%&d{player} &d亲了你一口~ ♥"
+    # 切换启用
+    toggle_enabled: "%prefix%&a亲吻功能已启用"
+    # 切换禁用
+    toggle_disabled: "%prefix%&c亲吻功能已禁用"
 # ========================================
 # BlockStats 方块统计功能配置
 # ========================================
