@@ -7,6 +7,7 @@ import org.tsl.tSLplugins.Advancement.AdvancementCount
 import org.tsl.tSLplugins.Advancement.AdvancementCommand
 import org.tsl.tSLplugins.Motd.FakePlayerMotd
 import org.tsl.tSLplugins.Visitor.VisitorEffect
+import org.tsl.tSLplugins.Visitor.VisitorCommand
 import org.tsl.tSLplugins.Farmprotect.FarmProtect
 import org.tsl.tSLplugins.Permission.PermissionChecker
 import org.tsl.tSLplugins.Alias.AliasManager
@@ -41,6 +42,8 @@ import org.tsl.tSLplugins.BlockStats.BlockStatsManager
 import org.tsl.tSLplugins.ChatBubble.ChatBubbleManager
 import org.tsl.tSLplugins.ChatBubble.ChatBubbleCommand
 import org.tsl.tSLplugins.ChatBubble.ChatBubbleListener
+import org.tsl.tSLplugins.Speed.SpeedManager
+import org.tsl.tSLplugins.Speed.SpeedCommand
 
 class TSLplugins : JavaPlugin() {
 
@@ -58,9 +61,11 @@ class TSLplugins : JavaPlugin() {
     private lateinit var freezeManager: FreezeManager
     private lateinit var blockStatsManager: BlockStatsManager
     private lateinit var chatBubbleManager: ChatBubbleManager
+    private lateinit var speedManager: SpeedManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
+    private lateinit var permissionChecker: PermissionChecker
 
     override fun onEnable() {
         // 检查并更新配置文件
@@ -85,7 +90,8 @@ class TSLplugins : JavaPlugin() {
         pm.registerEvents(visitorEffect, this)
         farmProtect = FarmProtect(this)
         pm.registerEvents(farmProtect, this)
-        pm.registerEvents(PermissionChecker(this), this)
+        permissionChecker = PermissionChecker(this)
+        pm.registerEvents(permissionChecker, this)
 
 
         // 初始化成就统计系统
@@ -146,6 +152,9 @@ class TSLplugins : JavaPlugin() {
         val chatBubbleListener = ChatBubbleListener(this, chatBubbleManager)
         pm.registerEvents(chatBubbleListener, this)
 
+        // 初始化 Speed 系统
+        speedManager = SpeedManager()
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -162,6 +171,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("kiss", KissCommand(kissManager, kissExecutor))
             dispatcher.registerSubCommand("freeze", FreezeCommand(freezeManager))
             dispatcher.registerSubCommand("chatbubble", ChatBubbleCommand(chatBubbleManager))
+            dispatcher.registerSubCommand("visitor", VisitorCommand(visitorEffect))
+            dispatcher.registerSubCommand("speed", SpeedCommand(speedManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -250,11 +261,19 @@ class TSLplugins : JavaPlugin() {
     }
 
     /**
-     * 重新加载访客效果
+     * 重新加载访客模式
      */
     fun reloadVisitorEffect() {
         visitorEffect.loadConfig()
     }
+
+    /**
+     * 重新加载权限检测器
+     */
+    fun reloadPermissionChecker() {
+        permissionChecker.reload()
+    }
+
 
     /**
      * 重新加载 Ping 管理器

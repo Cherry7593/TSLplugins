@@ -1,9 +1,9 @@
 ﻿# ========================================
 # TSLplugins 配置文件
-# 版本: 12
+# 版本: 13
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 12
+config-version: 13
 # MOTD 假玩家配置
 fakeplayer:
   # 是否启用假玩家功能
@@ -28,6 +28,25 @@ farmprotect:
 visitor:
   # 是否启用 Visitor 功能
   enabled: true
+  # 访客权限组列表（在这些权限组中的玩家会被视为访客）
+  # 如果玩家同时拥有多个权限组，以 LuckPerms 的主权限组（primary group）为准
+  groups:
+    - "visitor"
+    - "guest"
+  # 访客限制配置
+  restrictions:
+    # 是否禁止访客破坏方块
+    block-break: true
+    # 是否禁止访客放置方块
+    block-place: true
+    # 是否禁止访客使用物品（食物除外）
+    item-use: true
+    # 是否禁止访客打开容器（箱子、桶、潜影盒等）
+    container-open: true
+    # 是否禁止访客触发红石设施（压力板、按钮、拉杆等）
+    pressure-plate: true
+    # 是否禁止访客攻击实体（包括怪物和其他玩家）
+    entity-damage: true
   # 获得访客权限时的提示
   gained:
     chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
@@ -40,22 +59,50 @@ visitor:
     title: "&c访客模式"
     subtitle: "&7已禁用"
     sound: "block.note_block.bass"
-# 权限检测配置
+# 权限检测配置（支持多规则）
 permission-checker:
   # 是否启用权限检测
   enabled: true
-  # 目标权限组名称（会替换玩家当前的所有权限组）
-  target-group: "normal"
-  # 变量名称（在 PlaceholderAPI 中使用，例如 %vault_eco_balance%）
-  variable-name: "%player_gamemode%"
-  # 变量期望值（当变量等于此值时才执行权限组修改）
-  variable-value: "SURVIVAL"
-  # 是否启用命令执行
-  execute-command: false
-  # 玩家权限组设置后执行的命令（%player% 将被替换为玩家名）
-  # 可以配置多条命令
-  commands:
-    - "say 欢迎 %player% 加入服务器！"
+
+  # 权限检测规则列表
+  # 每个规则可以独立配置变量检测和权限组修改
+  rules:
+    # 规则1：白名单玩家自动设为正式玩家
+    whitelist-check:
+      # 变量名称（PlaceholderAPI 变量）
+      variable: "%player_is_whitelisted%"
+      # 期望值
+      value: "true"
+      # 目标权限组
+      target-group: "normal"
+      # 修改模式：set（覆盖）或 add（添加）
+      # set: 删除玩家所有现有权限组，设置为目标组
+      # add: 保留玩家现有权限组，添加目标组
+      mode: "set"
+      # 是否执行命令
+      execute-commands: false
+      # 执行的命令列表（%player% 会被替换为玩家名）
+      commands:
+        - "say 欢迎 %player% 通过白名单验证！"
+
+    # 规则2：VIP 玩家自动添加 VIP 组
+    vip-check:
+      variable: "%vault_eco_balance%"
+      value: "1000"
+      target-group: "vip"
+      mode: "add"  # 添加模式：保留现有权限组
+      execute-commands: false
+      commands:
+        - "bc %player% 成为了 VIP！"
+
+    # 规则3：示例 - 生存模式玩家
+    gamemode-check:
+      variable: "%player_gamemode%"
+      value: "SURVIVAL"
+      target-group: "survival"
+      mode: "add"
+      execute-commands: false
+      commands: []
 # 维护模式配置
 maintenance:
   # 是否启用维护模式功能
@@ -250,13 +297,7 @@ toss:
     # 速度超出范围
     velocity_out_of_range: "%prefix%&c速度必须在 {min} 到 {max} 之间"
     # 用法说明
-    usage: |-
-      %prefix%&e使用方法:
-      &7/tsl toss toggle &f- 切换举起功能
-      &7/tsl toss velocity <数值> &f- 设置投掷速度
-      &7Shift + 右键生物 &f- 举起生物
-      &7右键空气 &f- 投掷生物
-      &7Shift + 右键空气 &f- 放下所有生物
+    usage: "%prefix%&e使用方法:\n&7/tsl toss toggle &f- 切换举起功能\n&7/tsl toss velocity <数值> &f- 设置投掷速度\n&7Shift + 右键生物 &f- 举起生物\n&7右键空气 &f- 投掷生物\n&7Shift + 右键空气 &f- 放下所有生物"
 # Freeze 冻结玩家功能配置
 freeze:
   # 是否启用 Freeze 功能
@@ -296,11 +337,7 @@ freeze:
     # ActionBar 提示
     actionbar: "&c&l⚠ 你已被冻结 ⚠ &8| &f{time}"
     # 用法说明
-    usage: |-
-      %prefix%&e使用方法:
-      &7/tsl freeze <玩家> [时间] &f- 切换冻结状态（自动冻结/解冻）
-      &7/tsl freeze list &f- 列出被冻结的玩家
-      &8提示: 如果玩家已冻结则解冻，未冻结则冻结
+    usage: "%prefix%&e使用方法:\n&7/tsl freeze <玩家> [时间] &f- 切换冻结状态（自动冻结/解冻）\n&7/tsl freeze list &f- 列出被冻结的玩家\n&8提示: 如果玩家已冻结则解冻，未冻结则冻结"
 # Ride 骑乘生物功能配置
 ride:
   # 是否启用 Ride 功能

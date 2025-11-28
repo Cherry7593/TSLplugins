@@ -51,6 +51,9 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载访客效果
             plugin.reloadVisitorEffect()
 
+            // 重新加载权限检测器
+            plugin.reloadPermissionChecker()
+
             // 重新加载 Ping 功能
             plugin.reloadPingManager()
 

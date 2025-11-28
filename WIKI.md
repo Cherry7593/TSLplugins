@@ -683,13 +683,13 @@ farmprotect:
 
 ### 访客保护（Visitor）
 
-LuckPerms 权限驱动的新玩家保护。
+LuckPerms 权限组驱动的新玩家保护系统。
 
 #### 权限
 
 | 权限 | 说明 | 默认 |
 |------|------|------|
-| `tsl.visitor` | 访客权限 | 手动分配 |
+| `tsl.visitor.admin` | 访客管理权限 | OP |
 
 #### 配置
 
@@ -697,13 +697,27 @@ LuckPerms 权限驱动的新玩家保护。
 visitor:
   enabled: true
   
-  gained:  # 获得访客权限时
+  # 访客权限组列表（玩家在这些组中会被视为访客）
+  groups:
+    - "visitor"
+    - "guest"
+  
+  # 访客限制配置
+  restrictions:
+    block-break: true       # 禁止破坏方块
+    block-place: true       # 禁止放置方块
+    item-use: true          # 禁止使用物品（食物除外）
+    container-open: true    # 禁止打开容器
+    pressure-plate: true    # 禁止触发红石设施
+    entity-damage: true     # 禁止攻击实体
+  
+  gained:  # 获得访客身份时
     chat: "&a[访客模式] &7你已进入访客模式..."
     title: "&a访客模式"
     subtitle: "&7已启用"
     sound: "entity.player.levelup"
   
-  lost:  # 失去访客权限时
+  lost:  # 失去访客身份时
     chat: "&c[访客模式] &7你已退出访客模式..."
     title: "&c访客模式"
     subtitle: "&7已禁用"
@@ -712,10 +726,21 @@ visitor:
 
 #### 效果
 
-拥有 `tsl.visitor` 权限的玩家：
+在访客权限组中的玩家：
 - ✅ 怪物不会攻击
 - ✅ 自动发光效果
-- ✅ 权限变更实时生效
+- ✅ 可配置的限制（破坏/放置/攻击等）
+- ✅ 权限组变更实时生效
+
+#### 管理命令
+
+```bash
+/tsl visitor set <玩家>     # 手动设置访客
+/tsl visitor remove <玩家>  # 移除访客身份
+/tsl visitor check <玩家>   # 检查访客状态
+/tsl visitor list          # 列出所有访客
+/tsl visitor reload        # 重载配置
+```
 
 ---
 

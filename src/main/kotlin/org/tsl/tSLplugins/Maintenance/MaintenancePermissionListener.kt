@@ -32,7 +32,8 @@ class MaintenancePermissionListener(
             return
         }
 
-        Bukkit.getScheduler().runTask(plugin, Runnable {
+        // 使用全局区域调度器以兼容 Folia
+        Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
             Bukkit.getOnlinePlayers()
                 .filter { !shouldAllowPlayer(it.uniqueId, it.hasPermission("tsl.maintenance.bypass")) }
                 .forEach { player ->
@@ -51,7 +52,7 @@ class MaintenancePermissionListener(
 
                     player.kick(kickComponent)
                 }
-        })
+        }
     }
 
     /**
@@ -69,7 +70,8 @@ class MaintenancePermissionListener(
 
         val player = event.player
         if (!shouldAllowPlayer(player.uniqueId, player.hasPermission("tsl.maintenance.bypass"))) {
-            Bukkit.getScheduler().runTask(plugin, Runnable {
+            // 使用全局区域调度器以兼容 Folia
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
                 val kickMessages = manager.getConfig().getStringList("maintenance.kick-message")
                 val kickComponent = if (kickMessages.isNotEmpty()) {
                     val builder = Component.text()
@@ -83,7 +85,7 @@ class MaintenancePermissionListener(
                 }
 
                 player.kick(kickComponent)
-            })
+            }
         }
     }
 

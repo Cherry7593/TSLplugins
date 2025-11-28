@@ -22,9 +22,9 @@ commands:
       /tsl reload
 
 permissions:
-  tsl.visitor:
-    description: 访客权限，拥有此权限的玩家不会被怪物攻击并发光
-    default: false
+  tsl.visitor.admin:
+    description: 访客模式管理权限，可使用 /tsl visitor 命令
+    default: op
   tsl.alias.reload:
     description: 重载命令别名配置的权限
     default: op
@@ -66,6 +66,12 @@ permissions:
     default: true
   tsl.ride.bypass:
     description: 绕过骑乘黑名单限制的权限
+    default: op
+  tsl.speed.walk:
+    description: 设置行走速度的权限
+    default: op
+  tsl.speed.fly:
+    description: 设置飞行速度的权限
     default: op
   tsl.reload:
     description: 重载所有插件配置的权限

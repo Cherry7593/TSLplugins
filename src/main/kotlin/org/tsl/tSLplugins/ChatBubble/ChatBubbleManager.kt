@@ -92,7 +92,7 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
     fun isEnabled(): Boolean = enabled
 
     /**
-     * 创建或更新聊天气泡
+     * 创建或更新气泡
      * @param player 玩家
      * @param message 消息内容
      */
@@ -103,9 +103,15 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
         // 如果已存在气泡，更新内容并重置生命周期
         val existingBubble = bubbles[player]
         if (existingBubble != null && existingBubble.isValid) {
-            existingBubble.ticksLived = 1
-            existingBubble.text(message)
-            return
+            try {
+                existingBubble.ticksLived = 1
+                existingBubble.text(message)
+                return
+            } catch (e: IllegalStateException) {
+                // 跨区域错误，移除旧气泡并创建新的
+                bubbles.remove(player)
+                existingBubble.remove()
+            }
         }
 
         // 创建新气泡
@@ -138,9 +144,24 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
 
         // 启动更新任务（Folia 实体调度器）
         player.scheduler.runAtFixedRate(plugin, { task ->
-            // 检查有效性
-            if (!player.isValid || !display.isValid || player.isInvisibleForBubble() ||
-                display.ticksLived > timeSpan) {
+            // 检查有效性（安全检查，避免跨区域访问）
+            if (!player.isValid || !display.isValid || player.isInvisibleForBubble()) {
+                task.cancel()
+                display.remove()
+                bubbles.remove(player)
+                return@runAtFixedRate
+            }
+
+            // 检查存活时间（使用 try-catch 捕获跨区域错误）
+            try {
+                if (display.ticksLived > timeSpan) {
+                    task.cancel()
+                    display.remove()
+                    bubbles.remove(player)
+                    return@runAtFixedRate
+                }
+            } catch (e: IllegalStateException) {
+                // 玩家跨区域传送，气泡实体在不同线程，直接取消任务并移除
                 task.cancel()
                 display.remove()
                 bubbles.remove(player)
@@ -150,8 +171,16 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
             // 更新不透明度（潜行时降低）
             display.textOpacity = if (player.isSneaking) sneakingOpacity else defaultOpacity
 
-            // 更新位置
-            display.teleportAsync(calculateBubbleLocation(player))
+            // 更新位置（使用 try-catch 捕获跨区域错误）
+            try {
+                display.teleportAsync(calculateBubbleLocation(player))
+            } catch (e: IllegalStateException) {
+                // 跨区域传送，取消任务
+                task.cancel()
+                display.remove()
+                bubbles.remove(player)
+                return@runAtFixedRate
+            }
 
             // 更新附近玩家的可见性
             player.location.getNearbyPlayers(viewRange.toDouble()).forEach { nearbyPlayer ->
@@ -192,16 +221,24 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
     fun toggleSelfDisplay(player: Player): Boolean {
         val newState = if (selfDisplayEnabled.contains(player)) {
             selfDisplayEnabled.remove(player)
-            // 隐藏气泡
+            // 隐藏气泡（使用 try-catch 捕获跨区域错误）
             bubbles[player]?.let { bubble ->
-                player.hideEntity(plugin, bubble)
+                try {
+                    player.hideEntity(plugin, bubble)
+                } catch (e: IllegalStateException) {
+                    // 跨区域错误，静默处理
+                }
             }
             false
         } else {
             selfDisplayEnabled.add(player)
-            // 显示气泡
+            // 显示气泡（使用 try-catch 捕获跨区域错误）
             bubbles[player]?.let { bubble ->
-                player.showEntity(plugin, bubble)
+                try {
+                    player.showEntity(plugin, bubble)
+                } catch (e: IllegalStateException) {
+                    // 跨区域错误，静默处理
+                }
             }
             true
         }

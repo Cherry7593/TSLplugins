@@ -168,5 +168,50 @@ class MaintenanceCommand(
     override fun getDescription(): String {
         return "管理服务器维护模式"
     }
+
+    override fun tabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): List<String> {
+        // 检查功能是否启用
+        if (!manager.isFeatureEnabled()) {
+            return emptyList()
+        }
+
+        // 检查权限
+        if (!sender.hasPermission("tsl.maintenance.manage")) {
+            return emptyList()
+        }
+
+        return when (args.size) {
+            1 -> {
+                // 第一级：子命令补全
+                listOf("on", "off", "add", "remove", "whitelist", "list")
+                    .filter { it.startsWith(args[0].lowercase()) }
+            }
+            2 -> {
+                // 第二级：根据子命令补全
+                when (args[0].lowercase()) {
+                    "add" -> {
+                        // add 命令：补全所有在线玩家
+                        Bukkit.getOnlinePlayers()
+                            .map { it.name }
+                            .filter { it.lowercase().startsWith(args[1].lowercase()) }
+                            .sorted()
+                    }
+                    "remove" -> {
+                        // remove 命令：补全白名单中的玩家
+                        manager.getWhitelistNames()
+                            .filter { it.lowercase().startsWith(args[1].lowercase()) }
+                            .sorted()
+                    }
+                    else -> emptyList()
+                }
+            }
+            else -> emptyList()
+        }
+    }
 }
 
