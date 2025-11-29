@@ -78,6 +78,9 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 ChatBubble 功能
             plugin.reloadChatBubbleManager()
 
+            // 重新加载 FixGhost 功能
+            plugin.reloadFixGhostManager()
+
 
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))

@@ -95,26 +95,20 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
      * 创建或更新气泡
      * @param player 玩家
      * @param message 消息内容
+     *
+     * 方案 D：使用 Passenger 机制
+     * - TextDisplay 作为玩家的乘客，自动跟随
+     * - 创建时设置固定属性，之后不再修改
+     * - 完全避免跨线程访问
      */
     fun createOrUpdateBubble(player: Player, message: Component) {
         if (!enabled) return
         if (player.isInvisibleForBubble()) return
 
-        // 如果已存在气泡，更新内容并重置生命周期
-        val existingBubble = bubbles[player]
-        if (existingBubble != null && existingBubble.isValid) {
-            try {
-                existingBubble.ticksLived = 1
-                existingBubble.text(message)
-                return
-            } catch (e: IllegalStateException) {
-                // 跨区域错误，移除旧气泡并创建新的
-                bubbles.remove(player)
-                existingBubble.remove()
-            }
-        }
+        // 清除旧气泡
+        cleanupPlayer(player)
 
-        // 创建新气泡
+        // 创建新气泡（所有属性在创建时固定）
         val location = calculateBubbleLocation(player)
         val display = player.world.spawn(location, TextDisplay::class.java) { textDisplay ->
             // 基础属性
@@ -123,9 +117,10 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
             textDisplay.isSeeThrough = false
             textDisplay.isShadowed = shadow
             textDisplay.viewRange = viewRange
-            textDisplay.teleportDuration = movementTicks
-            textDisplay.textOpacity = defaultOpacity
             textDisplay.billboard = billboard
+
+            // 固定不透明度（不再动态更新）
+            textDisplay.textOpacity = defaultOpacity
 
             // 背景颜色
             textDisplay.isDefaultBackground = useDefaultBackground
@@ -134,65 +129,37 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
             }
         }
 
+        // 让气泡成为玩家的乘客（自动跟随，包括传送）
+        player.addPassenger(display)
+
         // 如果玩家未启用自我显示，隐藏气泡
         if (!selfDisplayEnabled.contains(player)) {
-            player.hideEntity(plugin, display)
+            try {
+                player.hideEntity(plugin, display)
+            } catch (e: Exception) {
+                // 忽略隐藏错误
+            }
         }
 
         // 保存气泡引用
         bubbles[player] = display
 
-        // 启动更新任务（Folia 实体调度器）
-        player.scheduler.runAtFixedRate(plugin, { task ->
-            // 检查有效性（安全检查，避免跨区域访问）
-            if (!player.isValid || !display.isValid || player.isInvisibleForBubble()) {
-                task.cancel()
-                display.remove()
-                bubbles.remove(player)
-                return@runAtFixedRate
-            }
-
-            // 检查存活时间（使用 try-catch 捕获跨区域错误）
+        // 定时删除气泡（使用 display 的调度器确保线程安全）
+        display.scheduler.runDelayed(plugin, { _ ->
+            // 在 display 所在的线程删除（线程安全）
             try {
-                if (display.ticksLived > timeSpan) {
-                    task.cancel()
+                if (display.isValid) {
                     display.remove()
-                    bubbles.remove(player)
-                    return@runAtFixedRate
                 }
-            } catch (e: IllegalStateException) {
-                // 玩家跨区域传送，气泡实体在不同线程，直接取消任务并移除
-                task.cancel()
-                display.remove()
+            } catch (e: Exception) {
+                // 忽略删除错误
+            }
+
+            // 清理引用（使用玩家调度器确保线程安全）
+            player.scheduler.run(plugin, { _ ->
                 bubbles.remove(player)
-                return@runAtFixedRate
-            }
-
-            // 更新不透明度（潜行时降低）
-            display.textOpacity = if (player.isSneaking) sneakingOpacity else defaultOpacity
-
-            // 更新位置（使用 try-catch 捕获跨区域错误）
-            try {
-                display.teleportAsync(calculateBubbleLocation(player))
-            } catch (e: IllegalStateException) {
-                // 跨区域传送，取消任务
-                task.cancel()
-                display.remove()
-                bubbles.remove(player)
-                return@runAtFixedRate
-            }
-
-            // 更新附近玩家的可见性
-            player.location.getNearbyPlayers(viewRange.toDouble()).forEach { nearbyPlayer ->
-                if (nearbyPlayer == player) return@forEach
-
-                if (!nearbyPlayer.canSee(player)) {
-                    nearbyPlayer.hideEntity(plugin, display)
-                } else {
-                    nearbyPlayer.showEntity(plugin, display)
-                }
-            }
-        }, null, 1L, updateTicks)
+            }, null)
+        }, null, timeSpan.toLong())
     }
 
     /**
@@ -221,23 +188,23 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
     fun toggleSelfDisplay(player: Player): Boolean {
         val newState = if (selfDisplayEnabled.contains(player)) {
             selfDisplayEnabled.remove(player)
-            // 隐藏气泡（使用 try-catch 捕获跨区域错误）
+            // 隐藏气泡（安全处理）
             bubbles[player]?.let { bubble ->
                 try {
                     player.hideEntity(plugin, bubble)
-                } catch (e: IllegalStateException) {
-                    // 跨区域错误，静默处理
+                } catch (e: Exception) {
+                    // 忽略错误
                 }
             }
             false
         } else {
             selfDisplayEnabled.add(player)
-            // 显示气泡（使用 try-catch 捕获跨区域错误）
+            // 显示气泡（安全处理）
             bubbles[player]?.let { bubble ->
                 try {
                     player.showEntity(plugin, bubble)
-                } catch (e: IllegalStateException) {
-                    // 跨区域错误，静默处理
+                } catch (e: Exception) {
+                    // 忽略错误
                 }
             }
             true
@@ -267,21 +234,56 @@ class ChatBubbleManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 清理玩家数据（玩家退出时调用）
+     * 清理玩家数据（玩家退出或传送时调用）
      */
     fun cleanupPlayer(player: Player) {
         // 移除并删除气泡
-        bubbles.remove(player)?.remove()
+        bubbles.remove(player)?.let { display ->
+            safeRemoveBubble(player, display)
+        }
 
         // 清理自我显示设置
         selfDisplayEnabled.remove(player)
     }
 
     /**
+     * 线程安全地移除气泡
+     * 使用 display 的调度器确保在正确的线程上删除
+     */
+    private fun safeRemoveBubble(player: Player, display: TextDisplay) {
+        // 使用 display 自己的调度器在正确的线程上删除
+        // 不在外部检查 isValid，避免跨线程访问
+        try {
+            display.scheduler.run(plugin, { _ ->
+                try {
+                    if (display.isValid) {
+                        display.remove()
+                    }
+                } catch (e: Exception) {
+                    // 忽略删除错误（实体可能已删除或在其他线程）
+                }
+            }, null)
+        } catch (e: Exception) {
+            // 忽略调度错误（实体可能已被删除）
+        }
+
+        // 立即清理引用（不等待删除完成）
+        bubbles.remove(player)
+    }
+
+    /**
      * 清理所有气泡（插件卸载时调用）
      */
     fun cleanupAll() {
-        bubbles.values.forEach { it.remove() }
+        bubbles.values.forEach { display ->
+            try {
+                if (display.isValid) {
+                    display.remove()
+                }
+            } catch (e: Exception) {
+                // 忽略删除错误
+            }
+        }
         bubbles.clear()
         selfDisplayEnabled.clear()
     }

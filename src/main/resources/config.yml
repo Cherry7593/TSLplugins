@@ -1,9 +1,9 @@
 ﻿# ========================================
 # TSLplugins 配置文件
-# 版本: 13
+# 版本: 14
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 13
+config-version: 14
 # MOTD 假玩家配置
 fakeplayer:
   # 是否启用假玩家功能
@@ -468,4 +468,35 @@ chatbubble:
     green: 0
     blue: 0
     alpha: 0
+
+# ========================================
+# FixGhost 幽灵方块清理功能配置
+# ========================================
+fixghost:
+  # 是否启用 FixGhost 功能
+  enabled: true
+
+  # 默认扫描半径（单位：方块）
+  default-radius: 5
+
+  # 最大扫描半径（单位：方块，防止滥用）
+  max-radius: 5
+
+  # 冷却时间（单位：秒）
+  cooldown: 5.0
+
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&e[FixGhost]&r "
+    # 功能已禁用
+    disabled: "%prefix%&c幽灵方块清理功能已禁用"
+    # 没有权限
+    no-permission: "%prefix%&c你没有权限使用此命令"
+    # 仅玩家可用
+    console-only: "%prefix%&c此命令只能由玩家执行"
+    # 冷却中
+    cooldown: "%prefix%&c请等待 &e%cooldown% &c秒后再使用"
+    # 清理成功
+    success: "%prefix%&a已清理你附近 &e%radius% &a格范围内的 &e%count% &a个幽灵方块"
 

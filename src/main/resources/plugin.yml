@@ -19,6 +19,7 @@ commands:
       /tsl ping [玩家名|all [页码]]
       /tsl toss [toggle|velocity [数值]]
       /tsl ride [toggle]
+      /tsl fixghost [半径]
       /tsl reload
 
 permissions:
@@ -73,6 +74,9 @@ permissions:
   tsl.speed.fly:
     description: 设置飞行速度的权限
     default: op
+  tsl.fixghost.use:
+    description: 使用幽灵方块清理功能的权限
+    default: true
   tsl.reload:
     description: 重载所有插件配置的权限
     default: op

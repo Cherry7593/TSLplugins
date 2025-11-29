@@ -6,6 +6,7 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerChangedWorldEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.event.player.PlayerTeleportEvent
 import org.bukkit.plugin.java.JavaPlugin
 
 /**
@@ -32,6 +33,20 @@ class ChatBubbleListener(
         player.scheduler.run(plugin, { _ ->
             manager.createOrUpdateBubble(player, message)
         }, null)
+    }
+
+    /**
+     * 监听玩家传送事件
+     * 传送时直接清除气泡，避免跨区域线程安全问题
+     */
+    @EventHandler
+    fun onPlayerTeleport(event: PlayerTeleportEvent) {
+        if (!manager.isEnabled()) return
+
+        val player = event.player
+
+        // 传送时清除当前气泡（Folia 线程安全的最佳实践）
+        manager.cleanupPlayer(player)
     }
 
     /**

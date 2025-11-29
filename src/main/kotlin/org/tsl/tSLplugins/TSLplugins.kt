@@ -44,6 +44,8 @@ import org.tsl.tSLplugins.ChatBubble.ChatBubbleCommand
 import org.tsl.tSLplugins.ChatBubble.ChatBubbleListener
 import org.tsl.tSLplugins.Speed.SpeedManager
 import org.tsl.tSLplugins.Speed.SpeedCommand
+import org.tsl.tSLplugins.FixGhost.FixGhostManager
+import org.tsl.tSLplugins.FixGhost.FixGhostCommand
 
 class TSLplugins : JavaPlugin() {
 
@@ -62,6 +64,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var blockStatsManager: BlockStatsManager
     private lateinit var chatBubbleManager: ChatBubbleManager
     private lateinit var speedManager: SpeedManager
+    private lateinit var fixGhostManager: FixGhostManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -155,6 +158,9 @@ class TSLplugins : JavaPlugin() {
         // 初始化 Speed 系统
         speedManager = SpeedManager()
 
+        // 初始化 FixGhost 系统
+        fixGhostManager = FixGhostManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -173,6 +179,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("chatbubble", ChatBubbleCommand(chatBubbleManager))
             dispatcher.registerSubCommand("visitor", VisitorCommand(visitorEffect))
             dispatcher.registerSubCommand("speed", SpeedCommand(speedManager))
+            dispatcher.registerSubCommand("fixghost", FixGhostCommand(this, fixGhostManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -329,5 +336,12 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadChatBubbleManager() {
         chatBubbleManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 FixGhost 管理器
+     */
+    fun reloadFixGhostManager() {
+        fixGhostManager.loadConfig()
     }
 }
