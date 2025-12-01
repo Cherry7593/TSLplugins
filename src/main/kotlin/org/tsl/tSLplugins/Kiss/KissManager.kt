@@ -23,11 +23,7 @@ class KissManager(
     // 玩家冷却时间（UUID -> 最后使用时间戳）
     private val playerCooldowns: MutableMap<UUID, Long> = ConcurrentHashMap()
 
-    // 统计数据：亲吻次数（UUID -> 次数）
-    private val kissCount: MutableMap<UUID, Int> = ConcurrentHashMap()
-
-    // 统计数据：被亲吻次数（UUID -> 次数）
-    private val kissedCount: MutableMap<UUID, Int> = ConcurrentHashMap()
+    // 注意：统计数据现在存储在 TSLPlayerProfile 中，不再使用内存 Map
 
     init {
         loadConfig()
@@ -115,39 +111,45 @@ class KissManager(
     }
 
     /**
-     * 增加玩家亲吻次数
+     * 增加玩家亲吻次数（持久化到 Profile）
      */
     fun incrementKissCount(uuid: UUID) {
-        kissCount[uuid] = kissCount.getOrDefault(uuid, 0) + 1
+        val profile = dataManager.getProfileStore().getOrCreate(uuid, "Unknown")
+        profile.kissCount++
+        // 数据会在玩家退出时自动保存
     }
 
     /**
-     * 增加玩家被亲吻次数
+     * 增加玩家被亲吻次数（持久化到 Profile）
      */
     fun incrementKissedCount(uuid: UUID) {
-        kissedCount[uuid] = kissedCount.getOrDefault(uuid, 0) + 1
+        val profile = dataManager.getProfileStore().getOrCreate(uuid, "Unknown")
+        profile.kissedCount++
+        // 数据会在玩家退出时自动保存
     }
 
     /**
-     * 获取玩家亲吻次数
+     * 获取玩家亲吻次数（从 Profile 读取）
      */
     fun getKissCount(uuid: UUID): Int {
-        return kissCount.getOrDefault(uuid, 0)
+        val profile = dataManager.getProfileStore().get(uuid)
+        return profile?.kissCount ?: 0
     }
 
     /**
-     * 获取玩家被亲吻次数
+     * 获取玩家被亲吻次数（从 Profile 读取）
      */
     fun getKissedCount(uuid: UUID): Int {
-        return kissedCount.getOrDefault(uuid, 0)
+        val profile = dataManager.getProfileStore().get(uuid)
+        return profile?.kissedCount ?: 0
     }
 
     /**
-     * 清理玩家数据（仅清理冷却，PDC 和统计数据保留）
+     * 清理玩家数据（仅清理冷却，Profile 数据会自动保存）
      */
     fun cleanupPlayer(uuid: UUID) {
         playerCooldowns.remove(uuid)
-        // PDC 数据和统计数据保留
+        // Profile 数据会在玩家退出时自动保存，无需手动处理
     }
 
     /**

@@ -76,6 +76,8 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
                 tossEnabled = config.getBoolean("tossEnabled", true),
                 allowPhantom = config.getBoolean("allowPhantom", false),
                 tossVelocity = config.getDouble("tossVelocity", 1.5),
+                kissCount = config.getInt("kissCount", 0),
+                kissedCount = config.getInt("kissedCount", 0),
                 migratedFromPdc = config.getBoolean("migratedFromPdc", false),
                 lastSaved = config.getLong("lastSaved", System.currentTimeMillis())
             )
@@ -117,6 +119,8 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
             config.set("tossEnabled", profile.tossEnabled)
             config.set("allowPhantom", profile.allowPhantom)
             config.set("tossVelocity", profile.tossVelocity)
+            config.set("kissCount", profile.kissCount)
+            config.set("kissedCount", profile.kissedCount)
             config.set("migratedFromPdc", profile.migratedFromPdc)
             config.set("lastSaved", profile.lastSaved)
 

@@ -33,6 +33,14 @@ data class TSLPlayerProfile(
     /** Toss 投掷速度 */
     var tossVelocity: Double = 1.5,
 
+    // ==================== 统计数据 ====================
+
+    /** Kiss 亲吻次数 */
+    var kissCount: Int = 0,
+
+    /** Kiss 被亲吻次数 */
+    var kissedCount: Int = 0,
+
     // ==================== 迁移标记 ====================
 
     /** 是否已从 PDC 迁移 */
