@@ -82,6 +82,15 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             plugin.reloadFixGhostManager()
 
 
+            // 重新加载 Near 功能
+            plugin.reloadNearManager()
+
+            // 重新加载 Phantom 功能
+            plugin.reloadPhantomManager()
+
+            // 重新加载 NewbieTag 功能
+            plugin.reloadNewbieTagManager()
+
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
             sender.sendMessage(serializer.deserialize("&7- 命令别名已重载 ($reloadedAliases 个别名)"))

@@ -46,6 +46,17 @@ import org.tsl.tSLplugins.Speed.SpeedManager
 import org.tsl.tSLplugins.Speed.SpeedCommand
 import org.tsl.tSLplugins.FixGhost.FixGhostManager
 import org.tsl.tSLplugins.FixGhost.FixGhostCommand
+import org.tsl.tSLplugins.PlayerList.PlayerListCommand
+import org.tsl.tSLplugins.Near.NearManager
+import org.tsl.tSLplugins.Near.NearCommand
+import org.tsl.tSLplugins.Phantom.PhantomManager
+import org.tsl.tSLplugins.Phantom.PhantomCommand
+import org.tsl.tSLplugins.NewbieTag.NewbieTagManager
+import org.tsl.tSLplugins.Spec.SpecManager
+import org.tsl.tSLplugins.Spec.SpecCommand
+import org.tsl.tSLplugins.Spec.SpecListener
+import org.tsl.tSLplugins.Patrol.PatrolManager
+import org.tsl.tSLplugins.Patrol.PatrolCommand
 
 class TSLplugins : JavaPlugin() {
 
@@ -65,6 +76,11 @@ class TSLplugins : JavaPlugin() {
     private lateinit var chatBubbleManager: ChatBubbleManager
     private lateinit var speedManager: SpeedManager
     private lateinit var fixGhostManager: FixGhostManager
+    private lateinit var nearManager: NearManager
+    private lateinit var phantomManager: PhantomManager
+    private lateinit var newbieTagManager: NewbieTagManager
+    private lateinit var specManager: SpecManager
+    private lateinit var patrolManager: PatrolManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -80,10 +96,23 @@ class TSLplugins : JavaPlugin() {
             reloadConfig()
         }
 
-        // 初始化玩家数据管理器（PDC）
+        // 初始化玩家数据管理器（YAML 存储 + PDC 迁移）
         playerDataManager = PlayerDataManager(this)
 
         val pm = server.pluginManager
+
+        // 注册玩家数据加载/保存监听器
+        pm.registerEvents(object : org.bukkit.event.Listener {
+            @org.bukkit.event.EventHandler
+            fun onPlayerJoin(event: org.bukkit.event.player.PlayerJoinEvent) {
+                playerDataManager.onPlayerJoin(event.player)
+            }
+
+            @org.bukkit.event.EventHandler
+            fun onPlayerQuit(event: org.bukkit.event.player.PlayerQuitEvent) {
+                playerDataManager.onPlayerQuit(event.player)
+            }
+        }, this)
 
         // 注册事件监听器
         advancementMessage = AdvancementMessage(this)
@@ -161,6 +190,27 @@ class TSLplugins : JavaPlugin() {
         // 初始化 FixGhost 系统
         fixGhostManager = FixGhostManager(this)
 
+
+        // 初始化 Near 系统
+        nearManager = NearManager(this)
+
+        // 初始化 Phantom 系统
+        phantomManager = PhantomManager(this)
+        phantomManager.setProfileStore(playerDataManager.getProfileStore())
+        // 启动定时任务
+        phantomManager.startTask()
+
+        // 初始化 NewbieTag 系统
+        newbieTagManager = NewbieTagManager(this)
+
+        // 初始化 Spec 系统
+        specManager = SpecManager(this)
+        val specListener = SpecListener(this, specManager)
+        pm.registerEvents(specListener, this)
+
+        // 初始化 Patrol 系统
+        patrolManager = PatrolManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -180,6 +230,11 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("visitor", VisitorCommand(visitorEffect))
             dispatcher.registerSubCommand("speed", SpeedCommand(speedManager))
             dispatcher.registerSubCommand("fixghost", FixGhostCommand(this, fixGhostManager))
+            dispatcher.registerSubCommand("list", PlayerListCommand())
+            dispatcher.registerSubCommand("near", NearCommand(nearManager))
+            dispatcher.registerSubCommand("phantom", PhantomCommand(phantomManager))
+            dispatcher.registerSubCommand("spec", SpecCommand(specManager))
+            dispatcher.registerSubCommand("patrol", PatrolCommand(patrolManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -197,7 +252,8 @@ class TSLplugins : JavaPlugin() {
                 kissManager,
                 rideManager,
                 tossManager,
-                blockStatsManager
+                blockStatsManager,
+                newbieTagManager
             ).register()
             logger.info("PlaceholderAPI 扩展已注册！")
         } else {
@@ -215,6 +271,21 @@ class TSLplugins : JavaPlugin() {
     }
 
     override fun onDisable() {
+        // 保存所有玩家数据
+        if (::playerDataManager.isInitialized) {
+            playerDataManager.saveAll()
+        }
+
+        // 清理 Spec 系统
+        if (::specManager.isInitialized) {
+            specManager.cleanup()
+        }
+
+        // 清理 Patrol 系统
+        if (::patrolManager.isInitialized) {
+            patrolManager.cleanup()
+        }
+
         // 清理 ChatBubble 系统
         if (::chatBubbleManager.isInitialized) {
             chatBubbleManager.cleanupAll()
@@ -343,5 +414,34 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadFixGhostManager() {
         fixGhostManager.loadConfig()
+    }
+
+
+    /**
+     * 重新加载 Near 管理器
+     */
+    fun reloadNearManager() {
+        nearManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Phantom 管理器
+     */
+    fun reloadPhantomManager() {
+        phantomManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 NewbieTag 管理器
+     */
+    fun reloadNewbieTagManager() {
+        newbieTagManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Spec 管理器
+     */
+    fun reloadSpecManager() {
+        specManager.loadConfig()
     }
 }

@@ -20,6 +20,35 @@ class TSLCommand : CommandExecutor, TabCompleter {
         subCommands[name.lowercase()] = handler
     }
 
+    /**
+     * 注册简化的子命令处理器（SubCommand 接口）
+     */
+    fun registerSubCommand(name: String, handler: SubCommand) {
+        subCommands[name.lowercase()] = object : SubCommandHandler {
+            override fun handle(
+                sender: CommandSender,
+                command: Command,
+                label: String,
+                args: Array<out String>
+            ): Boolean {
+                return handler.handle(sender, args)
+            }
+
+            override fun tabComplete(
+                sender: CommandSender,
+                command: Command,
+                label: String,
+                args: Array<out String>
+            ): List<String> {
+                return handler.tabComplete(sender, args)
+            }
+
+            override fun getDescription(): String {
+                return ""
+            }
+        }
+    }
+
     override fun onCommand(
         sender: CommandSender,
         command: Command,
@@ -108,5 +137,21 @@ interface SubCommandHandler {
      * 获取命令描述
      */
     fun getDescription(): String
+}
+
+/**
+ * 简化的子命令接口
+ * 适用于不需要 Command 和 label 参数的简单命令
+ */
+interface SubCommand {
+    /**
+     * 处理命令
+     */
+    fun handle(sender: CommandSender, args: Array<out String>): Boolean
+
+    /**
+     * Tab 补全
+     */
+    fun tabComplete(sender: CommandSender, args: Array<out String>): List<String> = emptyList()
 }
 

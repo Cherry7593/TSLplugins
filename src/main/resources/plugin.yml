@@ -20,6 +20,15 @@ commands:
       /tsl toss [toggle|velocity [数值]]
       /tsl ride [toggle]
       /tsl fixghost [半径]
+      /tsl list
+      /tsl near [范围]
+      /tsl phantom
+      /tsl spec start [延迟]
+      /tsl spec stop
+      /tsl spec add <玩家>
+      /tsl spec remove <玩家>
+      /tsl spec list
+      /tsl patrol
       /tsl reload
 
 permissions:
@@ -77,6 +86,24 @@ permissions:
   tsl.fixghost.use:
     description: 使用幽灵方块清理功能的权限
     default: true
+  tsl.list:
+    description: 查看在线玩家列表的权限
+    default: true
+  tsl.near.use:
+    description: 使用附近玩家查询功能的权限
+    default: true
+  tsl.near.bypass:
+    description: 绕过附近玩家查询范围限制的权限
+    default: op
+  tsl.phantom.toggle:
+    description: 切换幻翼骚扰开关的权限
+    default: true
+  tsl.spec.use:
+    description: 使用观众模式的权限
+    default: op
+  tsl.patrol.use:
+    description: 使用巡逻功能的权限
+    default: op
   tsl.reload:
     description: 重载所有插件配置的权限
     default: op

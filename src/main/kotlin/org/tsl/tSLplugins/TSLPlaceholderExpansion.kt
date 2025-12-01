@@ -10,6 +10,7 @@ import org.tsl.tSLplugins.Kiss.KissManager
 import org.tsl.tSLplugins.Ride.RideManager
 import org.tsl.tSLplugins.Toss.TossManager
 import org.tsl.tSLplugins.BlockStats.BlockStatsManager
+import org.tsl.tSLplugins.NewbieTag.NewbieTagManager
 
 /**
  * TSLplugins PlaceholderAPI 扩展
@@ -26,6 +27,7 @@ import org.tsl.tSLplugins.BlockStats.BlockStatsManager
  * - %tsl_toss_toggle% - Toss 功能开关状态
  * - %tsl_toss_velocity% - Toss 投掷速度
  * - %tsl_blocks_placed_total% - 玩家放置方块总数
+ * - %tsl_newbie_tag% - 萌新标志（根据在线时长）
  */
 class TSLPlaceholderExpansion(
     private val plugin: JavaPlugin,
@@ -34,7 +36,8 @@ class TSLPlaceholderExpansion(
     private val kissManager: KissManager?,
     private val rideManager: RideManager?,
     private val tossManager: TossManager?,
-    private val blockStatsManager: BlockStatsManager?
+    private val blockStatsManager: BlockStatsManager?,
+    private val newbieTagManager: NewbieTagManager?
 ) : PlaceholderExpansion() {
 
     override fun getIdentifier(): String = "tsl"
@@ -117,6 +120,17 @@ class TSLPlaceholderExpansion(
         if (blockStatsManager != null && params.equals("blocks_placed_total", ignoreCase = true)) {
             val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
             return blockStatsManager.getTotalBlocksPlacedString(onlinePlayer)
+        }
+
+        // === NewbieTag 变量 ===
+        // %tsl_newbie_tag% - 萌新标志（根据在线时长）
+        if (newbieTagManager != null && params.equals("newbie_tag", ignoreCase = true)) {
+            val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
+            return if (onlinePlayer != null) {
+                newbieTagManager.getPlayerTag(onlinePlayer)
+            } else {
+                ""
+            }
         }
 
         return null
