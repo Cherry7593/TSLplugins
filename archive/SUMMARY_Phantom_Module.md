@@ -56,15 +56,17 @@ fun setPhantomAllowed(player: Player, allowed: Boolean)
 
 ---
 
-### 2. PhantomCommand.kt (70+ 行)
+### 2. PhantomCommand.kt (150+ 行)
 **命令处理器**
 
 #### 功能：
-- `/tsl phantom` 命令实现
-- 切换 allowPhantom 状态
+- `/tsl phantom on` - 允许幻翼骚扰
+- `/tsl phantom off` - 禁止幻翼骚扰
+- `/tsl phantom status` - 查看当前状态
 - 权限检查
 - 友好的提示消息
-- 立即生效（禁用时立即重置统计）
+- 防止重复设置（已开启时提示）
+- Tab 补全支持
 
 ---
 
@@ -97,7 +99,11 @@ phantom:
 ```
 
 ### 6. plugin.yml
-**命令**: `/tsl phantom`  
+**命令**: 
+- `/tsl phantom on` - 允许幻翼骚扰
+- `/tsl phantom off` - 禁止幻翼骚扰
+- `/tsl phantom status` - 查看当前状态
+
 **权限**: `tsl.phantom.toggle`（默认 true）
 
 ### 7. ConfigUpdateManager.kt
@@ -208,17 +214,23 @@ fun setPhantomAllowed(player: Player, allowed: Boolean) {
 
 ### 玩家命令
 ```
-/tsl phantom    # 切换幻翼骚扰开关
+/tsl phantom on       # 允许幻翼骚扰
+/tsl phantom off      # 禁止幻翼骚扰
+/tsl phantom status   # 查看当前状态
 ```
 
 ### 效果说明
 - **默认状态**: 禁止幻翼（allowPhantom = false）
   - 系统会定期重置 TIME_SINCE_REST
   - 玩家永远不会被幻翼骚扰
+  - 使用 `/tsl phantom on` 开启
 
 - **允许幻翼**: 启用后（allowPhantom = true）
   - 系统不再重置 TIME_SINCE_REST
   - 长时间不睡觉会出现幻翼（原版机制）
+  - 使用 `/tsl phantom off` 关闭
+
+- **查看状态**: 使用 `/tsl phantom status` 查看当前开关状态
 
 ### 配置调整
 ```yaml
@@ -233,15 +245,20 @@ phantom:
 ## ✅ 功能特性
 
 ### 已实现
-- ✅ 玩家可切换幻翼开关
+- ✅ 玩家可通过命令控制幻翼开关
+  - `/tsl phantom on` - 允许幻翼
+  - `/tsl phantom off` - 禁止幻翼
+  - `/tsl phantom status` - 查看状态
+- ✅ 防止重复设置（已开启时提示）
 - ✅ 默认禁止幻翼骚扰
 - ✅ 定期重置 TIME_SINCE_REST（300秒）
-- ✅ 切换状态立即生效
+- ✅ 设置状态立即生效
 - ✅ 状态持久化（YAML 存储）
 - ✅ Folia 线程安全
 - ✅ 性能优先（低频任务）
 - ✅ 无事件监听开销
 - ✅ 配置可重载
+- ✅ Tab 补全支持
 
 ### 技术要点
 - ✅ 使用全局调度器执行定时任务

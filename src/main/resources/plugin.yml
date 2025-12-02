@@ -22,7 +22,9 @@ commands:
       /tsl fixghost [半径]
       /tsl list
       /tsl near [范围]
-      /tsl phantom
+      /tsl phantom on
+      /tsl phantom off
+      /tsl phantom status
       /tsl spec start [延迟]
       /tsl spec stop
       /tsl spec add <玩家>
