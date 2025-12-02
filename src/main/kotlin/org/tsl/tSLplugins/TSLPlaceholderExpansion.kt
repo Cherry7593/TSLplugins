@@ -1,7 +1,6 @@
 package org.tsl.tSLplugins
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion
-import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.Advancement.AdvancementCount
@@ -70,47 +69,37 @@ class TSLPlaceholderExpansion(
         // === Kiss 变量 ===
         if (kissManager != null) {
             when (params) {
-                "kiss_count" -> return kissManager.getKissCount(player.uniqueId).toString()
-                "kissed_count" -> return kissManager.getKissedCount(player.uniqueId).toString()
+                "kiss_count" -> {
+                    val onlinePlayer = player.player ?: return null
+                    return kissManager.getKissCount(onlinePlayer.uniqueId).toString()
+                }
+                "kissed_count" -> {
+                    val onlinePlayer = player.player ?: return null
+                    return kissManager.getKissedCount(onlinePlayer.uniqueId).toString()
+                }
                 "kiss_toggle" -> {
-                    val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
-                    return if (onlinePlayer != null) {
-                        if (kissManager.isPlayerEnabled(onlinePlayer)) "启用" else "禁用"
-                    } else {
-                        "离线"
-                    }
+                    val onlinePlayer = player.player ?: return null
+                    return if (kissManager.isPlayerEnabled(onlinePlayer)) "启用" else "禁用"
                 }
             }
         }
 
         // === Ride 变量 ===
         if (rideManager != null && params == "ride_toggle") {
-            val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
-            return if (onlinePlayer != null) {
-                if (rideManager.isPlayerEnabled(onlinePlayer)) "启用" else "禁用"
-            } else {
-                "离线"
-            }
+            val onlinePlayer = player.player ?: return null
+            return if (rideManager.isPlayerEnabled(onlinePlayer)) "启用" else "禁用"
         }
 
         // === Toss 变量 ===
         if (tossManager != null) {
             when (params) {
                 "toss_toggle" -> {
-                    val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
-                    return if (onlinePlayer != null) {
-                        if (tossManager.isPlayerEnabled(onlinePlayer)) "启用" else "禁用"
-                    } else {
-                        "离线"
-                    }
+                    val onlinePlayer = player.player ?: return null
+                    return if (tossManager.isPlayerEnabled(onlinePlayer)) "启用" else "禁用"
                 }
                 "toss_velocity" -> {
-                    val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
-                    return if (onlinePlayer != null) {
-                        String.format("%.1f", tossManager.getPlayerThrowVelocity(onlinePlayer))
-                    } else {
-                        "离线"
-                    }
+                    val onlinePlayer = player.player ?: return null
+                    return String.format("%.1f", tossManager.getPlayerThrowVelocity(onlinePlayer))
                 }
             }
         }
@@ -118,19 +107,15 @@ class TSLPlaceholderExpansion(
         // === BlockStats 变量 ===
         // %tsl_blocks_placed_total% - 玩家放置方块总数
         if (blockStatsManager != null && params.equals("blocks_placed_total", ignoreCase = true)) {
-            val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
-            return blockStatsManager.getTotalBlocksPlacedString(onlinePlayer)
+            val onlinePlayer = player.player ?: return null
+            return blockStatsManager.getTotalBlocksPlaced(onlinePlayer).toString()
         }
 
         // === NewbieTag 变量 ===
         // %tsl_newbie_tag% - 萌新标志（根据在线时长）
         if (newbieTagManager != null && params.equals("newbie_tag", ignoreCase = true)) {
-            val onlinePlayer = Bukkit.getPlayer(player.uniqueId)
-            return if (onlinePlayer != null) {
-                newbieTagManager.getPlayerTag(onlinePlayer)
-            } else {
-                ""
-            }
+            val onlinePlayer = player.player ?: return null
+            return newbieTagManager.getPlayerTag(onlinePlayer)
         }
 
         return null

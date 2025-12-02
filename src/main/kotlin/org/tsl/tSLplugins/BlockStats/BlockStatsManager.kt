@@ -68,20 +68,5 @@ class BlockStatsManager(private val plugin: JavaPlugin) {
 
         return total
     }
-
-    /**
-     * 获取玩家放置方块总数（字符串格式）
-     *
-     * 用于 PlaceholderAPI 返回
-     *
-     * @param player 玩家
-     * @return 数字字符串，如果玩家为 null 返回 "0"
-     */
-    fun getTotalBlocksPlacedString(player: Player?): String {
-        if (player == null) return "0"
-        if (!isEnabled()) return "0"
-
-        return getTotalBlocksPlaced(player).toString()
-    }
 }
 
