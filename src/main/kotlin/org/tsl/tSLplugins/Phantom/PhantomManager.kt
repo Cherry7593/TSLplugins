@@ -1,5 +1,6 @@
 package org.tsl.tSLplugins.Phantom
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import org.bukkit.Bukkit
 import org.bukkit.Statistic
 import org.bukkit.entity.Player
@@ -15,6 +16,9 @@ class PhantomManager(private val plugin: JavaPlugin) {
 
     /** Profile 存储（用于获取玩家配置） */
     private lateinit var profileStore: TSLPlayerProfileStore
+
+    /** 定时任务引用（用于取消任务） */
+    private var scheduledTask: ScheduledTask? = null
 
     // ===== 配置缓存 =====
     private var enabled: Boolean = true
@@ -56,8 +60,12 @@ class PhantomManager(private val plugin: JavaPlugin) {
     /**
      * 启动定时任务
      * 使用全局调度器，每 checkInterval 秒执行一次
+     * 如果已有任务在运行，会先取消旧任务
      */
     fun startTask() {
+        // 先取消旧任务（如果存在）
+        stopTask()
+
         if (!enabled) {
             plugin.logger.info("[Phantom] 功能未启用，跳过启动定时任务")
             return
@@ -67,11 +75,20 @@ class PhantomManager(private val plugin: JavaPlugin) {
         // 延迟 checkInterval 秒后首次执行，然后每 checkInterval 秒执行一次
         val intervalTicks = checkInterval * 20L  // 转换为 tick
 
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+        scheduledTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
             processAllPlayers()
         }, intervalTicks, intervalTicks)
 
         plugin.logger.info("[Phantom] 定时任务已启动 - 间隔: $checkInterval 秒")
+    }
+
+    /**
+     * 停止定时任务
+     */
+    fun stopTask() {
+        scheduledTask?.cancel()
+        scheduledTask = null
+        plugin.logger.info("[Phantom] 定时任务已停止")
     }
 
     /**

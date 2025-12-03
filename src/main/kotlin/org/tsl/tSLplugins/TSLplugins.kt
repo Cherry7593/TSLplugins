@@ -271,6 +271,11 @@ class TSLplugins : JavaPlugin() {
     }
 
     override fun onDisable() {
+        // 停止 Phantom 定时任务
+        if (::phantomManager.isInitialized) {
+            phantomManager.stopTask()
+        }
+
         // 保存所有玩家数据
         if (::playerDataManager.isInitialized) {
             playerDataManager.saveAll()
@@ -429,6 +434,7 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadPhantomManager() {
         phantomManager.loadConfig()
+        phantomManager.startTask()  // 重启定时任务以应用新的时间间隔
     }
 
     /**

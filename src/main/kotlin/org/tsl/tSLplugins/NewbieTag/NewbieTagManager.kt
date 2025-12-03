@@ -53,11 +53,14 @@ class NewbieTagManager(private val plugin: JavaPlugin) {
         }
 
         try {
-            // 获取玩家总游玩时间（单位：分钟）
-            val playTimeMinutes = player.getStatistic(Statistic.PLAY_ONE_MINUTE)
+            // 获取玩家总游玩时间（单位：tick）
+            // 注意：PLAY_ONE_MINUTE 的单位是 tick，不是分钟！
+            // 1 分钟 = 1200 tick (20 tick/秒 × 60 秒)
+            val playTimeTicks = player.getStatistic(Statistic.PLAY_ONE_MINUTE)
 
             // 转换为小时
-            val playTimeHours = playTimeMinutes / 60.0
+            // tick -> 分钟 -> 小时
+            val playTimeHours = playTimeTicks / 1200.0 / 60.0
 
             // 判断是萌新还是老玩家
             return if (playTimeHours < thresholdHours) {
@@ -79,8 +82,10 @@ class NewbieTagManager(private val plugin: JavaPlugin) {
      */
     fun getPlayTimeHours(player: Player): Double {
         return try {
-            val playTimeMinutes = player.getStatistic(Statistic.PLAY_ONE_MINUTE)
-            playTimeMinutes / 60.0
+            // 获取游玩时间（tick）
+            val playTimeTicks = player.getStatistic(Statistic.PLAY_ONE_MINUTE)
+            // 转换为小时：tick -> 分钟 -> 小时
+            playTimeTicks / 1200.0 / 60.0
         } catch (e: Exception) {
             0.0
         }
