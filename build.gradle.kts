@@ -1,6 +1,7 @@
 plugins {
     java
     kotlin("jvm") version "1.9.21"
+    kotlin("plugin.serialization") version "1.9.21"
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
@@ -19,6 +20,8 @@ dependencies {
     compileOnly("net.luckperms:api:5.4")
     compileOnly("me.clip:placeholderapi:2.11.6")
     implementation(kotlin("stdlib"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("org.java-websocket:Java-WebSocket:1.5.6")
 }
 
 java {

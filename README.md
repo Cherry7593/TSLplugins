@@ -3,6 +3,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.21-blue.svg)](https://kotlinlang.org)
 [![Paper](https://img.shields.io/badge/Paper-1.21.8-green.svg)](https://papermc.io)
 [![Folia](https://img.shields.io/badge/Folia-Supported-brightgreen.svg)](https://papermc.io/software/folia)
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://adoptium.net/)
 
 > Minecraft Folia 1.21.8 多功能整合插件 - 使用 Kotlin 开发
 
@@ -10,45 +11,204 @@
 
 ## 📖 简介
 
-TSLplugins 是一个功能丰富的 Minecraft 服务器插件，集成了 13 个实用功能模块。完全使用 Kotlin 编写，完美支持 Paper 和 Folia 1.21.8。
+TSLplugins 是一个功能丰富的 Minecraft 服务器插件，集成了多个实用功能模块。完全使用 Kotlin 编写，原生支持 Paper 和 Folia 1.21.8 多线程架构。
 
 ### ✨ 核心特性
 
-- 🎯 **13 个功能模块** - 涵盖管理、互动、保护等多个方面
-- 🔧 **模块化设计** - 每个功能独立，可单独启用/禁用
-- ⚡ **Folia 原生支持** - 完美兼容多线程服务器
-- 🔄 **配置热重载** - 无需重启即可应用更改
-- 💾 **离线数据持久化** - 玩家配置永久保存
+- 🎯 **模块化架构** - 多个独立功能模块，可按需启用
+- 🔧 **即插即用设计** - 每个模块独立运行，互不干扰
+- ⚡ **Folia 原生支持** - 完美兼容多线程区域调度器
+- 🔄 **配置热重载** - 无需重启即可应用配置更改
+- 💾 **数据持久化** - 玩家配置 YAML 存储，支持离线编辑
 - 🎨 **完全可配置** - 所有功能行为和消息均可自定义
+- 🌐 **Web 通信桥** - MC ↔ Web 双向消息同步
 
 ---
 
-## 🎮 功能概览
+## 🚀 快速开始
 
-### 管理工具 (3个)
+### 环境要求
 
-| 功能 | 命令 | 说明 |
+- Java 21+
+- Paper 1.21.8 或 Folia 1.21.8
+- 可选依赖：PlaceholderAPI、LuckPerms
+
+### 安装步骤
+
+1. 下载最新版本的 `TSLplugins-1.0.jar`
+2. 将 JAR 文件放入服务器的 `plugins/` 目录
+3. 启动服务器，插件将自动生成配置文件
+4. 编辑 `plugins/TSLplugins/config.yml` 配置所需功能
+5. 使用 `/tsl reload` 重载配置
+
+### 基础命令
+
+```
+/tsl reload          - 重载配置
+/tsl help            - 查看帮助
+/tsl <模块> <参数>   - 使用模块功能
+```
+
+---
+
+## 🎮 功能模块
+
+### 核心管理
+
+| 模块 | 命令 | 说明 |
 |------|------|------|
-| 🔧 **维护模式** | `/tsl maintenance` | 阻止玩家登录，白名单管理 |
-| ❄️ **玩家冻结** | `/tsl freeze` | 冻结玩家所有操作，支持定时 |
-| 📋 **命令别名** | `/tsl aliasreload` | 自定义命令快捷方式 |
+| 🔧 **维护模式** | `/tsl maintenance` | 维护期间阻止玩家登录，支持白名单 |
+| 🌐 **WebBridge** | `/tsl webbridge` | MC ↔ Web 双向通信，手动连接模式 |
+| 👁️ **观察模式** | `/tsl spec` | 随机观察在线玩家，支持白名单 |
+| 👻 **幻翼控制** | `/tsl phantom` | 控制幻翼生成，定时检查与重置 |
 
-### 玩家互动 (4个)
+### 玩家互动
 
-| 功能 | 触发方式 | 说明 |
+| 模块 | 触发方式 | 说明 |
 |------|---------|------|
 | 💋 **玩家亲吻** | `/tsl kiss` 或 Shift+右键玩家 | 粒子+音效，个人开关 |
 | 🎩 **帽子系统** | `/tsl hat` | 将手持物品戴在头上 |
-| 📏 **体型调整** | `/tsl scale <数值>` | 调整玩家体型大小 |
+| 📏 **体型调整** | `/tsl scale` | 调整玩家体型大小 |
 | 📊 **延迟查询** | `/tsl ping` | 查看延迟，支持排行榜 |
 
-### 生物互动 (3个)
+### 游客保护
 
-| 功能 | 触发方式 | 说明 |
-|------|---------|------|
-| 🐾 **生物举起** | Shift+右键生物 | 举起并投掷生物，叠罗汉 |
-| 🐎 **生物骑乘** | 右键生物 | 骑乘任意生物 |
-| 👶 **永久幼年** | 命名生物 `[幼]xx` | 锁定幼年状态，防止成长 |
+| 模块 | 说明 | 特性 |
+|------|------|------|
+| 🚪 **访客模式** | 白名单驱动的权限联动 | 压力板/按钮拦截，减少提示刷屏 |
+
+---
+
+## 📚 文档导航
+
+### 用户文档
+- 📖 **[功能详细说明](docs/WIKI.md)** - 所有功能的命令、权限、配置详解
+- 🔄 **[更新日志](docs/CHANGELOG.md)** - 版本更新记录
+- ❓ **[常见问题](docs/WIKI.md#常见问题)** - 疑难解答
+
+### 开发文档
+- 🏗️ **[开发者指南](docs/DEVELOPER_GUIDE.md)** - 架构设计、代码规范、技术要点
+- 📋 **[模块文档总目录](docs/INDEX.md)** - 按模块分类的详细文档
+- 🔧 **[Folia 线程安全指引](docs/modules/Core/FOLIA_THREAD_SAFETY_GUIDE.md)** - Folia 开发规范
+- 🌐 **[WebBridge 文档](docs/modules/WebBridge/)** - Web 通信桥完整说明
+- 📝 **[开发历程](docs/DEVELOPMENT_HISTORY.md)** - 项目开发里程碑
+
+### 快速定位
+想要了解或修改某个模块？查看 [模块文档索引](docs/INDEX.md)，每个模块都有独立的 README。
+
+---
+
+## 🏗️ 项目结构
+
+```
+TSLplugins/
+├── src/main/kotlin/org/tsl/tSLplugins/
+│   ├── TSLplugins.kt              # 主类
+│   ├── TSLCommand.kt              # 统一命令分发
+│   ├── ReloadCommand.kt           # 重载命令
+│   ├── ConfigUpdateManager.kt     # 配置版本控制
+│   ├── PlayerDataManager.kt       # 玩家数据管理
+│   ├── WebBridge/                 # Web 通信桥模块
+│   ├── Maintenance/               # 维护模式模块
+│   ├── Visitor/                   # 访客模式模块
+│   ├── Phantom/                   # 幻翼控制模块
+│   ├── Spec/                      # 观察模式模块
+│   └── ...                        # 其他模块
+├── docs/                          # 文档目录
+│   ├── INDEX.md                   # 文档总目录
+│   ├── WIKI.md                    # 功能详细说明
+│   ├── DEVELOPER_GUIDE.md         # 开发者指南
+│   └── modules/                   # 按模块分类的文档
+│       ├── Core/                  # 核心文档
+│       ├── WebBridge/             # WebBridge 模块文档
+│       └── ...                    # 其他模块文档
+├── README.md                      # 项目说明（本文件）
+└── 需求.md                        # 功能需求文档
+```
+
+---
+
+## 🛠️ 开发与构建
+
+### 克隆项目
+
+```bash
+git clone https://github.com/your-repo/TSLplugins.git
+cd TSLplugins
+```
+
+### 构建插件
+
+```bash
+# Windows
+.\gradlew.bat shadowJar
+
+# Linux/Mac
+./gradlew shadowJar
+```
+
+构建产物：`build/libs/TSLplugins-1.0.jar`
+
+### 开发环境
+
+- **IDE**: IntelliJ IDEA 2024+
+- **Kotlin**: 1.9.21
+- **Gradle**: 8.5
+- **Java**: 21
+
+---
+
+## 🤝 贡献指南
+
+欢迎贡献代码、报告问题或提出建议！
+
+### 开发前必读
+
+1. 阅读 [开发者指南](docs/DEVELOPER_GUIDE.md)
+2. 了解 [Folia 线程安全规范](docs/modules/Core/FOLIA_THREAD_SAFETY_GUIDE.md)
+3. 查看对应模块的文档（[模块索引](docs/INDEX.md)）
+
+### 代码规范
+
+- 使用 Kotlin 编码规范
+- 所有实体/世界操作必须在正确的 RegionScheduler 上执行
+- 配置驱动，避免硬编码
+- 保持模块独立性
+- UTF-8 编码
+
+### 提交 Pull Request
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+---
+
+## 📄 许可证
+
+本项目使用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+---
+
+## 🙏 致谢
+
+- [Paper](https://papermc.io/) - 高性能 Minecraft 服务端
+- [Folia](https://papermc.io/software/folia) - 多线程区域调度器
+- [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) - 变量占位符支持
+- [LuckPerms](https://luckperms.net/) - 权限管理系统
+
+---
+
+## 📧 联系方式
+
+- **问题反馈**: [GitHub Issues](https://github.com/your-repo/TSLplugins/issues)
+- **功能建议**: [GitHub Discussions](https://github.com/your-repo/TSLplugins/discussions)
+
+---
+
+**⭐ 如果这个项目对你有帮助，请给个 Star！**
 
 ### 保护功能 (2个)
 

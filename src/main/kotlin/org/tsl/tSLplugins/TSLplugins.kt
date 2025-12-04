@@ -57,6 +57,8 @@ import org.tsl.tSLplugins.Spec.SpecCommand
 import org.tsl.tSLplugins.Spec.SpecListener
 import org.tsl.tSLplugins.Patrol.PatrolManager
 import org.tsl.tSLplugins.Patrol.PatrolCommand
+import org.tsl.tSLplugins.WebBridge.WebBridgeManager
+import org.tsl.tSLplugins.WebBridge.WebBridgeCommand
 
 class TSLplugins : JavaPlugin() {
 
@@ -81,6 +83,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var newbieTagManager: NewbieTagManager
     private lateinit var specManager: SpecManager
     private lateinit var patrolManager: PatrolManager
+    private lateinit var webBridgeManager: WebBridgeManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -211,6 +214,10 @@ class TSLplugins : JavaPlugin() {
         // 初始化 Patrol 系统
         patrolManager = PatrolManager(this)
 
+        // 初始化 WebBridge 系统
+        webBridgeManager = WebBridgeManager(this)
+        webBridgeManager.initialize()
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -235,6 +242,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("phantom", PhantomCommand(phantomManager))
             dispatcher.registerSubCommand("spec", SpecCommand(specManager))
             dispatcher.registerSubCommand("patrol", PatrolCommand(patrolManager))
+            dispatcher.registerSubCommand("webbridge", WebBridgeCommand(webBridgeManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -294,6 +302,11 @@ class TSLplugins : JavaPlugin() {
         // 清理 ChatBubble 系统
         if (::chatBubbleManager.isInitialized) {
             chatBubbleManager.cleanupAll()
+        }
+
+        // 清理 WebBridge 系统
+        if (::webBridgeManager.isInitialized) {
+            webBridgeManager.shutdown()
         }
 
         logger.info("TSL插件已卸载！")

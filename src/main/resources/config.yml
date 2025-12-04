@@ -1,9 +1,9 @@
 ﻿# ========================================
 # TSLplugins 配置文件
-# 版本: 20
+# 版本: 21
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 20
+config-version: 21
 # MOTD 假玩家配置
 fakeplayer:
   # 是否启用假玩家功能
@@ -565,4 +565,26 @@ spec:
   # 白名单（不会被观看的玩家）
   # 支持玩家名或 UUID
   whitelist: []
+
+# ========================================
+# WebBridge Web 通信桥配置
+# ========================================
+webbridge:
+  # 是否启用 WebBridge 功能
+  enabled: false
+
+  # WebSocket 配置
+  websocket:
+    # WebSocket 服务器地址（支持 ws:// 和 wss://）
+    #
+    # 重要：
+    # 1. 使用 127.0.0.1 而不是 localhost（避免 DNS 解析问题）
+    # 2. 所有认证信息（如 token）直接包含在 URL 的查询参数中
+    #
+    # 示例：
+    #   url: "ws://127.0.0.1:4001/mc-bridge?from=mc&token=123456"
+    #
+    # 配置完成后使用 /tsl webbridge connect 命令连接
+    url: "ws://127.0.0.1:4001/mc-bridge?from=mc"
+
 
