@@ -24,7 +24,6 @@ data class TSLPlayerProfile(
     /** Toss 功能开关 */
     var tossEnabled: Boolean = true,
 
-
     /** 是否允许幻翼骚扰 */
     var allowPhantom: Boolean = false,
 
@@ -40,6 +39,11 @@ data class TSLPlayerProfile(
 
     /** Kiss 被亲吻次数 */
     var kissedCount: Int = 0,
+
+    // ==================== 屏蔽列表 ====================
+
+    /** 聊天屏蔽列表（被屏蔽玩家的 UUID） */
+    var ignoreList: MutableSet<UUID> = mutableSetOf(),
 
     // ==================== 迁移标记 ====================
 

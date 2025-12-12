@@ -68,6 +68,16 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
         return try {
             val config = YamlConfiguration.loadConfiguration(file)
 
+            // 加载屏蔽列表
+            val ignoreListStrings = config.getStringList("ignoreList")
+            val ignoreList = ignoreListStrings.mapNotNull { str ->
+                try {
+                    UUID.fromString(str)
+                } catch (e: Exception) {
+                    null
+                }
+            }.toMutableSet()
+
             val profile = TSLPlayerProfile(
                 uuid = uuid,
                 playerName = config.getString("playerName", playerName) ?: playerName,
@@ -78,6 +88,7 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
                 tossVelocity = config.getDouble("tossVelocity", 1.5),
                 kissCount = config.getInt("kissCount", 0),
                 kissedCount = config.getInt("kissedCount", 0),
+                ignoreList = ignoreList,
                 migratedFromPdc = config.getBoolean("migratedFromPdc", false),
                 lastSaved = config.getLong("lastSaved", System.currentTimeMillis())
             )
@@ -121,6 +132,7 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
             config.set("tossVelocity", profile.tossVelocity)
             config.set("kissCount", profile.kissCount)
             config.set("kissedCount", profile.kissedCount)
+            config.set("ignoreList", profile.ignoreList.map { it.toString() })
             config.set("migratedFromPdc", profile.migratedFromPdc)
             config.set("lastSaved", profile.lastSaved)
 

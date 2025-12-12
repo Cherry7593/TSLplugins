@@ -4,8 +4,6 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.plugin.Plugin
 import org.java_websocket.client.WebSocketClient
@@ -28,7 +26,8 @@ import java.util.logging.Level
  */
 class WebBridgeClient(
     private val plugin: Plugin,
-    private val url: String
+    private val url: String,
+    private val manager: WebBridgeManager
 ) {
     // 发送队列
     private val messageQueue = ConcurrentLinkedQueue<String>()
@@ -86,8 +85,10 @@ class WebBridgeClient(
      * @param json JSON 格式的消息
      */
     fun enqueue(json: String) {
-        if (!isRunning.get()) {
-            plugin.logger.warning("[WebBridge] 客户端未运行，消息未加入队列")
+        // 检查真实的连接状态
+        val client = clientRef.get()
+        if (client == null || !client.isOpen) {
+            plugin.logger.warning("[WebBridge] 未连接到服务器，消息未加入队列")
             return
         }
 
@@ -152,6 +153,12 @@ class WebBridgeClient(
                 return false
             }
 
+            // 连接成功，启动发送任务（如果还没启动）
+            if (sendTask == null) {
+                startSendTask()
+                plugin.logger.info("[WebBridge] 发送任务已启动")
+            }
+
             return true
 
         } catch (e: java.net.URISyntaxException) {
@@ -167,6 +174,10 @@ class WebBridgeClient(
      * 手动断开连接
      */
     fun disconnect() {
+        // 停止发送任务
+        sendTask?.cancel()
+        sendTask = null
+
         val client = clientRef.getAndSet(null)
         if (client != null && client.isOpen) {
             client.close()
@@ -174,6 +185,9 @@ class WebBridgeClient(
         } else {
             plugin.logger.warning("[WebBridge] 当前未连接")
         }
+
+        // 清空队列
+        messageQueue.clear()
     }
 
     /**
@@ -256,14 +270,17 @@ class WebBridgeClient(
                     val playerName = payload["playerName"]?.jsonPrimitive?.content ?: "Web用户"
                     val messageText = payload["message"]?.jsonPrimitive?.content ?: return
 
-                    // 构建游戏内消息（使用 Adventure API）
-                    val gameMessage = Component.text()
-                        .append(Component.text("[", NamedTextColor.GRAY))
-                        .append(Component.text("Web", NamedTextColor.AQUA))
-                        .append(Component.text("] ", NamedTextColor.GRAY))
-                        .append(Component.text("<$playerName> ", NamedTextColor.WHITE))
-                        .append(Component.text(messageText, NamedTextColor.GRAY))
-                        .build()
+                    // 使用可配置的消息格式
+                    val format = manager.getWebToGameFormat()
+                    val formattedMessage = format
+                        .replace("{source}", "Web")
+                        .replace("{playerName}", playerName)
+                        .replace("{message}", messageText)
+
+                    // 解析颜色代码（支持 & 符号）
+                    val gameMessage = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                        .legacyAmpersand()
+                        .deserialize(formattedMessage)
 
                     // 在游戏中广播消息（使用 Folia 兼容的方式）
                     Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->

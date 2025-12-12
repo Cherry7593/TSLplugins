@@ -177,6 +177,23 @@ class PlayerDataManager(private val plugin: JavaPlugin) {
         profile.tossVelocity = velocity
     }
 
+    // ==================== Ignore 功能 ====================
+
+    /**
+     * 获取玩家的屏蔽列表
+     */
+    fun getIgnoreList(player: Player): Set<java.util.UUID> {
+        return profileStore.get(player.uniqueId)?.ignoreList?.toSet() ?: emptySet()
+    }
+
+    /**
+     * 设置玩家的屏蔽列表
+     */
+    fun setIgnoreList(player: Player, ignoreList: Set<java.util.UUID>) {
+        val profile = profileStore.getOrCreate(player.uniqueId, player.name)
+        profile.ignoreList = ignoreList.toMutableSet()
+    }
+
     // ==================== 工具方法 ====================
 
     /**

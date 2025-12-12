@@ -17,6 +17,9 @@ class WebBridgeManager(private val plugin: Plugin) {
     private var chatListener: WebBridgeChatListener? = null
     private var isEnabled = false
 
+    // 消息格式配置
+    private var webToGameFormat = "&7[&b{source}&7] &f<{playerName}> &7{message}"
+
     /**
      * 初始化 WebBridge 模块
      */
@@ -50,8 +53,12 @@ class WebBridgeManager(private val plugin: Plugin) {
             return
         }
 
+        // 读取消息格式配置
+        val msgConfig = config.getConfigurationSection("messages")
+        webToGameFormat = msgConfig?.getString("web-to-game", webToGameFormat) ?: webToGameFormat
+
         // 初始化 WebSocket 客户端（不自动连接）
-        client = WebBridgeClient(plugin, url)
+        client = WebBridgeClient(plugin, url, this)
 
         // 注册聊天监听器
         chatListener = WebBridgeChatListener(plugin, this)
@@ -118,5 +125,90 @@ class WebBridgeManager(private val plugin: Plugin) {
      * 检查模块是否启用
      */
     fun isEnabled(): Boolean = isEnabled
+
+    /**
+     * 获取 Web 到游戏的消息格式
+     */
+    fun getWebToGameFormat(): String = webToGameFormat
+
+    /**
+     * 重新加载配置并重新初始化模块
+     * 支持运行时动态启用/禁用
+     */
+    fun reload() {
+        plugin.logger.info("[WebBridge] 正在重新加载配置...")
+
+        // 记录之前的状态
+        val wasEnabled = isEnabled
+
+        // 先关闭现有连接和清理资源
+        if (wasEnabled) {
+            plugin.logger.info("[WebBridge] 关闭现有连接...")
+            client?.stop()
+            client = null
+
+            // 注销聊天监听器
+            if (chatListener != null) {
+                org.bukkit.event.HandlerList.unregisterAll(chatListener!!)
+                chatListener = null
+            }
+        }
+
+        // 重新读取配置
+        val config = plugin.config.getConfigurationSection("webbridge")
+
+        if (config == null) {
+            plugin.logger.warning("[WebBridge] 配置文件中未找到 webbridge 配置块")
+            isEnabled = false
+            return
+        }
+
+        val newEnabled = config.getBoolean("enabled", false)
+        plugin.logger.info("[WebBridge] 配置读取: enabled=$newEnabled (之前: $wasEnabled)")
+
+        // 状态变化日志
+        if (!wasEnabled && newEnabled) {
+            plugin.logger.info("[WebBridge] 模块从禁用变为启用")
+        } else if (wasEnabled && !newEnabled) {
+            plugin.logger.info("[WebBridge] 模块从启用变为禁用")
+        }
+
+        isEnabled = newEnabled
+
+        if (!isEnabled) {
+            plugin.logger.info("[WebBridge] 模块已禁用")
+            return
+        }
+
+        // 读取 WebSocket 配置
+        val wsConfig = config.getConfigurationSection("websocket")
+        if (wsConfig == null) {
+            plugin.logger.warning("[WebBridge] 配置文件中未找到 websocket 配置块")
+            isEnabled = false
+            return
+        }
+
+        val url = wsConfig.getString("url")
+
+        if (url.isNullOrBlank()) {
+            plugin.logger.warning("[WebBridge] WebSocket URL 未配置")
+            isEnabled = false
+            return
+        }
+
+        // 读取消息格式配置
+        val msgConfig = config.getConfigurationSection("messages")
+        webToGameFormat = msgConfig?.getString("web-to-game", webToGameFormat) ?: webToGameFormat
+
+        // 重新初始化 WebSocket 客户端（不自动连接）
+        client = WebBridgeClient(plugin, url, this)
+
+        // 重新注册聊天监听器
+        chatListener = WebBridgeChatListener(plugin, this)
+        plugin.server.pluginManager.registerEvents(chatListener!!, plugin)
+
+        plugin.logger.info("[WebBridge] 模块重载完成，URL: $url")
+        plugin.logger.info("[WebBridge] 提示: 使用 /tsl webbridge connect 命令连接到 WebSocket 服务器")
+    }
 }
 

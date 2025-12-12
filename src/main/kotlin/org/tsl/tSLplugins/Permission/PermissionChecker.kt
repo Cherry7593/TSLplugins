@@ -123,21 +123,24 @@ class PermissionChecker(private val plugin: JavaPlugin) : Listener {
         // 检查 LuckPerms 是否可用
         val lp = luckPerms
         if (lp == null) {
-            plugin.logger.warning("LuckPerms 不可用，无法执行权限检测。")
             return
         }
 
         // 延迟检查，确保玩家数据完全加载（使用实体调度器以兼容 Folia）
+        // 增加延迟到 40 tick (2秒)，避免与其他模块冲突
         player.scheduler.runDelayed(plugin, { _ ->
             if (!player.isOnline) return@runDelayed
 
-            try {
-                checkAndUpdatePermission(player, lp)
-            } catch (e: Exception) {
-                plugin.logger.severe("检查玩家 ${player.name} 的权限时发生错误: ${e.message}")
-                e.printStackTrace()
+            // 使用异步执行权限检查，避免阻塞主线程
+            plugin.server.asyncScheduler.runNow(plugin) {
+                try {
+                    checkAndUpdatePermissionAsync(player, lp)
+                } catch (e: Exception) {
+                    plugin.logger.severe("检查玩家 ${player.name} 的权限时发生错误: ${e.message}")
+                    e.printStackTrace()
+                }
             }
-        }, null, 20L) // 延迟 1 秒
+        }, null, 40L) // 延迟 2 秒
     }
 
     private fun checkAndUpdatePermission(player: Player, lp: LuckPerms) {
@@ -159,6 +162,64 @@ class PermissionChecker(private val plugin: JavaPlugin) : Listener {
                 break
             }
         }
+    }
+
+    /**
+     * 异步权限检查（避免阻塞主线程）
+     */
+    private fun checkAndUpdatePermissionAsync(player: Player, lp: LuckPerms) {
+        // 异步获取玩家的 LuckPerms User 对象
+        lp.userManager.loadUser(player.uniqueId).thenAcceptAsync { user ->
+            if (user == null) {
+                plugin.logger.warning("无法获取玩家 ${player.name} 的 LuckPerms 用户数据。")
+                return@thenAcceptAsync
+            }
+
+            // 遍历所有规则，检查是否匹配
+            for (rule in rules) {
+                if (checkRuleAsync(player, user, rule)) {
+                    // 规则匹配，在主线程执行权限组修改
+                    plugin.server.globalRegionScheduler.run(plugin) { _ ->
+                        if (player.isOnline) {
+                            plugin.logger.info("玩家 ${player.name} 匹配规则 '${rule.name}'，应用权限组修改")
+                            applyRule(player, user, rule, lp)
+                        }
+                    }
+                    // 只应用第一个匹配的规则
+                    break
+                }
+            }
+        }
+    }
+
+    /**
+     * 异步检查规则是否匹配（不记录过多日志）
+     */
+    private fun checkRuleAsync(player: Player, user: User, rule: PermissionRule): Boolean {
+        // 检查变量值
+        if (!checkVariableQuiet(player, rule.variableName, rule.expectedValue)) {
+            return false
+        }
+
+        // 检查玩家是否已在目标权限组
+        if (isInGroup(user, rule.targetGroup)) {
+            // 已在组中，跳过（不记录日志，避免刷屏）
+            return false
+        }
+
+        return true
+    }
+
+    /**
+     * 静默检查变量（不记录详细日志）
+     */
+    private fun checkVariableQuiet(player: Player, variableName: String, expectedValue: String): Boolean {
+        if (!placeholderApiAvailable) {
+            return false
+        }
+
+        val actualValue = PlaceholderAPI.setPlaceholders(player, variableName)
+        return actualValue.equals(expectedValue, ignoreCase = true)
     }
 
     /**

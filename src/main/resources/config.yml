@@ -1,9 +1,26 @@
-﻿# ========================================
-# TSLplugins 配置文件
-# 版本: 21
+﻿# TSLplugins 配置文件
+# 版本: 25
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 21
+config-version: 25
+
+# ========================================
+# Ignore 聊天屏蔽配置
+# ========================================
+ignore:
+  # 是否启用聊天屏蔽功能
+  enabled: true
+  # 每个玩家最多可屏蔽的玩家数量
+  max-ignore-count: 100
+
+# ========================================
+# Snow Anti-Melt 雪防融化配置
+# ========================================
+snow-anti-melt:
+  # 是否启用雪防融化功能
+  # 启用后，雪层和雪块不会因光照融化
+  enabled: true
+
 # MOTD 假玩家配置
 fakeplayer:
   # 是否启用假玩家功能
@@ -587,4 +604,61 @@ webbridge:
     # 配置完成后使用 /tsl webbridge connect 命令连接
     url: "ws://127.0.0.1:4001/mc-bridge?from=mc"
 
+  # 消息格式配置
+  messages:
+    # Web 端消息同步到游戏的格式
+    # 支持占位符:
+    #   {source} - 消息来源（如 "Web"）
+    #   {playerName} - 发送者名称
+    #   {message} - 消息内容
+    # 支持颜色代码（使用 & 符号）
+    web-to-game: "&7[&b{source}&7] &f<{playerName}> &7{message}"
+# ========================================
+# EndDragon 末影龙控制功能配置
+# ========================================
+enddragon:
+  # 是否启用末影龙控制功能
+  enabled: true
+
+  # 是否禁止末影龙破坏方块（撞方块）
+  # true: 末影龙会被限制，无法破坏地形
+  # false: 末影龙可以正常破坏方块
+  disable-damage: true
+
+# ========================================
+# PlayerCountCmd 人数控制命令配置
+# ========================================
+# 根据在线人数自动执行控制台命令
+# 适用场景：Chunky预加载、Bluemap渲染、视距调整等
+player-count-cmd:
+  # 是否启用人数控制命令功能
+  enabled: true
+
+  # 上阈值：当在线人数 >= 此值时，执行高人数命令
+  # 设置建议：根据服务器性能调整
+  upper-threshold: 52
+
+  # 下阈值：当在线人数 <= 此值时，执行低人数命令
+  # 设置建议：应小于上阈值，形成"回差"区间防止频繁切换
+  # 例如：上阈值52，下阈值48，意味着52人执行高人数命令，48人执行低人数命令，49-51人维持当前状态
+  lower-threshold: 48
+
+  # 最小执行间隔（毫秒）
+  # 两次命令执行之间的最小间隔，防止玩家快速进出导致频繁切换
+  # 推荐值: 10000（10秒）
+  min-interval-ms: 10000
+
+  # 人数低于下阈值时执行的命令
+  # 示例：
+  #   - "chunky continue" 继续预加载
+  #   - "bluemap start" 开始渲染
+  #   - "minecraft:execute run gamerule viewDistance 12" 设置视距
+  command-when-low: "chunky continue"
+
+  # 人数高于上阈值时执行的命令
+  # 示例：
+  #   - "chunky pause" 暂停预加载
+  #   - "bluemap stop" 暂停渲染
+  #   - "minecraft:execute run gamerule viewDistance 8" 降低视距
+  command-when-high: "chunky pause"
 

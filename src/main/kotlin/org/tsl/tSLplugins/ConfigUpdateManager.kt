@@ -20,7 +20,16 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     companion object {
         // 当前配置文件版本
-        const val CURRENT_CONFIG_VERSION = 21
+        const val CURRENT_CONFIG_VERSION = 25
+
+        /**
+         * 用户专属配置路径列表
+         * 这些配置的子节点完全由用户自定义，更新时会保留用户的全部内容
+         * 不会被默认配置覆盖
+         */
+        private val USER_OWNED_KEYS = setOf(
+            "permission-checker.rules"  // 权限检测规则，用户自定义
+        )
     }
 
     /**
@@ -119,6 +128,15 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
             // 解析键值对
             if (line.contains(":")) {
+                // 先检查是否是用户专属配置
+                val userOwnedResult = checkUserOwnedKey(line, lines, i, userConfig, keyStack)
+                if (userOwnedResult != null) {
+                    result.addAll(userOwnedResult.lines)
+                    i += userOwnedResult.skipLines
+                    i++
+                    continue
+                }
+
                 val processedInfo = processConfigLine(line, userConfig, keyStack)
                 result.add(processedInfo.line)
 
@@ -143,6 +161,158 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
         val line: String,
         val skipLines: Int = 0
     )
+
+    /**
+     * 用户专属配置处理结果
+     */
+    private data class UserOwnedResult(
+        val lines: List<String>,
+        val skipLines: Int
+    )
+
+    /**
+     * 检查并处理用户专属配置
+     * 如果当前行是用户专属配置的键，返回用户的完整配置内容
+     *
+     * @return 如果是用户专属配置，返回处理结果；否则返回 null
+     */
+    private fun checkUserOwnedKey(
+        currentLine: String,
+        allLines: List<String>,
+        currentIndex: Int,
+        userConfig: YamlConfiguration,
+        keyStack: MutableList<Pair<String, Int>>
+    ): UserOwnedResult? {
+        val colonIndex = currentLine.indexOf(":")
+        if (colonIndex == -1) return null
+
+        val beforeColon = currentLine.substring(0, colonIndex)
+        val indent = beforeColon.takeWhile { it.isWhitespace() }
+        val indentLevel = indent.length
+        val key = beforeColon.trim()
+
+        // 临时计算完整键路径（不修改 keyStack）
+        val tempStack = keyStack.toMutableList()
+        while (tempStack.isNotEmpty() && tempStack.last().second >= indentLevel) {
+            tempStack.removeAt(tempStack.size - 1)
+        }
+
+        val fullKey = if (tempStack.isEmpty()) key else tempStack.joinToString(".") { it.first } + ".$key"
+
+        // 检查是否是用户专属配置
+        if (fullKey !in USER_OWNED_KEYS) return null
+
+        // 这是用户专属配置，需要特殊处理
+        plugin.logger.info("检测到用户专属配置: $fullKey，将保留用户的完整配置")
+
+        // 更新真正的 keyStack
+        while (keyStack.isNotEmpty() && keyStack.last().second >= indentLevel) {
+            keyStack.removeAt(keyStack.size - 1)
+        }
+        keyStack.add(Pair(key, indentLevel))
+
+        // 计算需要跳过的默认配置行数
+        val skipLines = countChildLines(allLines, currentIndex, indentLevel)
+
+        // 生成用户的配置内容
+        val userSection = userConfig.getConfigurationSection(fullKey)
+        val resultLines = mutableListOf<String>()
+
+        // 添加节点标题行
+        resultLines.add(currentLine)
+
+        if (userSection != null && userSection.getKeys(false).isNotEmpty()) {
+            // 用户有配置，序列化用户的完整配置
+            val userContent = serializeConfigSection(userSection, indentLevel + 2)
+            resultLines.addAll(userContent)
+        } else {
+            // 用户没有配置，保留默认配置的示例
+            // 这种情况下不跳过默认行，让它们被正常处理
+            return null
+        }
+
+        return UserOwnedResult(resultLines, skipLines)
+    }
+
+    /**
+     * 计算某个节点下的所有子行数（用于跳过默认配置）
+     */
+    private fun countChildLines(lines: List<String>, startIndex: Int, parentIndent: Int): Int {
+        var count = 0
+        var i = startIndex + 1
+
+        while (i < lines.size) {
+            val line = lines[i]
+            val trimmed = line.trim()
+
+            // 空行和注释行也计入
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                // 检查下一个非空行的缩进
+                var nextNonEmpty = i + 1
+                while (nextNonEmpty < lines.size) {
+                    val nextLine = lines[nextNonEmpty].trim()
+                    if (nextLine.isNotEmpty() && !nextLine.startsWith("#")) break
+                    nextNonEmpty++
+                }
+
+                if (nextNonEmpty < lines.size) {
+                    val nextIndent = lines[nextNonEmpty].takeWhile { it.isWhitespace() }.length
+                    if (nextIndent <= parentIndent) {
+                        // 下一个有效行不是子节点，停止计数
+                        break
+                    }
+                }
+                count++
+                i++
+                continue
+            }
+
+            // 检查缩进级别
+            val currentIndent = line.takeWhile { it.isWhitespace() }.length
+            if (currentIndent <= parentIndent) {
+                // 不再是子节点，停止计数
+                break
+            }
+
+            count++
+            i++
+        }
+
+        return count
+    }
+
+    /**
+     * 序列化 ConfigurationSection 为 YAML 行列表
+     */
+    private fun serializeConfigSection(section: org.bukkit.configuration.ConfigurationSection, baseIndent: Int): List<String> {
+        val result = mutableListOf<String>()
+        val indentStr = " ".repeat(baseIndent)
+
+        for (key in section.getKeys(false)) {
+            val value = section.get(key)
+
+            when (value) {
+                is org.bukkit.configuration.ConfigurationSection -> {
+                    // 嵌套的 section
+                    result.add("$indentStr$key:")
+                    result.addAll(serializeConfigSection(value, baseIndent + 2))
+                }
+                is List<*> -> {
+                    // 列表
+                    result.add("$indentStr$key:")
+                    for (item in value) {
+                        result.add("$indentStr  - ${formatValueForList(item)}")
+                    }
+                }
+                else -> {
+                    // 简单值
+                    result.add("$indentStr$key: ${formatValue(value)}")
+                }
+            }
+        }
+
+        return result
+    }
 
     /**
      * 处理单行配置，保留注释并替换值
@@ -312,4 +482,3 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
         return plugin.config.getInt("config-version", 0)
     }
 }
-

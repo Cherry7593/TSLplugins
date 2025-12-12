@@ -91,6 +91,21 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 NewbieTag 功能
             plugin.reloadNewbieTagManager()
 
+            // 重新加载 Spec 功能
+            plugin.reloadSpecManager()
+
+            // 重新加载 EndDragon 功能
+            plugin.reloadEndDragonManager()
+
+            // 重新加载 WebBridge 功能（支持动态启用/禁用）
+            plugin.reloadWebBridgeManager()
+
+            // 重新加载 Ignore 功能
+            plugin.reloadIgnoreManager()
+
+            // 重新加载 SnowAntiMelt 功能
+            plugin.reloadSnowAntiMeltListener()
+
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
             sender.sendMessage(serializer.deserialize("&7- 命令别名已重载 ($reloadedAliases 个别名)"))
@@ -111,4 +126,3 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
         return "重新加载插件配置文件"
     }
 }
-

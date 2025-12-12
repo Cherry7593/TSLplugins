@@ -59,6 +59,14 @@ import org.tsl.tSLplugins.Patrol.PatrolManager
 import org.tsl.tSLplugins.Patrol.PatrolCommand
 import org.tsl.tSLplugins.WebBridge.WebBridgeManager
 import org.tsl.tSLplugins.WebBridge.WebBridgeCommand
+import org.tsl.tSLplugins.EndDragon.EndDragonManager
+import org.tsl.tSLplugins.EndDragon.EndDragonCommand
+import org.tsl.tSLplugins.EndDragon.EndDragonListener
+import org.tsl.tSLplugins.PlayerCountCmd.PlayerCountCmdController
+import org.tsl.tSLplugins.Ignore.IgnoreManager
+import org.tsl.tSLplugins.Ignore.IgnoreCommand
+import org.tsl.tSLplugins.Ignore.IgnoreChatListener
+import org.tsl.tSLplugins.SnowAntiMelt.SnowAntiMeltListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -84,6 +92,9 @@ class TSLplugins : JavaPlugin() {
     private lateinit var specManager: SpecManager
     private lateinit var patrolManager: PatrolManager
     private lateinit var webBridgeManager: WebBridgeManager
+    private lateinit var endDragonManager: EndDragonManager
+    private lateinit var ignoreManager: IgnoreManager
+    private lateinit var snowAntiMeltListener: SnowAntiMeltListener
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -109,10 +120,23 @@ class TSLplugins : JavaPlugin() {
             @org.bukkit.event.EventHandler
             fun onPlayerJoin(event: org.bukkit.event.player.PlayerJoinEvent) {
                 playerDataManager.onPlayerJoin(event.player)
+
+                // 加载屏蔽数据到 IgnoreManager（需要在 ignoreManager 初始化后）
+                if (::ignoreManager.isInitialized && ignoreManager.isEnabled()) {
+                    val ignoreList = playerDataManager.getIgnoreList(event.player)
+                    ignoreManager.loadPlayerData(event.player.uniqueId, ignoreList)
+                }
             }
 
             @org.bukkit.event.EventHandler
             fun onPlayerQuit(event: org.bukkit.event.player.PlayerQuitEvent) {
+                // 先保存屏幕数据
+                if (::ignoreManager.isInitialized && ignoreManager.isEnabled()) {
+                    val ignoreList = ignoreManager.getPlayerData(event.player.uniqueId)
+                    playerDataManager.setIgnoreList(event.player, ignoreList)
+                    ignoreManager.unloadPlayerData(event.player.uniqueId)
+                }
+
                 playerDataManager.onPlayerQuit(event.player)
             }
         }, this)
@@ -218,6 +242,25 @@ class TSLplugins : JavaPlugin() {
         webBridgeManager = WebBridgeManager(this)
         webBridgeManager.initialize()
 
+        // 初始化末影龙控制系统
+        endDragonManager = EndDragonManager(this)
+        val endDragonListener = EndDragonListener(this, endDragonManager)
+        pm.registerEvents(endDragonListener, this)
+
+        // 初始化 Ignore 聊天屏蔽系统
+        ignoreManager = IgnoreManager(this)
+        ignoreManager.loadConfig()
+        val ignoreChatListener = IgnoreChatListener(this, ignoreManager)
+        pm.registerEvents(ignoreChatListener, this)
+
+        // 初始化雪防融化系统
+        snowAntiMeltListener = SnowAntiMeltListener(this)
+        snowAntiMeltListener.loadConfig()
+        pm.registerEvents(snowAntiMeltListener, this)
+
+        // 初始化人数控制命令系统
+        initPlayerCountCmd()
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -243,6 +286,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("spec", SpecCommand(specManager))
             dispatcher.registerSubCommand("patrol", PatrolCommand(patrolManager))
             dispatcher.registerSubCommand("webbridge", WebBridgeCommand(webBridgeManager))
+            dispatcher.registerSubCommand("enddragon", EndDragonCommand(endDragonManager))
+            dispatcher.registerSubCommand("ignore", IgnoreCommand(ignoreManager, playerDataManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -462,5 +507,55 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadSpecManager() {
         specManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 EndDragon 管理器
+     */
+    fun reloadEndDragonManager() {
+        endDragonManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 WebBridge 管理器
+     * 支持运行时动态启用/禁用
+     */
+    fun reloadWebBridgeManager() {
+        webBridgeManager.reload()
+    }
+
+    /**
+     * 重新加载 Ignore 管理器
+     */
+    fun reloadIgnoreManager() {
+        ignoreManager.loadConfig()
+    }
+
+    /**
+     * 重新加载雪防融化监听器
+     */
+    fun reloadSnowAntiMeltListener() {
+        snowAntiMeltListener.loadConfig()
+    }
+
+    /**
+     * 初始化人数控制命令模块
+     * 根据配置决定是否启用
+     */
+    private fun initPlayerCountCmd() {
+        val cfg = config.getConfigurationSection("player-count-cmd")
+        if (cfg == null || !cfg.getBoolean("enabled", true)) {
+            logger.info("[PlayerCountCmd] 功能未启用")
+            return
+        }
+
+        PlayerCountCmdController(
+            plugin = this,
+            upperThreshold = cfg.getInt("upper-threshold", 52),
+            lowerThreshold = cfg.getInt("lower-threshold", 48),
+            minIntervalMs = cfg.getLong("min-interval-ms", 10_000L),
+            cmdWhenLow = cfg.getString("command-when-low", "chunky continue") ?: "chunky continue",
+            cmdWhenHigh = cfg.getString("command-when-high", "chunky pause") ?: "chunky pause"
+        ).init()
     }
 }
