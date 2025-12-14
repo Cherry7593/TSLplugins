@@ -1,0 +1,2036 @@
+# TSLplugins - 开发者指南
+
+> 架构设计、代码规范、开发要点 - 供开发者和 AI 使用
+
+---
+
+## 📋 目录
+
+1. [项目概览](#项目概览)
+2. [核心架构](#核心架构)
+3. [技术栈](#技术栈)
+4. [模块详解](#模块详解)
+5. [开发规范](#开发规范)
+6. [重要技术点](#重要技术点)
+7. [性能优化](#性能优化)
+8. [开发流程](#开发流程)
+9. [调试技巧](#调试技巧)
+10. [常见问题](#常见问题)
+
+---
+
+## 项目概览
+
+### 基本信息
+
+```kotlin
+// 项目信息
+name: TSLplugins
+version: 1.0
+language: Kotlin 1.9.21
+target: Paper/Folia 1.21.8
+java: 21
+build: Gradle 8.5 + Kotlin DSL
+config-version: 10
+```
+
+### 设计原则
+
+1. **模块化** - 每个包是独立功能模块
+2. **即插即用** - 模块互不依赖，可单独禁用
+3. **事件驱动** - 使用 Bukkit/Folia 事件系统
+4. **配置驱动** - 所有行为可配置
+5. **配置缓存** - 启动/reload 时读取，事件处理零开销
+
+### 核心特性
+
+- ✅ Folia 原生支持（无轮询任务）
+- ✅ 配置热重载（无需重启）
+- ✅ 智能配置更新（自动合并新配置）
+- ✅ PDC 数据持久化（玩家配置永久保存）
+- ✅ 性能优化（配置缓存、事件驱动）
+
+---
+
+## 核心架构
+
+### 项目结构
+
+```
+src/main/kotlin/org/tsl/tSLplugins/
+│
+├── ========== 核心系统文件（根目录）==========
+├── TSLplugins.kt                # 主类：初始化所有模块
+├── TSLCommand.kt                # 命令分发器：统一入口 /tsl
+├── ReloadCommand.kt             # 重载命令：重载所有模块配置
+├── ConfigUpdateManager.kt       # 配置更新：版本控制和自动更新
+├── PlayerDataManager.kt         # PDC 管理器：玩家数据持久化
+├── TSLPlaceholderExpansion.kt   # PAPI 扩展：整合所有模块变量
+│
+├── Alias/                     # 命令别名
+│   ├── AliasManager.kt        # 管理器：加载配置
+│   ├── AliasCommand.kt        # 命令：重载
+│   └── DynamicAliasCommand.kt # 动态注册
+│
+├── Maintenance/               # 维护模式
+│   ├── MaintenanceManager.kt           # 管理器
+│   ├── MaintenanceCommand.kt           # 命令
+│   ├── MaintenanceLoginListener.kt     # 登录拦截
+│   ├── MaintenanceMotdListener.kt      # MOTD 修改
+│   └── MaintenancePermissionListener.kt # 权限检查
+│
+├── Scale/                     # 体型调整
+│   ├── ScaleManager.kt        # 管理器
+│   └── ScaleCommand.kt        # 命令
+│
+├── Hat/                       # 帽子系统
+│   ├── HatManager.kt          # 管理器
+│   └── HatCommand.kt          # 命令
+│
+├── Ping/                      # 延迟查询
+│   ├── PingManager.kt         # 管理器
+│   ├── PingCommand.kt         # 命令
+│   └── PingPaginator.kt       # 分页显示
+│
+├── Toss/                      # 生物举起
+│   ├── TossManager.kt         # 管理器
+│   ├── TossCommand.kt         # 命令
+│   ���── TossListener.kt        # 监听器
+│
+├── Ride/                      # 生物骑乘
+│   ├── RideManager.kt         # 管理器
+│   ├── RideCommand.kt         # 命令
+│   └── RideListener.kt        # 监听器
+│
+├── BabyLock/                  # 永久幼年
+│   ├── BabyLockManager.kt     # 管理器
+│   └── BabyLockListener.kt    # 监听器
+│
+├── Kiss/                      # 玩家亲吻
+│   ├── KissManager.kt         # 管理器
+│   ├── KissCommand.kt         # 命令
+│   ├── KissExecutor.kt        # 执行器
+│   ├── KissListener.kt        # 监听器
+│   └── KissPlaceholder.kt     # PAPI 扩展
+│
+├── Freeze/                    # 玩家冻结
+│   ├── FreezeManager.kt       # 管理器
+│   ├── FreezeCommand.kt       # 命令
+│   └── FreezeListener.kt      # 监听器
+│
+├── Advancement/               # 成就过滤
+│   ├── AdvancementCount.kt    # 统计
+│   ├── AdvancementMessage.kt  # 消息过滤
+│   └── AdvancementCommand.kt  # 命令
+│
+├── Visitor/                   # 访客保护
+│   └── VisitorEffect.kt       # 效果管理
+│
+├── Permission/                # 权限检测
+│   └── PermissionChecker.kt   # 检测器
+│
+├── Farmprotect/               # 农田保护
+│   └── FarmProtect.kt         # 监听器
+│
+└── Motd/                      # 假玩家
+    └── FakePlayerMotd.kt      # MOTD 修改
+```
+
+### 架构模式
+
+#### Manager-Command-Listener 模式
+
+```kotlin
+// 标准模块结构
+Module/
+├── ModuleManager.kt    # 配置管理、状态管理
+├── ModuleCommand.kt    # 命令处理、权限检查
+└── ModuleListener.kt   # 事件监听、业务逻辑
+```
+
+**Manager（管理器）**：
+- 加载和缓存配置
+- 管理模块状态
+- 提供工具方法
+
+**Command（命令处理器）**：
+- 实现 `SubCommandHandler` 接口
+- 处理命令逻辑
+- 提供 Tab 补全
+
+**Listener（监听器）**：
+- 监听 Bukkit 事件
+- 执行业务逻辑
+- 调用 Manager 方法
+
+---
+
+## 技术栈
+
+### 语言和工具
+
+```kotlin
+// Kotlin
+version: 1.9.21
+jvmTarget: 21
+
+// Gradle
+version: 8.5
+dsl: Kotlin DSL
+
+// Shadow
+version: 8.1.1  // 打包 Kotlin 标准库
+```
+
+### 核心依赖
+
+```kotlin
+// 必需
+compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+// 可选
+compileOnly("net.luckperms:api:5.4")          // 访客保护
+compileOnly("me.clip:placeholderapi:2.11.6")  // 变量支持
+```
+
+### Maven 仓库
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
+}
+```
+
+---
+
+## 根目录核心文件详解
+
+### 为什么这些文件放在根目录？
+
+根目录的文件是**跨模块的核心系统**，它们不属于任何单一功能模块，而是为所有模块提供基础服务：
+
+- ✅ **TSLplugins.kt** - 主类，初始化和管理所有模块
+- ✅ **TSLCommand.kt** - 命令分发器，统一处理所有子命令
+- ✅ **ReloadCommand.kt** - 重载系统，重载所有模块配置
+- ✅ **ConfigUpdateManager.kt** - 配置版本控制，自动更新配置文件
+- ✅ **PlayerDataManager.kt** - PDC 数据管理，统一管理所有玩家数据
+- ✅ **TSLPlaceholderExpansion.kt** - PAPI 扩展，整合所有模块的变量
+
+这些文件是**整个插件的基础设施**，如果放在某个功能模块包内会导致：
+- ❌ 架构混乱（基础设施不应属于业务模块）
+- ❌ 循环依赖问题
+- ❌ 难以理解系统层次
+
+---
+
+### 1. TSLplugins.kt - 主类
+
+**作用**：插件的入口点，负责初始化和管理所有模块。
+
+**核心职责**：
+- 初始化配置更新管理器
+- 初始化 PDC 数据管理器
+- 注册所有功能模块的 Manager、Command、Listener
+- 注册 PlaceholderAPI 扩展
+- 提供重载接口给 ReloadCommand
+
+**代码结构**：
+```kotlin
+class TSLplugins : JavaPlugin() {
+    // 1. 声明所有 Manager
+    private lateinit var kissManager: KissManager
+    private lateinit var freezeManager: FreezeManager
+    // ...
+    
+    override fun onEnable() {
+        // 2. 配置更新检查
+        ConfigUpdateManager(this).checkAndUpdate()
+        reloadConfig()
+        
+        // 3. 初始化核心系统
+        playerDataManager = PlayerDataManager(this)
+        
+        // 4. 初始化各个模块
+        kissManager = KissManager(this, playerDataManager)
+        // ...
+        
+        // 5. 注册事件监听器
+        server.pluginManager.registerEvents(...)
+        
+        // 6. 注册命令
+        val dispatcher = TSLCommand()
+        dispatcher.registerSubCommand("kiss", KissCommand(...))
+        // ...
+        
+        // 7. 注册 PAPI 扩展
+        TSLPlaceholderExpansion(...).register()
+    }
+    
+    // 8. 提供重载方法
+    fun reloadKissManager() {
+        kissManager.loadConfig()
+    }
+}
+```
+
+**开发要点**：
+- ⚠️ 添加新模块时必须在此类中初始化
+- ⚠️ 必须提供对应的 `reloadXxxManager()` 方法
+- ⚠️ 注意初始化顺序（有依赖的后初始化）
+
+---
+
+### 2. TSLCommand.kt - 命令分发器
+
+**作用**：统一的命令入口，将 `/tsl <子命令>` 分发给各个模块的命令处理器。
+
+**核心职责**：
+- 注册所有子命令处理器
+- 分发命令到对应的 Handler
+- 提供统一的 Tab 补全
+- 显示帮助信息
+
+**代码结构**：
+```kotlin
+class TSLCommand : CommandExecutor, TabCompleter {
+    private val subCommands = mutableMapOf<String, SubCommandHandler>()
+    
+    fun registerSubCommand(name: String, handler: SubCommandHandler) {
+        subCommands[name.lowercase()] = handler
+    }
+    
+    override fun onCommand(...): Boolean {
+        if (args.isEmpty()) {
+            showHelp(sender)
+            return true
+        }
+        
+        val subCommand = args[0].lowercase()
+        val handler = subCommands[subCommand]
+        
+        return if (handler != null) {
+            handler.handle(sender, command, label, args.drop(1).toTypedArray())
+        } else {
+            sender.sendMessage("未知命令")
+            true
+        }
+    }
+}
+```
+
+**开发要点**：
+- ✅ 所有功能模块的命令都通过此类注册
+- ✅ 新增命令时在 `TSLplugins.kt` 中调用 `registerSubCommand()`
+- ✅ 命令处理器必须实现 `SubCommandHandler` 接口
+
+---
+
+### 3. ReloadCommand.kt - 重载系统 ⭐ 最重要的跨模块文件
+
+**作用**：重载所有模块的配置，无需重启服务器。
+
+**核心职责**：
+- 重载主配置文件
+- 调用**所有模块**的 Manager 的 `loadConfig()` 方法
+- 重新加载别名系统
+- 显示重载结果
+
+**⚠️ 为什么这是最重要的跨模块文件？**
+- 所有模块都使用配置缓存机制，需要通过重载刷新
+- 添加任何新模块时，**必须**在这里添加重载调用
+- 这是唯一调用所有模块 reload 方法的地方
+- 确保所有功能的配置都能统一重载
+
+**代码结构**：
+```kotlin
+class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
+    
+    override fun handle(...): Boolean {
+        // 1. 权限检查
+        if (!sender.hasPermission("tsl.reload")) {
+            sender.sendMessage("无权限")
+            return true
+        }
+        
+        // 2. 重载主配置
+        plugin.reloadConfig()
+        
+        // 3. 重载所有模块
+        plugin.reloadKissManager()
+        plugin.reloadFreezeManager()
+        plugin.reloadTossManager()
+        plugin.reloadRideManager()
+        plugin.reloadScaleManager()
+        plugin.reloadHatManager()
+        plugin.reloadPingManager()
+        plugin.reloadBabyLockManager()
+        plugin.reloadMaintenanceManager()
+        
+        // 4. 重载特殊系统
+        val aliasCount = plugin.reloadAliasManager()
+        
+        // 5. 显示结果
+        sender.sendMessage("配置重载完成！")
+        sender.sendMessage("- 已重载 $aliasCount 个命令别名")
+        
+        return true
+    }
+}
+```
+
+**开发要点**：
+- ⚠️ **这是最重要的跨模块文件**
+- ⚠️ 添加新模块时**必须**在此处添加重载调用
+- ⚠️ 重载顺序：主配置 → 各模块 Manager → 特殊系统
+- ⚠️ 必须提供重载反馈给用户
+
+**为什么重载很重要？**
+- 配��缓存机制需要手动刷新
+- 避免频繁重启服务器
+- 提供更好的管理体验
+
+---
+
+### 4. ConfigUpdateManager.kt - 配置版本控制
+
+**作用**：自动检测和更新配置文件版本。
+
+**核心职责**：
+- 检测配置文件版本
+- 备份旧配置
+- 合并新旧配置（保留用户值，添加新配置项）
+- 保留注释和格式
+
+**版本控制**：
+```kotlin
+companion object {
+    const val CURRENT_CONFIG_VERSION = 10  // ⚠️ 当前版本
+}
+```
+
+**更新流程**：
+```
+1. 检测版本不一致
+2. 备份到 config.yml.backup
+3. 读取默认配置（保留注释）
+4. 读取用户配置值
+5. 合并配置
+6. 保存新配置
+```
+
+**开发要点**：
+- ⚠️ 修改配置文件后必须递增 `CURRENT_CONFIG_VERSION`
+- ⚠️ 在 `TSLplugins.onEnable()` 中第一个执行
+- ⚠️ 确保在 `reloadConfig()` 之前运行
+
+---
+
+### 5. PlayerDataManager.kt - PDC 数据管理
+
+**作用**：统一管理所有模块的玩家持久化数据。
+
+**核心职责**：
+- 定义所有 PDC Keys（避免键名冲突）
+- 提供统一的数据读写接口
+- 支持多种数据类型
+
+**代码结构**：
+```kotlin
+class PlayerDataManager(private val plugin: JavaPlugin) {
+    
+    // ===== PDC Keys 定义 =====
+    private val kissToggleKey = NamespacedKey(plugin, "kiss_toggle")
+    private val rideToggleKey = NamespacedKey(plugin, "ride_toggle")
+    private val tossToggleKey = NamespacedKey(plugin, "toss_toggle")
+    private val tossVelocityKey = NamespacedKey(plugin, "toss_velocity")
+    
+    // ===== Kiss 功能 =====
+    fun getKissToggle(player: Player, defaultValue: Boolean = true): Boolean {
+        val pdc = player.persistentDataContainer
+        return if (pdc.has(kissToggleKey, PersistentDataType.BOOLEAN)) {
+            pdc.get(kissToggleKey, PersistentDataType.BOOLEAN) ?: defaultValue
+        } else {
+            defaultValue
+        }
+    }
+    
+    fun setKissToggle(player: Player, enabled: Boolean) {
+        player.persistentDataContainer.set(
+            kissToggleKey,
+            PersistentDataType.BOOLEAN,
+            enabled
+        )
+    }
+    
+    // ===== 其他功能数据... =====
+}
+```
+
+**开发要点**：
+- ⚠️ 所有 PDC 数据必须通过此类管理
+- ⚠️ 键名格式：`tsl:功能名_数据名`
+- ⚠️ 新增数据存储时在此类添加方法
+- ⚠️ Manager 通过依赖注入使用此类
+
+**为什么需要统一管理？**
+- 避免键名冲突
+- 简化数据访问代码
+- 便于维护和扩展
+
+---
+
+### 6. TSLPlaceholderExpansion.kt - PAPI 变量整合
+
+**作用**：整合所有模块的 PlaceholderAPI 变量。
+
+**核心职责**：
+- 注册插件标识符 `%tsl_xxx%`
+- 处理所有模块的变量请求
+- 提供统一的变量接口
+
+**代码结构**：
+```kotlin
+class TSLPlaceholderExpansion(
+    private val plugin: JavaPlugin,
+    private val countHandler: AdvancementCount,
+    private val pingManager: PingManager?,
+    private val kissManager: KissManager?,
+    private val rideManager: RideManager?,
+    private val tossManager: TossManager?
+) : PlaceholderExpansion() {
+    
+    override fun getIdentifier(): String = "tsl"
+    override fun getVersion(): String = "1.0"
+    
+    override fun onRequest(player: OfflinePlayer?, params: String): String? {
+        // Ping 变量（全局）
+        if (params == "ping") {
+            return pingManager?.getAveragePing()?.toString() ?: "N/A"
+        }
+        
+        // 需要玩家的变量
+        if (player == null) return null
+        
+        // 成就统计
+        if (params == "adv_count") {
+            return countHandler.getAdvancementCount(player.player ?: return null).toString()
+        }
+        
+        // Kiss 统计
+        when (params) {
+            "kiss_count" -> return kissManager?.getKissCount(player.uniqueId)?.toString()
+            "kissed_count" -> return kissManager?.getKissedCount(player.uniqueId)?.toString()
+            "kiss_toggle" -> { /* ... */ }
+        }
+        
+        // 其他模块变量...
+        
+        return null
+    }
+}
+```
+
+**支持的变量**：
+- `%tsl_ping%` - 服务器平均延迟
+- `%tsl_adv_count%` - 玩家成就数量
+- `%tsl_kiss_count%` - 亲吻次数
+- `%tsl_kissed_count%` - 被亲吻次数
+- `%tsl_kiss_toggle%` - Kiss 开关状态
+- `%tsl_ride_toggle%` - Ride 开关状态
+- `%tsl_toss_toggle%` - Toss 开关状态
+- `%tsl_toss_velocity%` - Toss 投掷速度
+
+**开发要点**：
+- ⚠️ 所有 PAPI 变量都在此类中处理
+- ⚠️ 新增变量时在 `onRequest()` 方法中添加
+- ⚠️ 在 `TSLplugins.kt` 中注册此扩展
+- ⚠️ Manager 需要提供对应的数据访问方法
+
+**为什么整合到一个类？**
+- 避免注册多个扩展（性能）
+- 统一管理变量（维护性）
+- 统一标识符 `tsl`（用户体验）
+
+---
+
+### 根目录文件的依赖关系
+
+```
+TSLplugins.kt (主类)
+    ├── 依赖 → ConfigUpdateManager.kt (配置更新)
+    ├── 依赖 → PlayerDataManager.kt (数据管理)
+    ├── 依赖 → TSLCommand.kt (命令分发)
+    ├── 依赖 → ReloadCommand.kt (重载系统)
+    ├── 依赖 → TSLPlaceholderExpansion.kt (PAPI)
+    └── 依赖 → 各模块的 Manager/Command/Listener
+
+TSLCommand.kt (命令分发器)
+    └── 依赖 → 各模块的 Command (实现 SubCommandHandler)
+
+ReloadCommand.kt (重载系统)
+    └── 依赖 → TSLplugins (调用各模块的 reload 方法)
+
+PlayerDataManager.kt (PDC 管理)
+    └── 被依赖 ← 各模块的 Manager
+
+TSLPlaceholderExpansion.kt (PAPI)
+    └── 依赖 → 各模块的 Manager (获取数据)
+
+ConfigUpdateManager.kt (配置更新)
+    └── 独立运行（仅被 TSLplugins 调用一次）
+```
+
+---
+
+## 模块详解
+
+### 配置缓存模式（重要！）
+
+**所有模块都使用配置缓存**，这是核心性能优化：
+
+```kotlin
+class FeatureManager(private val plugin: JavaPlugin) {
+    // ✅ 缓存配置值
+    private var enabled: Boolean = true
+    private var maxValue: Int = 10
+    private val blacklist: MutableSet<EntityType> = mutableSetOf()
+    
+    init {
+        loadConfig()
+    }
+    
+    // ✅ 加载配置到缓存
+    fun loadConfig() {
+        val config = plugin.config
+        enabled = config.getBoolean("feature.enabled", true)
+        maxValue = config.getInt("feature.max_value", 10)
+        
+        // 加载集合类型
+        blacklist.clear()
+        config.getStringList("feature.blacklist").forEach { name ->
+            try {
+                blacklist.add(EntityType.valueOf(name.uppercase()))
+            } catch (e: IllegalArgumentException) {
+                plugin.logger.warning("无效的实体类型: $name")
+            }
+        }
+    }
+    
+    // ✅ 直接读取缓存（零开销）
+    fun isEnabled(): Boolean = enabled
+    fun getMaxValue(): Int = maxValue
+    fun isBlacklisted(type: EntityType): Boolean = blacklist.contains(type)
+}
+```
+
+**Listener 使用缓存**：
+
+```kotlin
+class FeatureListener(
+    private val plugin: JavaPlugin,
+    private val manager: FeatureManager
+) : Listener {
+    
+    @EventHandler
+    fun onSomeEvent(event: SomeEvent) {
+        // ✅ 直接读取缓存，零开销
+        if (!manager.isEnabled()) return
+        
+        // ✅ 黑名单检查也是缓存
+        if (manager.isBlacklisted(entity.type)) return
+        
+        // 业务逻辑
+    }
+}
+```
+
+**为什么使用缓存？**
+
+| 方式 | 优点 | 缺点 |
+|------|------|------|
+| 直接读取 config | 始终最新 | I/O 开销大，性能差 |
+| **配置缓存** | **零开销，性能最佳** | 需要手动重载 |
+
+**重载机制**：
+
+```kotlin
+// TSLplugins.kt
+fun reloadFeatureManager() {
+    featureManager.loadConfig()  // 刷新缓存
+}
+
+// ReloadCommand.kt
+plugin.reloadFeatureManager()  // 重载时调用
+```
+
+---
+
+### SubCommandHandler 接口
+
+所有命令处理器必须实现此接口：
+
+```kotlin
+interface SubCommandHandler {
+    fun handle(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): Boolean
+    
+    fun tabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): List<String>
+    
+    fun getDescription(): String = ""
+}
+```
+
+**实现示例**：
+
+```kotlin
+class FeatureCommand(
+    private val manager: FeatureManager
+) : SubCommandHandler {
+    
+    override fun handle(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): Boolean {
+        // 1. 功能检查
+        if (!manager.isEnabled()) {
+            sender.sendMessage("功能已禁用")
+            return true
+        }
+        
+        // 2. 玩家检查
+        if (sender !is Player) {
+            sender.sendMessage("仅玩家可用")
+            return true
+        }
+        
+        // 3. 权限检查
+        if (!sender.hasPermission("tsl.feature.use")) {
+            sender.sendMessage("无权限")
+            return true
+        }
+        
+        // 4. 参数解析
+        when {
+            args.isEmpty() -> showUsage(sender)
+            args[0].equals("toggle", ignoreCase = true) -> handleToggle(sender)
+            else -> showUsage(sender)
+        }
+        
+        return true
+    }
+    
+    override fun tabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): List<String> {
+        if (!manager.isEnabled()) return emptyList()
+        
+        return when (args.size) {
+            1 -> listOf("toggle", "status").filter { 
+                it.startsWith(args[0], ignoreCase = true) 
+            }
+            else -> emptyList()
+        }
+    }
+    
+    override fun getDescription(): String = "功能命令"
+}
+```
+
+---
+
+### Folia 调度器（重要！）
+
+Folia 不支持 Bukkit 的传统调度器，必须使用新的 API：
+
+#### 实体调度器
+
+```kotlin
+// ✅ 正确：实体操作使用实体调度器
+player.scheduler.run(plugin, { _ ->
+    // 实体相关操作（修改背包、传送等）
+    player.inventory.setHelmet(item)
+    player.teleport(location)
+}, null)
+
+// ✅ 延迟执行
+player.scheduler.runDelayed(plugin, { _ ->
+    // 延迟操作
+}, null, 20L)  // 延迟 1 秒
+
+// ✅ 定时任务
+player.scheduler.runAtFixedRate(plugin, { task ->
+    if (!player.isOnline) {
+        task.cancel()
+        return@runAtFixedRate
+    }
+    // 定时操作
+}, null, 1L, 20L)  // 延迟 0.05 秒，每秒执行一次
+```
+
+#### 全局调度器
+
+```kotlin
+// ✅ 正确：全局任务使用全局调度器
+Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+    // 全局定时任务（如过期检查）
+}, 20L, 20L)  // 延迟 1 秒，每秒执行一次
+```
+
+#### ❌ 错误示例
+
+```kotlin
+// ❌ 错误：Folia 不支持
+Bukkit.getScheduler().runTask(plugin, Runnable {
+    // ...
+})
+```
+
+---
+
+### PDC 数据持久化
+
+使用 `PersistentDataContainer` 保存玩家配置：
+
+#### PlayerDataManager
+
+```kotlin
+class PlayerDataManager(private val plugin: JavaPlugin) {
+    
+    // PDC Keys
+    private val kissToggleKey = NamespacedKey(plugin, "kiss_toggle")
+    private val rideToggleKey = NamespacedKey(plugin, "ride_toggle")
+    private val tossVelocityKey = NamespacedKey(plugin, "toss_velocity")
+    
+    // 读取
+    fun getKissToggle(player: Player, defaultValue: Boolean = true): Boolean {
+        val pdc = player.persistentDataContainer
+        return if (pdc.has(kissToggleKey, PersistentDataType.BOOLEAN)) {
+            pdc.get(kissToggleKey, PersistentDataType.BOOLEAN) ?: defaultValue
+        } else {
+            defaultValue
+        }
+    }
+    
+    // 写入
+    fun setKissToggle(player: Player, enabled: Boolean) {
+        player.persistentDataContainer.set(
+            kissToggleKey, 
+            PersistentDataType.BOOLEAN, 
+            enabled
+        )
+    }
+}
+```
+
+#### Manager 使用 PDC
+
+```kotlin
+class KissManager(
+    private val plugin: JavaPlugin,
+    private val dataManager: PlayerDataManager  // ✅ 注入
+) {
+    // ✅ 从 PDC 读取
+    fun isPlayerEnabled(player: Player): Boolean {
+        return dataManager.getKissToggle(player, true)
+    }
+    
+    // ✅ 写入 PDC
+    fun togglePlayer(player: Player): Boolean {
+        val current = isPlayerEnabled(player)
+        val newStatus = !current
+        dataManager.setKissToggle(player, newStatus)
+        return newStatus
+    }
+}
+```
+
+**支持的数据类型**：
+- `BOOLEAN` - 布尔值
+- `INTEGER` - 整数
+- `DOUBLE` - 双精度浮点数
+- `STRING` - 字符串
+- `BYTE_ARRAY` - 字节数组
+
+---
+
+### 配置自动更新
+
+`ConfigUpdateManager` 实现配置版本控制：
+
+```kotlin
+companion object {
+    const val CURRENT_CONFIG_VERSION = 10  // ✅ 每次更新配置时递增
+}
+
+fun checkAndUpdate(): Boolean {
+    val configFile = File(plugin.dataFolder, "config.yml")
+    val currentConfig = YamlConfiguration.loadConfiguration(configFile)
+    val currentVersion = currentConfig.getInt("config-version", 0)
+    
+    // 版本一致，无需更新
+    if (currentVersion == CURRENT_CONFIG_VERSION) {
+        return false
+    }
+    
+    // 需要更新
+    // 1. 备份旧配置
+    // 2. 读取默认配置
+    // 3. 合并配置值（保留用户值，添加新配置项）
+    // 4. 保存新配置
+}
+```
+
+**更新配置文件流程**：
+
+1. 修改 `src/main/resources/config.yml`
+2. 递增 `CURRENT_CONFIG_VERSION`
+3. 重新构建插件
+4. 启动时自动检测并更新
+
+---
+
+## 开发规范
+
+### Kotlin 编码规范
+
+#### 命名规范
+
+```kotlin
+// ✅ 类名：PascalCase
+class PlayerManager
+
+// ✅ 函数名：camelCase
+fun loadConfig()
+fun isEnabled()
+
+// ✅ 变量名：camelCase
+val playerName: String
+var isEnabled: Boolean
+
+// ✅ 常量：UPPER_SNAKE_CASE
+const val MAX_PLAYERS = 100
+const val CONFIG_VERSION = 10
+
+// ✅ 包名：lowercase
+package org.tsl.tslplugins.feature
+```
+
+#### 空安全
+
+```kotlin
+// ✅ 使用安全调用
+val name = player?.name ?: "Unknown"
+
+// ✅ 使用 let
+player?.let {
+    it.sendMessage("Hello")
+}
+
+// ❌ 避免 !!（除非确定不为 null）
+val name = player!!.name  // 不推荐
+```
+
+#### 属性访问
+
+```kotlin
+// ✅ Kotlin 风格：属性访问
+val name = player.name
+val health = player.health
+
+// ❌ Java 风格：getter 方法
+val name = player.getName()  // 不推荐
+```
+
+#### 字符串模板
+
+```kotlin
+// ✅ 字符串模板
+val message = "玩家 $name 加入了服务器"
+val info = "玩家 ${player.name} 的延迟是 ${player.ping}ms"
+
+// ❌ 字符串拼接
+val message = "玩家 " + name + " 加入了服务器"  // 不推荐
+```
+
+#### Lambda 表达式
+
+```kotlin
+// ✅ Lambda 简化
+players.filter { it.health > 10 }
+      .map { it.name }
+      .forEach { println(it) }
+
+// ✅ it 参数
+list.forEach { item ->
+    println(item)
+}
+
+// ✅ 简化（单个参数）
+list.forEach {
+    println(it)
+}
+```
+
+#### 数据类
+
+```kotlin
+// ✅ 数据类（自动生成 equals/hashCode/toString）
+data class PlayerInfo(
+    val uuid: UUID,
+    val name: String,
+    val ping: Int
+)
+```
+
+---
+
+### 日志规范
+
+```kotlin
+// ✅ 使用 JavaPlugin.logger
+plugin.logger.info("信息：模块已加载")
+plugin.logger.warning("警告：配置项缺失")
+plugin.logger.severe("错误：无法加载配置")
+
+// ❌ 避免使用 println
+println("...")  // 不推荐
+```
+
+---
+
+### 消息处理
+
+```kotlin
+// ✅ 使用 Adventure API
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+
+val serializer = LegacyComponentSerializer.legacyAmpersand()
+player.sendMessage(serializer.deserialize("&a成功！"))
+
+// ✅ 使用 Manager 获取消息
+val message = manager.getMessage("key", "placeholder" to "value")
+player.sendMessage(serializer.deserialize(message))
+```
+
+---
+
+## 重要技术点
+
+### Vector 速度设置（Kotlin 特性）
+
+```kotlin
+// ❌ 错误：y 是只读属性
+throwVelocity.y = throwVelocity.y + 0.3
+
+// ✅ 正确：使用 setY 方法
+throwVelocity.setY(throwVelocity.y + 0.3)
+```
+
+### 事件优先级
+
+```kotlin
+// 一般使用 NORMAL
+@EventHandler(priority = EventPriority.NORMAL)
+fun onEvent(event: SomeEvent) { }
+
+// 需要最后处理使用 HIGHEST
+@EventHandler(priority = EventPriority.HIGHEST)
+fun onEvent(event: SomeEvent) { }
+
+// 需要忽略已取消事件
+@EventHandler(ignoreCancelled = true)
+fun onEvent(event: SomeEvent) { }
+```
+
+### 并发安全
+
+```kotlin
+// ✅ 使用 ConcurrentHashMap
+private val data: MutableMap<UUID, Int> = ConcurrentHashMap()
+
+// ✅ 使用 CopyOnWriteArrayList（读多写少）
+private val listeners: MutableList<Listener> = CopyOnWriteArrayList()
+```
+
+### 资源清理
+
+```kotlin
+// ✅ 玩家退出时清理数据
+@EventHandler
+fun onPlayerQuit(event: PlayerQuitEvent) {
+    manager.cleanupPlayer(event.player.uniqueId)
+}
+
+// Manager 中
+fun cleanupPlayer(uuid: UUID) {
+    cooldowns.remove(uuid)
+    // 注意：PDC 数据不需要清理（自动持久化）
+}
+```
+
+---
+
+## 性能优化
+
+### 已优化
+
+1. ✅ **配置缓存机制** - 启动/reload 时读取，事件处理零开销
+2. ✅ **事件驱动架构** - 无轮询任务
+3. ✅ **快速失败优化** - 先检查简单条件
+4. ✅ **Folia 调度器** - 原生多线程支持
+5. ✅ **PDC 数据持久化** - 减少内存占用
+
+### 快速失败示例
+
+```kotlin
+@EventHandler
+fun onEvent(event: SomeEvent) {
+    // ✅ 先检查简单条件
+    if (!manager.isEnabled()) return  // 最快
+    if (player.isSneaking) return     // 次快
+    if (!player.hasPermission("...")) return
+    
+    // 最后检查复杂条件
+    if (manager.isBlacklisted(entity.type)) return
+    
+    // 业务逻辑
+}
+```
+
+---
+
+## 开发流程
+
+### 添加新功能模块完整流程
+
+#### 第一步：创建模块包结构
+
+```
+NewFeature/
+├── NewFeatureManager.kt    # 管理器：配置和状态管理
+├── NewFeatureCommand.kt    # 命令：用户交互
+└── NewFeatureListener.kt   # 监听器：事件处理
+```
+
+---
+
+#### 第二步：实现 Manager
+
+```kotlin
+package org.tsl.tSLplugins.NewFeature
+
+import org.bukkit.plugin.java.JavaPlugin
+
+class NewFeatureManager(private val plugin: JavaPlugin) {
+    // 配置缓存
+    private var enabled: Boolean = true
+    private var someValue: Int = 10
+    private val messages: MutableMap<String, String> = mutableMapOf()
+    
+    init {
+        loadConfig()
+    }
+    
+    /**
+     * 加载配置（启动时和重载时调用）
+     */
+    fun loadConfig() {
+        val config = plugin.config
+        
+        // 读取基础配置
+        enabled = config.getBoolean("new_feature.enabled", true)
+        someValue = config.getInt("new_feature.some_value", 10)
+        
+        // 读取消息配置
+        val prefix = config.getString("new_feature.messages.prefix", "&6[NewFeature]&r ")
+        messages.clear()
+        val messagesSection = config.getConfigurationSection("new_feature.messages")
+        if (messagesSection != null) {
+            for (key in messagesSection.getKeys(false)) {
+                if (key == "prefix") continue
+                val rawMessage = messagesSection.getString(key) ?: ""
+                messages[key] = rawMessage.replace("%prefix%", prefix)
+            }
+        }
+        
+        plugin.logger.info("[NewFeature] 配置已加载")
+    }
+    
+    // 提供访问方法
+    fun isEnabled(): Boolean = enabled
+    fun getSomeValue(): Int = someValue
+    fun getMessage(key: String): String? = messages[key]
+}
+```
+
+---
+
+#### 第三步：实现 Command
+
+```kotlin
+package org.tsl.tSLplugins.NewFeature
+
+import org.bukkit.command.Command
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
+import org.tsl.tSLplugins.SubCommandHandler
+
+class NewFeatureCommand(
+    private val manager: NewFeatureManager
+) : SubCommandHandler {
+    
+    override fun handle(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): Boolean {
+        // 1. 功能检查
+        if (!manager.isEnabled()) {
+            sender.sendMessage("§c功能已禁用")
+            return true
+        }
+        
+        // 2. 玩家检查
+        if (sender !is Player) {
+            sender.sendMessage("§c仅玩家可用")
+            return true
+        }
+        
+        // 3. 权限检查
+        if (!sender.hasPermission("tsl.newfeature.use")) {
+            sender.sendMessage("§c无权限")
+            return true
+        }
+        
+        // 4. 命令逻辑
+        sender.sendMessage("§a功能执行成功！")
+        
+        return true
+    }
+    
+    override fun tabComplete(
+        sender: CommandSender,
+        command: Command,
+        label: String,
+        args: Array<out String>
+    ): List<String> {
+        if (!manager.isEnabled()) return emptyList()
+        
+        return when (args.size) {
+            1 -> listOf("toggle", "status").filter { 
+                it.startsWith(args[0], ignoreCase = true) 
+            }
+            else -> emptyList()
+        }
+    }
+    
+    override fun getDescription(): String = "新功能命令"
+}
+```
+
+---
+
+#### 第四步：实现 Listener
+
+```kotlin
+package org.tsl.tSLplugins.NewFeature
+
+import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
+import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.plugin.java.JavaPlugin
+
+class NewFeatureListener(
+    private val plugin: JavaPlugin,
+    private val manager: NewFeatureManager
+) : Listener {
+    
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    fun onPlayerInteract(event: PlayerInteractEvent) {
+        // 快速失败优化
+        if (!manager.isEnabled()) return
+        
+        val player = event.player
+        
+        // 权限检查
+        if (!player.hasPermission("tsl.newfeature.use")) return
+        
+        // 业务逻辑
+        // ...
+    }
+}
+```
+
+---
+
+#### 第五步：⚠️ 修改根目录文件 - TSLplugins.kt
+
+**这是最关键的步骤！**
+
+```kotlin
+// TSLplugins.kt
+
+// 1. 添加导入
+import org.tsl.tSLplugins.NewFeature.NewFeatureManager
+import org.tsl.tSLplugins.NewFeature.NewFeatureCommand
+import org.tsl.tSLplugins.NewFeature.NewFeatureListener
+
+class TSLplugins : JavaPlugin() {
+    
+    // 2. 声明 Manager
+    private lateinit var newFeatureManager: NewFeatureManager
+    
+    override fun onEnable() {
+        // ...existing code...
+        
+        // 3. 初始化模块
+        newFeatureManager = NewFeatureManager(this)
+        val newFeatureListener = NewFeatureListener(this, newFeatureManager)
+        pm.registerEvents(newFeatureListener, this)
+        
+        // ...existing code...
+        
+        // 4. 注册命令
+        getCommand("tsl")?.let { command ->
+            val dispatcher = TSLCommand()
+            
+            // ...existing commands...
+            dispatcher.registerSubCommand("newfeature", NewFeatureCommand(newFeatureManager))
+            
+            command.setExecutor(dispatcher)
+            command.tabCompleter = dispatcher
+        }
+        
+        // ...existing code...
+    }
+    
+    // 5. ⚠️ 添加重载方法（必需！）
+    fun reloadNewFeatureManager() {
+        newFeatureManager.loadConfig()
+    }
+}
+```
+
+---
+
+#### 第六步：⚠️ 修改根目录文件 - ReloadCommand.kt
+
+**所有模块的重载都在这里！**
+
+```kotlin
+// ReloadCommand.kt
+
+override fun handle(...): Boolean {
+    // ...existing code...
+    
+    // 重载主配置
+    plugin.reloadConfig()
+    
+    // 重载所有模块
+    plugin.reloadKissManager()
+    plugin.reloadFreezeManager()
+    // ...existing reloads...
+    
+    // ⚠️ 添加新模块的重载（必需！）
+    plugin.reloadNewFeatureManager()
+    
+    // ...existing code...
+    
+    sender.sendMessage("§a配置重载完成！")
+    
+    return true
+}
+```
+
+**⚠️ 重要提醒**：
+- 如果忘记在 ReloadCommand 中添加，模块配置将无法重载！
+- 这是新手最容易忘记的步骤！
+
+---
+
+#### 第七步：添加配置
+
+修改 `src/main/resources/config.yml`：
+
+```yaml
+# ========================================
+# 新功能配置
+# ========================================
+new_feature:
+  # 是否启用新功能
+  enabled: true
+  
+  # 配置值
+  some_value: 10
+  
+  # 消息配置
+  messages:
+    prefix: "&6[NewFeature]&r "
+    success: "%prefix%&a操作成功！"
+    failed: "%prefix%&c操作失败！"
+```
+
+---
+
+#### 第八步：⚠️ 更新配置版本 - ConfigUpdateManager.kt
+
+**每次修改配置文件都必须做！**
+
+```kotlin
+// ConfigUpdateManager.kt
+
+companion object {
+    // ⚠️ 递增版本号（当前是 10，改为 11）
+    const val CURRENT_CONFIG_VERSION = 11
+}
+```
+
+**为什么要递增？**
+- 插件启动时会检测版本
+- 版本不一致会自动更新配置
+- 用户无需手动编辑配置文件
+
+---
+
+#### 第九步：（可选）添加 PDC 数据存储
+
+如果需要保存玩家个人配置，修改 `PlayerDataManager.kt`：
+
+```kotlin
+// PlayerDataManager.kt
+
+class PlayerDataManager(private val plugin: JavaPlugin) {
+    
+    // 1. 定义 PDC Key
+    private val newFeatureToggleKey = NamespacedKey(plugin, "newfeature_toggle")
+    
+    // 2. 添加读取方法
+    fun getNewFeatureToggle(player: Player, defaultValue: Boolean = true): Boolean {
+        val pdc = player.persistentDataContainer
+        return if (pdc.has(newFeatureToggleKey, PersistentDataType.BOOLEAN)) {
+            pdc.get(newFeatureToggleKey, PersistentDataType.BOOLEAN) ?: defaultValue
+        } else {
+            defaultValue
+        }
+    }
+    
+    // 3. 添加写入方法
+    fun setNewFeatureToggle(player: Player, enabled: Boolean) {
+        player.persistentDataContainer.set(
+            newFeatureToggleKey,
+            PersistentDataType.BOOLEAN,
+            enabled
+        )
+    }
+}
+```
+
+然后在 Manager 中使用：
+
+```kotlin
+class NewFeatureManager(
+    private val plugin: JavaPlugin,
+    private val dataManager: PlayerDataManager  // 注入
+) {
+    fun isPlayerEnabled(player: Player): Boolean {
+        return dataManager.getNewFeatureToggle(player, true)
+    }
+}
+```
+
+---
+
+#### 第十步：（可选）添加 PAPI 变量
+
+如果需要 PlaceholderAPI 支持，修改 `TSLPlaceholderExpansion.kt`：
+
+```kotlin
+// TSLPlaceholderExpansion.kt
+
+class TSLPlaceholderExpansion(
+    private val plugin: JavaPlugin,
+    // ...existing managers...
+    private val newFeatureManager: NewFeatureManager?  // 添加
+) : PlaceholderExpansion() {
+    
+    override fun onRequest(player: OfflinePlayer?, params: String): String? {
+        // ...existing code...
+        
+        // 添加新变量
+        if (newFeatureManager != null) {
+            when (params) {
+                "newfeature_status" -> {
+                    return if (newFeatureManager.isEnabled()) "启用" else "禁用"
+                }
+                "newfeature_value" -> {
+                    return newFeatureManager.getSomeValue().toString()
+                }
+            }
+        }
+        
+        return null
+    }
+}
+```
+
+然后在 `TSLplugins.kt` 中注册时传入：
+
+```kotlin
+TSLPlaceholderExpansion(
+    this,
+    countHandler,
+    pingManager,
+    kissManager,
+    rideManager,
+    tossManager,
+    newFeatureManager  // 添加
+).register()
+```
+
+---
+
+### 📋 开发检查清单
+
+添加新功能模块时，确保完成以下所有步骤：
+
+- [ ] 创建模块包结构（Manager、Command、Listener）
+- [ ] 实现 Manager（配置缓存、loadConfig 方法）
+- [ ] 实现 Command（实现 SubCommandHandler 接口）
+- [ ] 实现 Listener（事件处理逻辑）
+- [ ] ⚠️ 修改 `TSLplugins.kt`（初始化、注册、添加 reload 方法）
+- [ ] ⚠️ 修改 `ReloadCommand.kt`（添加重载调用）
+- [ ] 添加配置到 `config.yml`
+- [ ] ⚠️ 更新 `ConfigUpdateManager.kt`（递增 CURRENT_CONFIG_VERSION）
+- [ ] （可选）修改 `PlayerDataManager.kt`（PDC 数据）
+- [ ] （可选）修改 `TSLPlaceholderExpansion.kt`（PAPI 变量）
+- [ ] 测试功能（启动、命令、事件、重载）
+- [ ] 更新 WIKI.md（用户文档）
+
+**⚠️ 标记的是最容易忘记但必须做的步骤！**
+
+---
+
+### 根目录文件修改总结
+
+| 文件 | 是否必改 | 修改内容 | 说明 |
+|------|---------|---------|------|
+| **TSLplugins.kt** | ✅ 必须 | 初始化模块、注册命令、添加 reload 方法 | 核心入口 |
+| **ReloadCommand.kt** | ✅ 必须 | 添加模块重载调用 | 配置热重载 |
+| **ConfigUpdateManager.kt** | ✅ 必须 | 递增配置版本号 | 配置自动更新 |
+| **PlayerDataManager.kt** | ⚪ 可选 | 添加 PDC 数据方法 | 玩家数据持久化 |
+| **TSLPlaceholderExpansion.kt** | ⚪ 可选 | 添加 PAPI 变量处理 | 变量系统 |
+| **TSLCommand.kt** | ❌ 不改 | （自动通过 TSLplugins 注册） | 命令分发 |
+
+---
+
+### 常见错误
+
+1. **忘记在 ReloadCommand 中添加重载**
+   - 症状：配置修改后 `/tsl reload` 不生效
+   - 解决：在 ReloadCommand.kt 添加 `plugin.reloadXxxManager()`
+
+2. **忘记递增配置版本**
+   - 症状：配置更新不自动合并
+   - 解决：修改 ConfigUpdateManager 中的 CURRENT_CONFIG_VERSION
+
+3. **Manager 没有 loadConfig 方法**
+   - 症状：编译错误
+   - 解决：所有 Manager 必须有 `loadConfig()` 方法
+
+4. **Command 没有实现 SubCommandHandler**
+   - 症状：无法注册到命令分发器
+   - 解决：实现 SubCommandHandler 接口
+
+5. **忘记在 TSLplugins 中初始化**
+   - 症状：模块完全不工作
+   - 解决：在 onEnable() 中初始化并注册
+
+---
+
+## 调试技巧
+```kotlin
+// ConfigUpdateManager.kt
+const val CURRENT_CONFIG_VERSION = 11  // 递增
+```
+
+---
+
+### 构建和部署
+
+```bash
+# 清理
+./gradlew clean
+
+# 构建（包含 Kotlin 标准库）
+./gradlew shadowJar
+
+# 输出
+build/libs/TSLplugins-1.0.jar
+
+# Windows
+gradlew.bat clean shadowJar
+```
+
+---
+
+## 调试技巧
+
+### 日志调试
+
+```kotlin
+// 调试信息
+plugin.logger.info("[Debug] 变量值: $value")
+
+// 方法调用追踪
+plugin.logger.info("[Trace] 进入方法: methodName")
+```
+
+### 条件断点
+
+在 IntelliJ IDEA 中：
+1. 在行号左侧点击设置断点
+2. 右键断点 → Condition
+3. 输入条件表达式
+
+### 测试模式
+
+```kotlin
+// 在配置中添加调试开关
+class Manager(private val plugin: JavaPlugin) {
+    private var debug: Boolean = false
+    
+    fun loadConfig() {
+        debug = plugin.config.getBoolean("debug", false)
+    }
+    
+    private fun debugLog(message: String) {
+        if (debug) {
+            plugin.logger.info("[DEBUG] $message")
+        }
+    }
+}
+```
+
+---
+
+## 常见问题
+
+### Q: 为什么要使用配置缓存？
+
+A: 直接读取 config 会有 I/O 开销，每次事件都读取会严重影响性能。配置缓存在启动时读取一次，事件处理时直接读取内存，零开销。
+
+### Q: 什么时候需要刷新缓存？
+
+A: 只在执行 `/tsl reload` 命令时刷新。配置修改后不会自动生效，需要手动重载。
+
+### Q: 玩家配置数据存储在哪里？
+
+A: 从 v1.0 开始，玩家配置使用 **YAML 文件存储**在 `plugins/TSLplugins/playerdata/<uuid>.yml`。首次加入会自动从旧的 PDC 格式迁移数据。
+
+### Q: PDC 数据什么时候保存？
+
+A: **注意**：从 v1.0 开始，插件已迁移到 YAML 存储。玩家配置在玩家退出、插件重载、插件关闭时批量保存到 YAML 文件。旧的 PDC 数据会在首次加入时自动迁移并清理。
+
+### Q: Folia 和 Paper 有什么区别？
+
+A: Folia 是多线程版本的 Paper，不支持传统的 `Bukkit.getScheduler()`，必须使用新的调度器 API。
+
+### Q: 如何确保线程安全？
+
+A: 使用 `ConcurrentHashMap` 等并发集合，避免在不同线程间共享可变状态。Folia 的调度器已经处理了大部分线程安全问题。**重要**：操作实体时使用实体自己的调度器，操作玩家数据时使用玩家的调度器。
+
+### Q: 为什么 Vector.y 不能直接赋值？
+
+A: Kotlin 中 Vector 的坐标是只读属性，必须使用 `setX/setY/setZ` 方法修改。
+
+---
+
+## 快速参考
+
+### 获取玩家延迟
+
+```kotlin
+val ping = player.ping  // 返回 Int（毫秒）
+```
+
+### 权限检查
+
+```kotlin
+if (player.hasPermission("tsl.feature.use")) {
+    // 有权限
+}
+```
+
+### 发送消息
+
+```kotlin
+player.sendMessage(serializer.deserialize("&a成功！"))
+```
+
+### 实体调度器
+
+```kotlin
+player.scheduler.run(plugin, { _ ->
+    // 实体操作
+}, null)
+```
+
+### 全局调度器
+
+```kotlin
+Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+    // 全局任务
+}, 20L, 20L)
+```
+
+---
+
+## 已实现功能模块总结
+
+### Kiss（玩家亲吻）- 社交互动功能
+
+**技术要点**：
+- ✅ PDC 数据持久化（功能开关）
+- ✅ 内存统计（亲吻次数、被亲吻次数）
+- ✅ 双触发方式（命令 + Shift右键）
+- ✅ 冷却机制（基于时间戳）
+- ✅ 粒子效果（HEART，20个，头部上方）
+- ✅ 音效（ENTITY_PLAYER_LEVELUP，音调1.5）
+- ✅ PlaceholderAPI 变量支持
+
+**核心文件**：
+```
+Kiss/
+├── KissManager.kt        # 配置、状态、统计
+├── KissCommand.kt        # 命令处理
+├── KissExecutor.kt       # 执行器（粒子、音效）
+├── KissListener.kt       # Shift+右键监听
+└── KissPlaceholder.kt    # PAPI 扩展（已废弃，整合到 TSLPlaceholderExpansion）
+```
+
+**PAPI 变量**：
+- `%tsl_kiss_count%` - 亲吻别人次数
+- `%tsl_kissed_count%` - 被亲吻次数
+- `%tsl_kiss_toggle%` - 功能开关状态
+
+**数据存储**：
+- PDC: `tsl:kiss_toggle` (Boolean) - 功能开关
+- 内存: 统计数据（服务器重启清零）
+
+**设计亮点**：
+- 冷却静默处理，不打扰玩家体验
+- 双方同时收到提示和效果
+- 个人开关避免骚扰
+
+---
+
+### Freeze（玩家冻结）- 管理员工具
+
+**技术要点**：
+- ✅ 时间管理（永久冻结 vs 定时冻结）
+- ✅ 自动过期检查（全局调度器，每秒）
+- ✅ ActionBar 实时提示（实体调度器）
+- ✅ 全面的操作限制（移动、交互、命令等）
+- ✅ 权限绕过系统
+
+**核心文件**：
+```
+Freeze/
+├── FreezeManager.kt      # 状态管理、过期检查
+├── FreezeCommand.kt      # freeze/unfreeze/list
+└── FreezeListener.kt     # 阻止操作、ActionBar
+```
+
+**冻结限制**：
+```kotlin
+- PlayerMoveEvent           // 位置移动（允许视角转动）
+- BlockBreakEvent           // 破坏方块
+- BlockPlaceEvent           // 放置方块
+- PlayerInteractEvent       // 交互方块
+- PlayerInteractEntityEvent // 交互实体
+- PlayerCommandPreprocess   // 使用指令
+- PlayerDropItemEvent       // 丢弃物品
+- PlayerAttemptPickupItem   // 捡起物品
+- PlayerItemHeldEvent       // 切换物品
+```
+
+**数据结构**：
+```kotlin
+// frozenPlayers: Map<UUID, Long>
+// -1 = 永久冻结
+// >0 = 过期时间戳（毫秒）
+```
+
+**设计亮点**：
+- 自动过期机制，无需手动解冻
+- ActionBar 实时显示剩余时间
+- 切换式命令（已冻结则解冻，未冻结则冻结）
+
+---
+
+### BlockStats（方块统计）- 轻量级统计
+
+**技术要点**：
+- ✅ **极简设计** - 仅一个 Manager 类
+- ✅ **零开销** - 无事件监听、无数据存储
+- ✅ **实时计算** - 基于原版统计系统
+- ✅ **智能过滤** - 只统计 `isBlock()` 为 true 的材料
+
+**核心文件**：
+```
+BlockStats/
+└── BlockStatsManager.kt  # 仅管理器，无 Command/Listener
+```
+
+**实现原理**：
+```kotlin
+fun getTotalBlocksPlaced(player: Player): Long {
+    var total = 0L
+    for (material in Material.entries) {
+        if (material.isBlock) {
+            total += player.getStatistic(Statistic.USE_ITEM, material)
+        }
+    }
+    return total
+}
+```
+
+**PAPI 变量**：
+- `%tsl_blocks_placed_total%` - 玩家放置方块总数
+
+**数据来源**：
+- Minecraft 原版统计：`world/playerdata/<UUID>.dat` 中的 `stats` 标签
+- 自动持久化，跨服同步
+
+**使用场景**：
+- Topper 排行榜插件
+- 成就系统
+- 记分板显示
+
+**性能考虑**：
+- 单次查询遍历 800+ 种方块
+- 推荐配合 Topper 的缓存机制（5分钟更新一次）
+- 不适合高频查询
+
+**设计亮点**：
+- 最轻量的实现方式
+- 依赖原版系统，无需维护额外代码
+- 符合"即插即用"的设计原则
+
+---
+
+### PDC 数据持久化系统
+
+**PlayerDataManager.kt - 统一数据管理**
+
+**职责**：
+- 定义所有 PDC Keys（避免键名冲突）
+- 提供统一的读写接口
+- 支持多种数据类型
+
+**存储的数据**：
+
+| 模块 | 数据 | PDC Key | 类型 | 默认值 |
+|------|------|---------|------|-------|
+| Kiss | 功能开关 | `tsl:kiss_toggle` | Boolean | true |
+| Ride | 功能开关 | `tsl:ride_toggle` | Boolean | false |
+| Toss | 功能开关 | `tsl:toss_toggle` | Boolean | false |
+| Toss | 投掷速度 | `tsl:toss_velocity` | Double | 1.5 |
+
+**设计模式**：
+```kotlin
+// 依赖注入
+class FeatureManager(
+    private val plugin: JavaPlugin,
+    private val dataManager: PlayerDataManager  // 注入
+) {
+    fun isPlayerEnabled(player: Player): Boolean {
+        return dataManager.getFeatureToggle(player, defaultValue)
+    }
+}
+```
+
+**为什么使用 PDC？**
+- ✅ 数据随玩家存档永久保存
+- ✅ 服务器重启后自动恢复
+- ✅ 支持跨服同步（共享玩家数据）
+- ✅ 无需额外数据库
+- ✅ Bukkit 原生支持
+
+---
+
+### TSLPlaceholderExpansion - 统一变量系统
+
+**作用**：整合所有模块的 PlaceholderAPI 变量到一个扩展。
+
+**支持的变量**：
+
+| 变量 | 说明 | 来源模块 |
+|------|------|---------|
+| `%tsl_ping%` | 服务器平均延迟 | Ping |
+| `%tsl_adv_count%` | 玩家成就数量 | Advancement |
+| `%tsl_kiss_count%` | 亲吻次数 | Kiss |
+| `%tsl_kissed_count%` | 被亲吻次数 | Kiss |
+| `%tsl_kiss_toggle%` | Kiss 开关状态 | Kiss |
+| `%tsl_ride_toggle%` | Ride 开关状态 | Ride |
+| `%tsl_toss_toggle%` | Toss 开关状态 | Toss |
+| `%tsl_toss_velocity%` | Toss 投掷速度 | Toss |
+| `%tsl_blocks_placed_total%` | 方块放置总数 | BlockStats |
+
+**设计亮点**：
+- 统一标识符 `tsl`
+- 避免注册多个扩展（性能）
+- 便于维护和扩展
+
+**注意事项**：
+- 各模块的独立 Placeholder 类已废弃
+- 所有变量统一在 TSLPlaceholderExpansion 处理
+- Manager 需要提供对应的数据访问方法
+
+---
+
+### 配置版本控制系统
+
+**ConfigUpdateManager.kt - 智能配置更新**
+
+**版本历史**：
+```
+v10 → 添加 Freeze、Kiss、维护模式等
+v11 → 添加 BlockStats
+```
+
+**更新机制**：
+1. 检测 `config-version` 不一致
+2. 备份旧配置到 `config.yml.backup`
+3. 读取默认配置（保留注释）
+4. 读取用户配置值
+5. 智能合并（新增项 + 保留用户值）
+6. 保存新配置
+
+**关键代码**：
+```kotlin
+companion object {
+    const val CURRENT_CONFIG_VERSION = 11  // ⚠️ 添加新配置时递增
+}
+```
+
+**为什么需要版本控制？**
+- 插件更新时自动添加新配置项
+- 保留用户的自定义配置值
+- 保留配置文件的注释和格式
+- 避免用户手动编辑配置
+
+---
+
+### 重载系统 - ReloadCommand.kt
+
+**最重要的跨模块文件**，负责重载所有模块配置。
+
+**重载流程**：
+```kotlin
+fun handle(...): Boolean {
+    // 1. 权限检查
+    if (!sender.hasPermission("tsl.reload")) return true
+    
+    // 2. 重载主配置
+    plugin.reloadConfig()
+    
+    // 3. 重载所有模块
+    plugin.reloadKissManager()
+    plugin.reloadFreezeManager()
+    plugin.reloadTossManager()
+    plugin.reloadRideManager()
+    plugin.reloadScaleManager()
+    plugin.reloadHatManager()
+    plugin.reloadPingManager()
+    plugin.reloadBabyLockManager()
+    plugin.reloadMaintenanceManager()
+    plugin.reloadBlockStatsManager()
+    
+    // 4. 重载特殊系统
+    val aliasCount = plugin.reloadAliasManager()
+    
+    // 5. 显示结果
+    sender.sendMessage("配置重载完成！")
+    
+    return true
+}
+```
+
+**⚠️ 开发提醒**：
+- 添加任何新模块时，必须在这里添加重载调用
+- 这是唯一调用所有模块 reload 方法的地方
+- 忘记添加会导致配置修改不生效
+
+---
+
+### 模块间的关系
+
+```
+TSLplugins.kt (主类)
+    ├── 初始化 ConfigUpdateManager（配置更新）
+    ├── 初始化 PlayerDataManager（PDC 管理）
+    ├── 初始化 各模块 Manager
+    ├── 注册 TSLCommand（命令分发）
+    │   ├── 注册 ReloadCommand（重载系统）
+    │   ├── 注册 KissCommand
+    │   ├── 注册 FreezeCommand
+    │   ├── 注册 BlockStatsCommand（无）
+    │   └── ...
+    └── 注册 TSLPlaceholderExpansion（PAPI 变量）
+        ├── 依赖 KissManager（kiss 变量）
+        ├── 依赖 FreezeManager（无变量）
+        ├── 依赖 BlockStatsManager（blocks 变量）
+        └── ...
+```
+
+---
+
+### 开发经验总结
+
+**成功的设计模式**：
+1. ✅ **配置缓存** - 所有模块统一使用，性能最佳
+2. ✅ **PDC 持久化** - 玩家数据自动保存，无需数据库
+3. ✅ **统一数据管理** - PlayerDataManager 避免键名冲突
+4. ✅ **统一变量系统** - TSLPlaceholderExpansion 整合所有变量
+5. ✅ **配置版本控制** - 自动更新配置，无需用户手动编辑
+6. ✅ **重载系统** - 统一重载入口，便于维护
+
+**避免的陷阱**：
+1. ❌ 直接读取 config（性能差）
+2. ❌ HashMap 存储玩家数据（重启丢失）
+3. ❌ 每个模块独立注册 PAPI 扩展（性能差）
+4. ❌ 忘记在 ReloadCommand 添加重载调用
+5. ❌ 忘记递增配置版本号
+
+**未来扩展建议**：
+- Kiss 统计数据可考虑持久化
+- Freeze 可添加日志记录
+- BlockStats 可添加分类统计（石头、木头等）
+- 可添加更多 PAPI 变量支持
+
+---
+
+**最后更新**: 2025-11-26  
+**插件版本**: 1.0  
+**配置版本**: 11
+

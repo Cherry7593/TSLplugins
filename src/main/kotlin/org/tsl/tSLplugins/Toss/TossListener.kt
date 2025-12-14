@@ -7,6 +7,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
+import org.bukkit.event.player.PlayerGameModeChangeEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerQuitEvent
@@ -118,6 +119,19 @@ class TossListener(
     fun onPlayerQuit(event: PlayerQuitEvent) {
         cleanupPlayerEntities(event.player)
         manager.cleanupPlayer(event.player.uniqueId)
+    }
+
+    /**
+     * 玩家切换游戏模式时清理举起的生物
+     * 避免切换到旁观者等模式时动物异常
+     */
+    @EventHandler
+    fun onGameModeChange(event: PlayerGameModeChangeEvent) {
+        val player = event.player
+        // 检查玩家是否有举起的生物
+        if (getPassengerChainCount(player) > 0) {
+            cleanupPlayerEntities(player)
+        }
     }
 
     /**
