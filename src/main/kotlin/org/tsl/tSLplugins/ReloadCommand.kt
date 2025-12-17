@@ -106,6 +106,18 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 SnowAntiMelt 功能
             plugin.reloadSnowAntiMeltListener()
 
+            // 重新加载 TimedAttribute 功能
+            plugin.reloadTimedAttributeManager()
+
+            // 重新加载 Neko 功能
+            plugin.reloadNekoManager()
+
+            // 重新加载 Mcedia 功能
+            plugin.reloadMcediaManager()
+
+            // 重新加载 RandomVariable 功能
+            plugin.reloadRandomVariableManager()
+
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
             sender.sendMessage(serializer.deserialize("&7- 命令别名已重载 ($reloadedAliases 个别名)"))

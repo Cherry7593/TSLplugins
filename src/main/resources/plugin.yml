@@ -3,110 +3,155 @@ version: '1.0'
 main: org.tsl.tSLplugins.TSLplugins
 api-version: '1.21'
 authors: [ Zvbj ]
-description: TSL服务器的插件喵
+description: TSL Server Plugin
 folia-supported: true
 softdepend: [ PlaceholderAPI ]
 
 commands:
   tsl:
-    description: TSL 插件主命令
+    description: TSL Plugin Main Command
     usage: |
       /tsl advcount refresh <player|all>
       /tsl aliasreload
       /tsl maintenance
-      /tsl scale <数值|reset>
+      /tsl scale <value|reset>
       /tsl hat
-      /tsl ping [玩家名|all [页码]]
-      /tsl toss [toggle|velocity [数值]]
+      /tsl ping [player|all [page]]
+      /tsl toss [toggle|velocity [value]]
       /tsl ride [toggle]
-      /tsl fixghost [半径]
+      /tsl fixghost [radius]
       /tsl list
-      /tsl near [范围]
+      /tsl near [range]
       /tsl phantom on
       /tsl phantom off
       /tsl phantom status
-      /tsl spec start [延迟]
+      /tsl spec start [delay]
       /tsl spec stop
-      /tsl spec add <玩家>
-      /tsl spec remove <玩家>
+      /tsl spec add <player>
+      /tsl spec remove <player>
       /tsl spec list
       /tsl patrol
       /tsl reload
 
 permissions:
   tsl.visitor.admin:
-    description: 访客模式管理权限，可使用 /tsl visitor 命令
+    description: Visitor mode admin permission
     default: op
   tsl.alias.reload:
-    description: 重载命令别名配置的权限
+    description: Reload command alias config permission
     default: op
   tsl.maintenance.toggle:
-    description: 切换维护模式的权限
+    description: Toggle maintenance mode permission
     default: op
   tsl.maintenance.bypass:
-    description: 绕过维护模式，允许在维护时进入服务器
+    description: Bypass maintenance mode permission
     default: op
   tsl.scale.use:
-    description: 使用体型调整命令的基础权限
+    description: Use scale command permission
     default: true
   tsl.scale.bypass:
-    description: 绕过体型范围限制，可以设置任意体型值
+    description: Bypass scale range limit permission
     default: op
   tsl.hat.use:
-    description: 使用 Hat 命令的权限
+    description: Use hat command permission
     default: true
   tsl.ping.use:
-    description: 使用 Ping 命令查询延迟的权限
+    description: Use ping command permission
     default: true
   tsl.ping.all:
-    description: 查看全服玩家延迟排行的权限
+    description: View all players ping permission
     default: op
   tsl.toss.use:
-    description: 使用举起生物功能的权限
+    description: Use toss entity feature permission
     default: true
   tsl.toss.velocity:
-    description: 设置投掷速度的权限
+    description: Set toss velocity permission
     default: true
   tsl.toss.velocity.bypass:
-    description: 绕过投掷速度范围限制的权限
+    description: Bypass toss velocity limit permission
     default: op
   tsl.toss.bypass:
-    description: 绕过实体黑名单限制的权限
+    description: Bypass entity blacklist permission
     default: op
   tsl.ride.use:
-    description: 使用右键骑乘生物功能的权限
+    description: Use ride entity feature permission
     default: true
   tsl.ride.bypass:
-    description: 绕过骑乘黑名单限制的权限
+    description: Bypass ride blacklist permission
     default: op
   tsl.speed.walk:
-    description: 设置行走速度的权限
+    description: Set walk speed permission
     default: op
   tsl.speed.fly:
-    description: 设置飞行速度的权限
+    description: Set fly speed permission
     default: op
   tsl.fixghost.use:
-    description: 使用幽灵方块清理功能的权限
+    description: Use ghost block fix feature permission
     default: true
   tsl.list:
-    description: 查看在线玩家列表的权限
+    description: View online player list permission
     default: true
   tsl.near.use:
-    description: 使用附近玩家查询功能的权限
+    description: Use near player query permission
     default: true
   tsl.near.bypass:
-    description: 绕过附近玩家查询范围限制的权限
+    description: Bypass near range limit permission
     default: op
   tsl.phantom.toggle:
-    description: 切换幻翼骚扰开关的权限
+    description: Toggle phantom harassment permission
     default: true
   tsl.spec.use:
-    description: 使用观众模式的权限
+    description: Use spectator mode permission
     default: op
   tsl.patrol.use:
-    description: 使用巡逻功能的权限
+    description: Use patrol feature permission
     default: op
   tsl.reload:
-    description: 重载所有插件配置的权限
+    description: Reload all plugin config permission
+    default: op
+  tsl.attribute.add:
+    description: Add timed attribute effect permission
+    default: op
+  tsl.attribute.set:
+    description: Set attribute base value permission
+    default: op
+  tsl.attribute.remove:
+    description: Remove attribute effect permission
+    default: op
+  tsl.attribute.list:
+    description: List attribute effects permission
+    default: op
+  tsl.attribute.clear:
+    description: Clear all attribute effects permission
+    default: op
+  tsl.neko.set:
+    description: Set player as neko permission
+    default: op
+  tsl.neko.reset:
+    description: Reset player neko status permission
+    default: op
+  tsl.neko.list:
+    description: List all neko players permission
+    default: op
+  tsl.mcedia.use:
+    description: Use mcedia GUI permission
+    default: op
+  tsl.mcedia.create:
+    description: Create mcedia player permission
+    default: op
+  tsl.mcedia.delete:
+    description: Delete mcedia player permission
+    default: op
+  tsl.mcedia.list:
+    description: List mcedia players permission
+    default: op
+  tsl.mcedia.set:
+    description: Set mcedia video permission
+    default: op
+  tsl.mcedia.scan:
+    description: Scan mcedia players permission
+    default: op
+  tsl.mcedia.teleport:
+    description: Teleport to mcedia player permission
     default: op
 

@@ -140,5 +140,15 @@ class AliasManager(private val plugin: JavaPlugin) {
      * 获取所有别名（用于调试）
      */
     fun getAllAliases(): Map<String, String> = aliasMap.toMap()
+
+    /**
+     * 清理资源，注销所有别名命令
+     * 在插件禁用时调用
+     */
+    fun cleanup() {
+        unregisterAliases()
+        aliasMap.clear()
+        plugin.logger.info("命令别名系统已清理")
+    }
 }
 

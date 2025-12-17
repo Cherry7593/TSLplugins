@@ -20,7 +20,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     companion object {
         // 当前配置文件版本
-        const val CURRENT_CONFIG_VERSION = 25
+        const val CURRENT_CONFIG_VERSION = 26
 
         /**
          * 用户专属配置路径列表

@@ -10,6 +10,7 @@ import org.tsl.tSLplugins.Ride.RideManager
 import org.tsl.tSLplugins.Toss.TossManager
 import org.tsl.tSLplugins.BlockStats.BlockStatsManager
 import org.tsl.tSLplugins.NewbieTag.NewbieTagManager
+import org.tsl.tSLplugins.RandomVariable.RandomVariableManager
 
 /**
  * TSLplugins PlaceholderAPI 扩展
@@ -27,6 +28,7 @@ import org.tsl.tSLplugins.NewbieTag.NewbieTagManager
  * - %tsl_toss_velocity% - Toss 投掷速度
  * - %tsl_blocks_placed_total% - 玩家放置方块总数
  * - %tsl_newbie_tag% - 萌新标志（根据在线时长）
+ * - %tsl_random_变量名% - 混合分布随机数
  */
 class TSLPlaceholderExpansion(
     private val plugin: JavaPlugin,
@@ -36,7 +38,8 @@ class TSLPlaceholderExpansion(
     private val rideManager: RideManager?,
     private val tossManager: TossManager?,
     private val blockStatsManager: BlockStatsManager?,
-    private val newbieTagManager: NewbieTagManager?
+    private val newbieTagManager: NewbieTagManager?,
+    private val randomVariableManager: RandomVariableManager?
 ) : PlaceholderExpansion() {
 
     override fun getIdentifier(): String = "tsl"
@@ -116,6 +119,13 @@ class TSLPlaceholderExpansion(
         if (newbieTagManager != null && params.equals("newbie_tag", ignoreCase = true)) {
             val onlinePlayer = player.player ?: return null
             return newbieTagManager.getPlayerTag(onlinePlayer)
+        }
+
+        // === RandomVariable 变量 ===
+        // %tsl_random_变量名% - 混合分布随机数（不需要玩家）
+        if (randomVariableManager != null && params.startsWith("random_", ignoreCase = true)) {
+            val varName = params.substring(7) // 移除 "random_" 前缀
+            return randomVariableManager.getRandomValue(varName)
         }
 
         return null

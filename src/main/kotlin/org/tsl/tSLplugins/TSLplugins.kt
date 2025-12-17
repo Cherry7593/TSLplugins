@@ -67,6 +67,17 @@ import org.tsl.tSLplugins.Ignore.IgnoreManager
 import org.tsl.tSLplugins.Ignore.IgnoreCommand
 import org.tsl.tSLplugins.Ignore.IgnoreChatListener
 import org.tsl.tSLplugins.SnowAntiMelt.SnowAntiMeltListener
+import org.tsl.tSLplugins.TimedAttribute.TimedAttributeManager
+import org.tsl.tSLplugins.TimedAttribute.TimedAttributeCommand
+import org.tsl.tSLplugins.TimedAttribute.TimedAttributeListener
+import org.tsl.tSLplugins.Neko.NekoManager
+import org.tsl.tSLplugins.Neko.NekoCommand
+import org.tsl.tSLplugins.Neko.NekoChatListener
+import org.tsl.tSLplugins.Mcedia.McediaManager
+import org.tsl.tSLplugins.Mcedia.McediaCommand
+import org.tsl.tSLplugins.Mcedia.McediaGUI
+import org.tsl.tSLplugins.Mcedia.McediaListener
+import org.tsl.tSLplugins.RandomVariable.RandomVariableManager
 
 class TSLplugins : JavaPlugin() {
 
@@ -95,6 +106,11 @@ class TSLplugins : JavaPlugin() {
     private lateinit var endDragonManager: EndDragonManager
     private lateinit var ignoreManager: IgnoreManager
     private lateinit var snowAntiMeltListener: SnowAntiMeltListener
+    private lateinit var timedAttributeManager: TimedAttributeManager
+    private lateinit var nekoManager: NekoManager
+    private lateinit var mcediaManager: McediaManager
+    private lateinit var mcediaGUI: McediaGUI
+    private lateinit var randomVariableManager: RandomVariableManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -109,6 +125,9 @@ class TSLplugins : JavaPlugin() {
         if (configUpdated) {
             reloadConfig()
         }
+
+        // 初始化全局数据库管理器
+        DatabaseManager.init(this)
 
         // 初始化玩家数据管理器（YAML 存储 + PDC 迁移）
         playerDataManager = PlayerDataManager(this)
@@ -261,6 +280,28 @@ class TSLplugins : JavaPlugin() {
         // 初始化人数控制命令系统
         initPlayerCountCmd()
 
+        // 初始化计时属性效果系统
+        timedAttributeManager = TimedAttributeManager(this)
+        val timedAttributeListener = TimedAttributeListener(this, timedAttributeManager)
+        pm.registerEvents(timedAttributeListener, this)
+        timedAttributeManager.startExpirationTask()
+
+        // 初始化猫娘模式系统
+        nekoManager = NekoManager(this)
+        val nekoChatListener = NekoChatListener(this, nekoManager)
+        pm.registerEvents(nekoChatListener, this)
+        nekoManager.startExpirationTask()
+
+        // 初始化 Mcedia 视频播放器系统
+        mcediaManager = McediaManager(this)
+        mcediaGUI = McediaGUI(this, mcediaManager)
+        val mcediaListener = McediaListener(this, mcediaManager, mcediaGUI)
+        pm.registerEvents(mcediaGUI, this)
+        pm.registerEvents(mcediaListener, this)
+
+        // 初始化 RandomVariable 混合分布随机数系统
+        randomVariableManager = RandomVariableManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -288,6 +329,9 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("webbridge", WebBridgeCommand(webBridgeManager))
             dispatcher.registerSubCommand("enddragon", EndDragonCommand(endDragonManager))
             dispatcher.registerSubCommand("ignore", IgnoreCommand(ignoreManager, playerDataManager))
+            dispatcher.registerSubCommand("attr", TimedAttributeCommand(timedAttributeManager))
+            dispatcher.registerSubCommand("neko", NekoCommand(nekoManager))
+            dispatcher.registerSubCommand("mcedia", McediaCommand(mcediaManager, mcediaGUI))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -306,7 +350,8 @@ class TSLplugins : JavaPlugin() {
                 rideManager,
                 tossManager,
                 blockStatsManager,
-                newbieTagManager
+                newbieTagManager,
+                randomVariableManager
             ).register()
             logger.info("PlaceholderAPI 扩展已注册！")
         } else {
@@ -324,6 +369,11 @@ class TSLplugins : JavaPlugin() {
     }
 
     override fun onDisable() {
+        // 清理 Alias 系统（注销动态命令）
+        if (::aliasManager.isInitialized) {
+            aliasManager.cleanup()
+        }
+
         // 停止 Phantom 定时任务
         if (::phantomManager.isInitialized) {
             phantomManager.stopTask()
@@ -353,6 +403,24 @@ class TSLplugins : JavaPlugin() {
         if (::webBridgeManager.isInitialized) {
             webBridgeManager.shutdown()
         }
+
+        // 清理 TimedAttribute 系统
+        if (::timedAttributeManager.isInitialized) {
+            timedAttributeManager.shutdown()
+        }
+
+        // 清理 Neko 系统
+        if (::nekoManager.isInitialized) {
+            nekoManager.shutdown()
+        }
+
+        // 清理 Mcedia 系统
+        if (::mcediaManager.isInitialized) {
+            mcediaManager.shutdown()
+        }
+
+        // 关闭全局数据库管理器
+        DatabaseManager.shutdown()
 
         logger.info("TSL插件已卸载！")
     }
@@ -536,6 +604,34 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadSnowAntiMeltListener() {
         snowAntiMeltListener.loadConfig()
+    }
+
+    /**
+     * 重新加载计时属性效果管理器
+     */
+    fun reloadTimedAttributeManager() {
+        timedAttributeManager.loadConfig()
+    }
+
+    /**
+     * 重新加载猫娘模式管理器
+     */
+    fun reloadNekoManager() {
+        nekoManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Mcedia 管理器
+     */
+    fun reloadMcediaManager() {
+        mcediaManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 RandomVariable 管理器
+     */
+    fun reloadRandomVariableManager() {
+        randomVariableManager.reload()
     }
 
     /**

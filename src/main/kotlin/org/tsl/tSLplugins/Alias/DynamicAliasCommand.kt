@@ -29,11 +29,24 @@ class DynamicAliasCommand(
             targetCommand
         }
 
-        // 如果是玩家，使用实体调度器（Folia 兼容）
+        // 如果是玩家，尝试使用实体调度器（Folia 兼容）
         if (sender is Player) {
-            sender.scheduler.run(plugin, { _ ->
+            // 检查插件是否启用（热重载兼容）
+            // 动态获取当前活跃的插件实例
+            val activePlugin = Bukkit.getPluginManager().getPlugin("TSLplugins")
+            if (activePlugin != null && activePlugin.isEnabled) {
+                try {
+                    sender.scheduler.run(activePlugin, { _ ->
+                        Bukkit.dispatchCommand(sender, fullCommand)
+                    }, null)
+                } catch (_: Exception) {
+                    // 如果调度失败，直接执行命令
+                    Bukkit.dispatchCommand(sender, fullCommand)
+                }
+            } else {
+                // 插件已禁用或未找到，直接执行命令
                 Bukkit.dispatchCommand(sender, fullCommand)
-            }, null)
+            }
         } else {
             // 控制台或命令方块直接执行
             Bukkit.dispatchCommand(sender, fullCommand)

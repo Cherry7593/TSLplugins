@@ -1,8 +1,67 @@
 ﻿# TSLplugins 配置文件
-# 版本: 25
+# 版本: 31
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 25
+config-version: 31
+
+# ========================================
+# 全局数据库配置
+# 所有需要数据库存储的模块共用此配置
+# ========================================
+database:
+  # 表名前缀
+  table-prefix: tsl_
+  # SQLite 配置
+  sqlite:
+    # 数据库文件路径（相对于插件目录）
+    file: data/tslplugins.db
+
+# ========================================
+# TimedAttribute 计时属性效果配置
+# ========================================
+timed-attribute:
+  # 是否启用计时属性效果功能
+  enabled: true
+
+  # 过期扫描间隔（tick，20 tick = 1 秒）
+  # 每隔这么多 tick 检查一次过期效果并移除
+  scan-interval-ticks: 20
+
+
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&6[属性]&r "
+    # 功能已禁用
+    disabled: "%prefix%&c计时属性效果功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 玩家不在线
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 无效属性
+    invalid_attribute: "%prefix%&c无效的属性: &e{attribute}"
+    # 无效数量
+    invalid_amount: "%prefix%&c无效的数量: &e{amount}"
+    # 无效持续时间
+    invalid_duration: "%prefix%&c无效的持续时间: &e{duration}"
+    # 无效修改器 UUID
+    invalid_modifier_uuid: "%prefix%&c未找到该效果ID: &e{uuid}"
+    # 添加成功
+    add_success: "%prefix%&a已为 &e{player} &a添加 &f{attribute} {amount} &7(持续 {duration}, ID: {modifier_uuid})"
+    # 添加失败
+    add_failed: "%prefix%&c添加属性效果失败"
+    # 移除成功
+    remove_success: "%prefix%&a已移除 &e{player} &a的效果 &7(ID: {modifier_uuid})"
+    # 效果未找到
+    effect_not_found: "%prefix%&c未找到该属性效果"
+    # 没有效果
+    no_effects: "%prefix%&7{player} 没有任何计时属性效果"
+    # 列表标题
+    list_header: "%prefix%&e{player} 的计时属性效果 &7({count} 个)"
+    # 列表条目
+    list_entry: "&7- &f{attribute} &a{amount} &7| &b{remaining} &7| ID: &8{modifier_uuid}"
+    # 清除成功
+    clear_success: "%prefix%&a已清除 &e{player} &a的 &f{count} &a个属性效果"
 
 # ========================================
 # Ignore 聊天屏蔽配置
@@ -661,4 +720,135 @@ player-count-cmd:
   #   - "bluemap stop" 暂停渲染
   #   - "minecraft:execute run gamerule viewDistance 8" 降低视距
   command-when-high: "chunky pause"
+
+# ========================================
+# Neko 猫娘模式配置
+# ========================================
+neko:
+  # 是否启用猫娘模式功能
+  enabled: true
+
+  # 猫娘发言后缀
+  # 可以自定义为任何文本，支持颜色代码
+  suffix: "喵~"
+
+  # 过期扫描间隔（tick，20 tick = 1 秒）
+  scan-interval-ticks: 20
+
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&d[猫娘]&r "
+    # 功能已禁用
+    disabled: "%prefix%&c猫娘模式功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 玩家不在线
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 无效持续时间
+    invalid_duration: "%prefix%&c无效的持续时间: &e{duration}"
+    # 设置成功
+    set_success: "%prefix%&a已将 &e{player} &a设置为猫娘，持续 &b{duration}"
+    # 设置失败
+    set_failed: "%prefix%&c设置猫娘状态失败"
+    # 取消成功
+    reset_success: "%prefix%&a已取消 &e{player} &a的猫娘状态"
+    # 玩家不是猫娘
+    not_neko: "%prefix%&e{player} &c不是猫娘"
+    # 列表为空
+    list_empty: "%prefix%&7当前没有猫娘玩家"
+    # 玩家收到的通知 - 成为猫娘
+    become_neko: "%prefix%&a你已成为猫娘！持续时间: &b{duration}"
+    # 玩家收到的通知 - 不再是猫娘
+    no_longer_neko: "%prefix%&e你已不再是猫娘了"
+
+# ========================================
+# Mcedia 视频播放器配置
+# ========================================
+mcedia:
+  # 是否启用 Mcedia 视频播放器功能
+  enabled: true
+
+  # 播放器盔甲架名称前缀
+  # 只有名称以此开头的盔甲架才会被识别为播放器
+  player-name-prefix: "mcedia"
+
+  # 默认缩放
+  default-scale: 1.0
+
+  # 默认音量
+  default-volume: 1.0
+
+  # 最大播放器数量
+  max-players: 50
+
+
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&6[Mcedia]&r "
+    # 功能已禁用
+    disabled: "%prefix%&c视频播放器功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 玩家不在线
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+    # 创建成功
+    create_success: "%prefix%&a播放器创建成功！名称: &f{name}"
+    # 创建失败
+    create_failed: "%prefix%&c创建失败，可能已达到最大数量"
+    # 删除成功
+    delete_success: "%prefix%&a播放器已删除: &f{name}"
+    # 未找到播放器
+    not_found: "%prefix%&c未找到播放器: &e{name}"
+
+# ========================================
+# RandomVariable 混合分布随机数配置
+# 用于生成 PAPI 变量 %tsl_random_变量名%
+# ========================================
+random-variable:
+  # 是否启用混合分布随机数功能
+  enabled: true
+
+  # 变量配置
+  # 每个变量由多个区间+权重组成
+  # 概率计算: 区间权重 / 总权重
+  variables:
+    # 示例变量: scale_random
+    # 使用 %tsl_random_scale_random% 获取
+    scale_random:
+      # 小数精度 (-1 表示不限制)
+      precision: 1
+      # 区间列表
+      ranges:
+        - min: 0.1
+          max: 1.0
+          weight: 1.0
+        - min: 1.0
+          max: 20.0
+          weight: 1.0
+
+    # 示例变量: damage_boost
+    # 使用 %tsl_random_damage_boost% 获取
+    damage_boost:
+      precision: 2
+      ranges:
+        - min: 1.0
+          max: 5.0
+          weight: 3.0    # 50% 概率
+        - min: 5.0
+          max: 10.0
+          weight: 2.0    # 33% 概率
+        - min: 10.0
+          max: 20.0
+          weight: 1.0    # 17% 概率
+
+    # 示例变量: lucky_number
+    # 使用 %tsl_random_lucky_number% 获取
+    lucky_number:
+      precision: 0      # 整数
+      ranges:
+        - min: 1
+          max: 100
+          weight: 1.0
 
