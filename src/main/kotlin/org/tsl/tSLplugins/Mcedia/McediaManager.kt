@@ -23,6 +23,7 @@ class McediaManager(private val plugin: JavaPlugin) {
     private var defaultScale: Double = 1.0
     private var defaultVolume: Double = 1.0
     private var maxPlayers: Int = 50
+    private var triggerItem: Material? = null  // null 表示空手
 
     // 缓存的播放器列表：uuid -> McediaPlayer
     private val players: ConcurrentHashMap<UUID, McediaPlayer> = ConcurrentHashMap()
@@ -73,6 +74,19 @@ class McediaManager(private val plugin: JavaPlugin) {
         defaultScale = config.getDouble("mcedia.default-scale", 1.0)
         defaultVolume = config.getDouble("mcedia.default-volume", 1.0)
         maxPlayers = config.getInt("mcedia.max-players", 50)
+
+        // 加载触发物品配置
+        val triggerItemStr = config.getString("mcedia.trigger-item", "") ?: ""
+        triggerItem = if (triggerItemStr.isBlank() || triggerItemStr.equals("AIR", ignoreCase = true)) {
+            null  // 空手触发
+        } else {
+            try {
+                Material.valueOf(triggerItemStr.uppercase())
+            } catch (e: IllegalArgumentException) {
+                plugin.logger.warning("[Mcedia] 无效的触发物品: $triggerItemStr，将使用空手触发")
+                null
+            }
+        }
 
         // 读取消息配置
         val prefix = config.getString("mcedia.messages.prefix", "&6[Mcedia]&r ") ?: "&6[Mcedia]&r "
@@ -161,13 +175,16 @@ class McediaManager(private val plugin: JavaPlugin) {
 
         // 配置盔甲架
         armorStand.customName(Component.text("$playerNamePrefix:$name"))
-        armorStand.isCustomNameVisible = true
+        armorStand.isCustomNameVisible = false  // 默认不显示名称
         armorStand.setGravity(false)
-        armorStand.isVisible = false  // 盔甲架不可见，只显示名称
+        armorStand.isVisible = false  // 盔甲架不可见
         armorStand.isSmall = false
-        armorStand.setArms(true)
+        armorStand.setArms(false)  // 不显示手臂
         armorStand.isMarker = false
         armorStand.isInvulnerable = false  // 可被破坏
+        // 清空手持物品
+        armorStand.equipment.setItemInMainHand(null)
+        armorStand.equipment.setItemInOffHand(null)
 
         // 创建播放器数据
         val player = McediaPlayer(
@@ -423,6 +440,12 @@ class McediaManager(private val plugin: JavaPlugin) {
      * 获取最大播放器数量
      */
     fun getMaxPlayers(): Int = maxPlayers
+
+    /**
+     * 获取触发物品
+     * @return 触发物品，null 表示空手
+     */
+    fun getTriggerItem(): Material? = triggerItem
 
     /**
      * 获取插件实例

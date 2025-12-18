@@ -20,7 +20,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     companion object {
         // 当前配置文件版本
-        const val CURRENT_CONFIG_VERSION = 26
+        const val CURRENT_CONFIG_VERSION = 30
 
         /**
          * 用户专属配置路径列表
@@ -46,9 +46,41 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             return true
         }
 
-        // 读取现有配置
-        val currentConfig = YamlConfiguration.loadConfiguration(configFile)
-        val currentVersion = currentConfig.getInt("config-version", 0)
+        // 尝试读取现有配置，如果解析失败则自动修复
+        val currentConfig: YamlConfiguration
+        val currentVersion: Int
+        
+        try {
+            currentConfig = YamlConfiguration()
+            currentConfig.load(configFile)
+            currentVersion = currentConfig.getInt("config-version", 0)
+        } catch (e: Exception) {
+            plugin.logger.severe("配置文件解析失败: ${e.message}")
+            plugin.logger.info("正在尝试自动修复配置文件...")
+            
+            // 备份损坏的配置文件
+            val corruptedBackup = File(plugin.dataFolder, "config-corrupted-${System.currentTimeMillis()}.yml.bak")
+            try {
+                configFile.copyTo(corruptedBackup, overwrite = true)
+                plugin.logger.info("已备份损坏的配置文件到: ${corruptedBackup.name}")
+            } catch (ex: Exception) {
+                plugin.logger.warning("备份损坏文件失败: ${ex.message}")
+            }
+            
+            // 尝试修复常见的 YAML 语法错误
+            val repaired = tryRepairYaml(configFile)
+            if (repaired) {
+                plugin.logger.info("配置文件已自动修复，重新加载...")
+                return checkAndUpdate() // 递归重试
+            }
+            
+            // 无法修复，使用默认配置
+            plugin.logger.warning("无法自动修复配置文件，将使用默认配置")
+            plugin.saveDefaultConfig()
+            plugin.logger.info("已重置为默认配置文件（版本 $CURRENT_CONFIG_VERSION）")
+            plugin.logger.info("旧配置已备份到: ${corruptedBackup.name}")
+            return true
+        }
 
         // 版本一致，无需更新
         if (currentVersion == CURRENT_CONFIG_VERSION) {
@@ -137,7 +169,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                     continue
                 }
 
-                val processedInfo = processConfigLine(line, userConfig, keyStack)
+                val processedInfo = processConfigLine(line, userConfig, keyStack, lines, i)
                 result.add(processedInfo.line)
 
                 // 如果处理了 List，跳过默认配置中的 List 项
@@ -235,6 +267,40 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
     }
 
     /**
+     * 计算 List 项的行数（以 "- " 开头的连续行）
+     */
+    private fun countListItems(lines: List<String>, startIndex: Int, parentIndent: Int): Int {
+        var count = 0
+        var i = startIndex + 1
+        val listItemIndent = parentIndent + 2  // List 项的缩进比父节点多 2
+
+        while (i < lines.size) {
+            val line = lines[i]
+            val trimmed = line.trim()
+
+            // 空行或注释行，继续检查
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                count++
+                i++
+                continue
+            }
+
+            // 检查是否是 List 项（以 "- " 开头）
+            val currentIndent = line.takeWhile { it.isWhitespace() }.length
+            if (currentIndent == listItemIndent && trimmed.startsWith("- ")) {
+                count++
+                i++
+                continue
+            }
+
+            // 不是 List 项，停止计数
+            break
+        }
+
+        return count
+    }
+
+    /**
      * 计算某个节点下的所有子行数（用于跳过默认配置）
      */
     private fun countChildLines(lines: List<String>, startIndex: Int, parentIndent: Int): Int {
@@ -316,11 +382,15 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     /**
      * 处理单行配置，保留注释并替换值
+     * @param allLines 所有配置行（用于计算需要跳过的行数）
+     * @param currentIndex 当前行索引
      */
     private fun processConfigLine(
         line: String,
         userConfig: YamlConfiguration,
-        keyStack: MutableList<Pair<String, Int>>
+        keyStack: MutableList<Pair<String, Int>>,
+        allLines: List<String> = emptyList(),
+        currentIndex: Int = 0
     ): ProcessResult {
         val colonIndex = line.indexOf(":")
         if (colonIndex == -1) return ProcessResult(line)
@@ -371,7 +441,9 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 if (userValue is List<*>) {
                     // 用户有 List 值，生成完整的 List 块
                     val listBlock = buildListBlock(indent, key, userValue, comment)
-                    return ProcessResult(listBlock, 0)
+                    // 计算需要跳过的默认配置 List 项行数
+                    val skipLines = countListItems(allLines, currentIndex, indentLevel)
+                    return ProcessResult(listBlock, skipLines)
                 }
             }
 
@@ -480,5 +552,65 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
      */
     fun getCurrentVersion(): Int {
         return plugin.config.getInt("config-version", 0)
+    }
+
+    /**
+     * 尝试修复常见的 YAML 语法错误
+     * @return 是否成功修复
+     */
+    private fun tryRepairYaml(configFile: File): Boolean {
+        try {
+            var content = configFile.readText(StandardCharsets.UTF_8)
+            var modified = false
+
+            // 修复 1: 将 {key=value} 格式修复为 {key: value}
+            // 常见错误: - {min=0.1, max=1.0} 应该是 - {min: 0.1, max: 1.0}
+            val inlineMapPattern = Regex("""(\{[^}]*?)=([^},]*?)([,}])""")
+            while (inlineMapPattern.containsMatchIn(content)) {
+                content = inlineMapPattern.replace(content) { match ->
+                    "${match.groupValues[1]}: ${match.groupValues[2]}${match.groupValues[3]}"
+                }
+                modified = true
+            }
+
+            // 修复 2: 移除行尾多余的空格
+            val trailingSpacePattern = Regex("""[ \t]+$""", RegexOption.MULTILINE)
+            if (trailingSpacePattern.containsMatchIn(content)) {
+                content = trailingSpacePattern.replace(content, "")
+                modified = true
+            }
+
+            // 修复 3: 确保文件末尾有换行符
+            if (!content.endsWith("\n")) {
+                content += "\n"
+                modified = true
+            }
+
+            // 修复 4: 修复缩进不一致问题（将 tab 转换为空格）
+            if (content.contains("\t")) {
+                content = content.replace("\t", "  ")
+                modified = true
+            }
+
+            if (modified) {
+                // 验证修复后的内容是否有效
+                try {
+                    val testConfig = YamlConfiguration()
+                    testConfig.loadFromString(content)
+                    // 验证成功，保存修复后的文件
+                    configFile.writeText(content, StandardCharsets.UTF_8)
+                    plugin.logger.info("配置文件语法错误已自动修复")
+                    return true
+                } catch (e: Exception) {
+                    plugin.logger.warning("修复后的配置仍然无效: ${e.message}")
+                    return false
+                }
+            }
+
+            return false
+        } catch (e: Exception) {
+            plugin.logger.warning("尝试修复配置文件时出错: ${e.message}")
+            return false
+        }
     }
 }

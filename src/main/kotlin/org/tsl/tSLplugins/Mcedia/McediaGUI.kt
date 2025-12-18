@@ -212,8 +212,8 @@ class McediaGUI(
             )
         ))
 
-        // 设置视频
-        inv.setItem(19, createMenuItem(
+        // 设置视频 (Row 1)
+        inv.setItem(10, createMenuItem(
             Material.MUSIC_DISC_CAT,
             "§b设置视频",
             listOf(
@@ -224,8 +224,8 @@ class McediaGUI(
             )
         ))
 
-        // 显示配置
-        inv.setItem(21, createMenuItem(
+        // 显示配置 (Row 1)
+        inv.setItem(12, createMenuItem(
             Material.SPYGLASS,
             "§e显示配置",
             listOf(
@@ -236,8 +236,8 @@ class McediaGUI(
             )
         ))
 
-        // 音频配置
-        inv.setItem(23, createMenuItem(
+        // 音频配置 (Row 1)
+        inv.setItem(14, createMenuItem(
             Material.NOTE_BLOCK,
             "§d音频配置",
             listOf(
@@ -249,8 +249,8 @@ class McediaGUI(
             )
         ))
 
-        // 标签配置
-        inv.setItem(25, createMenuItem(
+        // 标签配置 (Row 1)
+        inv.setItem(16, createMenuItem(
             Material.NAME_TAG,
             "§a标签配置",
             listOf(
@@ -261,44 +261,44 @@ class McediaGUI(
             )
         ))
 
-        // 传送到播放器（仅管理员可见）
+        // 传送到播放器（仅管理员可见）(Row 2)
         if (isAdmin) {
-            inv.setItem(28, createMenuItem(
+            inv.setItem(19, createMenuItem(
                 Material.ENDER_PEARL,
                 "§b传送到播放器",
                 listOf("§7传送到播放器位置")
             ))
         }
 
-        // 保存为模板
-        inv.setItem(30, createMenuItem(
+        // 保存为模板 (Row 2)
+        inv.setItem(21, createMenuItem(
             Material.WRITABLE_BOOK,
             "§a保存为模板",
             listOf("§7将当前配置保存到模板栏位", "§7每个玩家最多保存 7 个模板")
         ))
 
-        // 返回（仅管理员可见）
+        // 返回（仅管理员可见）(Row 2)
         if (isAdmin) {
-            inv.setItem(32, createMenuItem(
+            inv.setItem(23, createMenuItem(
                 Material.BARRIER,
                 "§c返回",
                 listOf("§7返回播放器列表")
             ))
         }
 
-        // 删除播放器
-        inv.setItem(34, createMenuItem(
+        // 删除播放器 (Row 2)
+        inv.setItem(25, createMenuItem(
             Material.TNT,
             "§c删除播放器",
             listOf("§7永久删除此播放器")
         ))
 
-        // 底部模板栏位 (slots 37-43，共7个)
+        // 模板栏位 (Row 3, slots 28-34，共7个)
         val templates = manager.getTemplates(player.uniqueId)
         val templateMap = templates.associateBy { it.id }
 
         for (i in 1..7) {
-            val slot = 36 + i  // slots 37-43
+            val slot = 27 + i  // slots 28-34
             val template = templateMap[i]
 
             if (template != null) {
@@ -326,8 +326,8 @@ class McediaGUI(
             }
         }
 
-        // 填充边框（不填充底部模板行）
-        for (slot in listOf(0, 1, 2, 3, 5, 6, 7, 8, 9, 17, 18, 26, 27, 35)) {
+        // 填充边框（Row 0 边框 + Row 4 全部玻璃板）
+        for (slot in listOf(0, 1, 2, 3, 5, 6, 7, 8, 9, 17, 18, 26, 27, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44)) {
             inv.setItem(slot, createMenuItem(Material.GRAY_STAINED_GLASS_PANE, " ", listOf()))
         }
 
@@ -573,10 +573,10 @@ class McediaGUI(
         val mcediaPlayer = editingPlayerUUID?.let { manager.getPlayer(it) } ?: return
 
         when (slot) {
-            19 -> openVideoSelect(player, mcediaPlayer)
-            21 -> openDisplayConfig(player, mcediaPlayer)
-            23 -> openAudioConfig(player, mcediaPlayer)
-            25 -> {
+            10 -> openVideoSelect(player, mcediaPlayer)
+            12 -> openDisplayConfig(player, mcediaPlayer)
+            14 -> openAudioConfig(player, mcediaPlayer)
+            16 -> {
                 // 切换标签
                 manager.updatePlayerConfig(mcediaPlayer.uuid) {
                     if (isRightClick) {
@@ -587,7 +587,7 @@ class McediaGUI(
                 }
                 openPlayerEdit(player, manager.getPlayer(mcediaPlayer.uuid)!!)
             }
-            28 -> {
+            19 -> {
                 // 传送 - 使用 teleportAsync 兼容 Folia（仅管理员）
                 if (!hasAdminPermission(player)) return
                 player.closeInventory()
@@ -599,7 +599,7 @@ class McediaGUI(
                     }
                 }
             }
-            30 -> {
+            21 -> {
                 // 保存为模板
                 val templateId = manager.saveAsTemplate(player.uniqueId, mcediaPlayer)
                 if (templateId != null) {
@@ -609,11 +609,11 @@ class McediaGUI(
                     player.sendMessage("§6[Mcedia] §c模板栏位已满！请先删除一个模板")
                 }
             }
-            32 -> openPlayerList(player)  // 返回（仅管理员可见）
-            34 -> openConfirmDelete(player, mcediaPlayer)
-            // 模板栏位 37-43
-            in 37..43 -> {
-                val templateId = slot - 36  // 1-7
+            23 -> openPlayerList(player)  // 返回（仅管理员可见）
+            25 -> openConfirmDelete(player, mcediaPlayer)
+            // 模板栏位 28-34
+            in 28..34 -> {
+                val templateId = slot - 27  // 1-7
                 val templates = manager.getTemplates(player.uniqueId)
                 val template = templates.find { it.id == templateId }
 

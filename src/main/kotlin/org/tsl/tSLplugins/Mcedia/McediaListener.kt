@@ -73,8 +73,22 @@ class McediaListener(
         val prefix = manager.getPlayerNamePrefix()
         if (!customName.contains(prefix, ignoreCase = true)) return
 
-        // 如果玩家有权限且潜行，打开 GUI 编辑界面
+        // 如果玩家有权限且潜行，检查触发物品后打开 GUI 编辑界面
         if (event.player.isSneaking && event.player.hasPermission("tsl.mcedia.use")) {
+            val itemInHand = event.player.inventory.itemInMainHand
+            val triggerItem = manager.getTriggerItem()
+
+            // 检查手持物品是否匹配触发物品
+            val canTrigger = if (triggerItem == null) {
+                // 配置为空，需要空手
+                itemInHand.type.isAir
+            } else {
+                // 需要指定物品
+                itemInHand.type == triggerItem
+            }
+
+            if (!canTrigger) return
+
             event.isCancelled = true
 
             val mcediaPlayer = manager.getPlayer(armorStand.uniqueId)
@@ -105,10 +119,19 @@ class McediaListener(
         val prefix = manager.getPlayerNamePrefix()
         if (!customName.contains(prefix, ignoreCase = true)) return
 
-        // 如果玩家潜行，已经在 onPlayerInteractAtEntity 中处理了
+        // 如果玩家潜行且满足触发条件，已经在 onPlayerInteractAtEntity 中处理了
         if (event.player.isSneaking && event.player.hasPermission("tsl.mcedia.use")) {
-            event.isCancelled = true
-            return
+            val itemInHand = event.player.inventory.itemInMainHand
+            val triggerItem = manager.getTriggerItem()
+            val canTrigger = if (triggerItem == null) {
+                itemInHand.type.isAir
+            } else {
+                itemInHand.type == triggerItem
+            }
+            if (canTrigger) {
+                event.isCancelled = true
+                return
+            }
         }
 
         // 同步功能 - 处理书的放置（原 paperplugin 功能）

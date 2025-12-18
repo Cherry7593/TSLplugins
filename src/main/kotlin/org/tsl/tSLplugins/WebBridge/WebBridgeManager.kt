@@ -20,6 +20,13 @@ class WebBridgeManager(private val plugin: Plugin) {
     // 消息格式配置
     private var webToGameFormat = "&7[&b{source}&7] &f<{playerName}> &7{message}"
 
+    // 自动重连配置
+    private var autoReconnect = true
+    private var reconnectIntervalSeconds = 30L
+    private var maxReconnectAttempts = 5
+    private var reconnectAttempts = 0
+    private var reconnectTask: io.papermc.paper.threadedregions.scheduler.ScheduledTask? = null
+
     /**
      * 初始化 WebBridge 模块
      */
@@ -57,6 +64,11 @@ class WebBridgeManager(private val plugin: Plugin) {
         val msgConfig = config.getConfigurationSection("messages")
         webToGameFormat = msgConfig?.getString("web-to-game", webToGameFormat) ?: webToGameFormat
 
+        // 读取自动重连配置
+        autoReconnect = config.getBoolean("auto-reconnect", true)
+        reconnectIntervalSeconds = config.getLong("reconnect-interval", 30L)
+        maxReconnectAttempts = config.getInt("max-reconnect-attempts", 5)
+
         // 初始化 WebSocket 客户端（不自动连接）
         client = WebBridgeClient(plugin, url, this)
 
@@ -65,7 +77,13 @@ class WebBridgeManager(private val plugin: Plugin) {
         plugin.server.pluginManager.registerEvents(chatListener!!, plugin)
 
         plugin.logger.info("[WebBridge] 模块已启用，URL: $url")
-        plugin.logger.info("[WebBridge] 提示: 使用 /tsl webbridge connect 命令连接到 WebSocket 服务器")
+
+        // 启动自动重连任务
+        if (autoReconnect) {
+            startAutoReconnect()
+        } else {
+            plugin.logger.info("[WebBridge] 自动重连已禁用，使用 /tsl webbridge connect 手动连接")
+        }
     }
 
 
@@ -78,6 +96,9 @@ class WebBridgeManager(private val plugin: Plugin) {
         }
 
         plugin.logger.info("[WebBridge] 正在关闭模块...")
+
+        // 停止自动重连任务
+        stopAutoReconnect()
 
         // 停止 WebSocket 客户端
         client?.stop()
@@ -101,7 +122,12 @@ class WebBridgeManager(private val plugin: Plugin) {
      * 手动连接到 WebSocket 服务器
      */
     fun connect(): Boolean {
-        return client?.connect() ?: false
+        val result = client?.connect() ?: false
+        if (result) {
+            // 连接成功，重置重试计数
+            reconnectAttempts = 0
+        }
+        return result
     }
 
     /**
@@ -125,6 +151,59 @@ class WebBridgeManager(private val plugin: Plugin) {
      * 检查模块是否启用
      */
     fun isEnabled(): Boolean = isEnabled
+
+    /**
+     * 启动自动重连任务
+     */
+    private fun startAutoReconnect() {
+        reconnectAttempts = 0
+        reconnectTask?.cancel()
+
+        plugin.logger.info("[WebBridge] 启动自动重连 (间隔: ${reconnectIntervalSeconds}秒, 最大重试: ${maxReconnectAttempts}次)")
+
+        reconnectTask = org.bukkit.Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+            // 已连接，无需重连
+            if (isConnected()) {
+                return@runAtFixedRate
+            }
+
+            // 超过最大重试次数
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                if (reconnectAttempts == maxReconnectAttempts) {
+                    plugin.logger.warning("[WebBridge] 已达最大重试次数 ($maxReconnectAttempts)，停止自动重连")
+                    plugin.logger.warning("[WebBridge] 使用 /tsl webbridge connect 手动连接，或 /tsl reload 重置重试计数")
+                    reconnectAttempts++ // 防止重复打印
+                }
+                return@runAtFixedRate
+            }
+
+            reconnectAttempts++
+            plugin.logger.info("[WebBridge] 尝试自动连接 ($reconnectAttempts/$maxReconnectAttempts)...")
+
+            if (client?.connect() == true) {
+                plugin.logger.info("[WebBridge] 自动连接成功")
+                reconnectAttempts = 0
+            }
+        }, reconnectIntervalSeconds * 20L, reconnectIntervalSeconds * 20L)
+    }
+
+    /**
+     * 停止自动重连任务
+     */
+    private fun stopAutoReconnect() {
+        reconnectTask?.cancel()
+        reconnectTask = null
+    }
+
+    /**
+     * 连接断开时的回调（由 Client 调用）
+     */
+    fun onDisconnected() {
+        // 如果启用了自动重连且任务还在运行，重置重试计数以便重新开始重连
+        if (autoReconnect && reconnectTask != null && reconnectAttempts > maxReconnectAttempts) {
+            reconnectAttempts = 0
+        }
+    }
 
     /**
      * 获取 Web 到游戏的消息格式
@@ -200,6 +279,11 @@ class WebBridgeManager(private val plugin: Plugin) {
         val msgConfig = config.getConfigurationSection("messages")
         webToGameFormat = msgConfig?.getString("web-to-game", webToGameFormat) ?: webToGameFormat
 
+        // 读取自动重连配置
+        autoReconnect = config.getBoolean("auto-reconnect", true)
+        reconnectIntervalSeconds = config.getLong("reconnect-interval", 30L)
+        maxReconnectAttempts = config.getInt("max-reconnect-attempts", 5)
+
         // 重新初始化 WebSocket 客户端（不自动连接）
         client = WebBridgeClient(plugin, url, this)
 
@@ -208,7 +292,13 @@ class WebBridgeManager(private val plugin: Plugin) {
         plugin.server.pluginManager.registerEvents(chatListener!!, plugin)
 
         plugin.logger.info("[WebBridge] 模块重载完成，URL: $url")
-        plugin.logger.info("[WebBridge] 提示: 使用 /tsl webbridge connect 命令连接到 WebSocket 服务器")
+
+        // 启动自动重连任务
+        if (autoReconnect) {
+            startAutoReconnect()
+        } else {
+            plugin.logger.info("[WebBridge] 自动重连已禁用，使用 /tsl webbridge connect 手动连接")
+        }
     }
 }
 

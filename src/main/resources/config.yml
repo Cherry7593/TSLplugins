@@ -663,6 +663,14 @@ webbridge:
     # 配置完成后使用 /tsl webbridge connect 命令连接
     url: "ws://127.0.0.1:4001/mc-bridge?from=mc"
 
+  # 自动重连配置
+  # 开服后自动尝试连接 WebSocket 服务器
+  auto-reconnect: true
+  # 重连间隔（秒）
+  reconnect-interval: 30
+  # 最大重试次数，超过后停止自动重连
+  max-reconnect-attempts: 5
+
   # 消息格式配置
   messages:
     # Web 端消息同步到游戏的格式
@@ -782,6 +790,11 @@ mcedia:
   # 最大播放器数量
   max-players: 50
 
+  # 蹲下+右键触发物品
+  # 只有手持该物品时蹲下右键播放器才会打开配置 GUI
+  # 留空或设为 AIR 表示空手触发
+  # 示例: STICK, BLAZE_ROD, DIAMOND 等
+  trigger-item: ""
 
   # 消息配置
   messages:
@@ -851,4 +864,48 @@ random-variable:
         - min: 1
           max: 100
           weight: 1.0
+
+# ========================================
+# Peace 伪和平模式配置
+# 玩家在指定时间内不会被怪物发现/锁定
+# ========================================
+peace:
+  # 是否启用伪和平功能
+  enabled: true
+
+  # 过期扫描间隔（tick）
+  scan-interval-ticks: 20
+
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&a[和平]&r "
+    # 功能已禁用
+    disabled: "%prefix%&c伪和平功能已禁用"
+    # 没有权限
+    no_permission: "%prefix%&c你没有权限使用此命令"
+    # 玩家不在线
+    player_not_found: "%prefix%&c玩家 &e{player} &c不在线或不存在"
+    # 无效时间格式
+    invalid_duration: "%prefix%&c无效的时间格式，示例: 60, 5m, 2h, 1d"
+    # 设置成功
+    set_success: "%prefix%&a已为 &f{player} &a设置伪和平模式，持续 &e{time}"
+    # 设置失败
+    set_failed: "%prefix%&c设置失败"
+    # 获得和平模式
+    gained: "%prefix%&a你获得了伪和平模式，持续 &e{time}&a，怪物将无法发现你"
+    # 和平模式过期
+    expired: "%prefix%&c你的伪和平模式已过期，怪物可以再次发现你"
+    # 重新登录提示
+    rejoin: "%prefix%&a你仍处于伪和平模式，剩余 &e{time}"
+    # 清除成功
+    clear_success: "%prefix%&a已清除 &f{player} &a的伪和平模式"
+    # 清除全部成功
+    clear_all: "%prefix%&a已清除所有玩家的伪和平模式 (共 &f{count} &a人)"
+    # 被清除通知
+    cleared: "%prefix%&c你的伪和平模式已被管理员清除"
+    # 玩家不在和平状态
+    not_peaceful: "%prefix%&c玩家 &e{player} &c不在伪和平模式中"
+    # 列表为空
+    list_empty: "%prefix%&7当前没有玩家处于伪和平模式"
 

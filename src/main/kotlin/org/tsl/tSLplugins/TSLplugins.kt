@@ -78,6 +78,9 @@ import org.tsl.tSLplugins.Mcedia.McediaCommand
 import org.tsl.tSLplugins.Mcedia.McediaGUI
 import org.tsl.tSLplugins.Mcedia.McediaListener
 import org.tsl.tSLplugins.RandomVariable.RandomVariableManager
+import org.tsl.tSLplugins.Peace.PeaceManager
+import org.tsl.tSLplugins.Peace.PeaceCommand
+import org.tsl.tSLplugins.Peace.PeaceListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -111,6 +114,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var mcediaManager: McediaManager
     private lateinit var mcediaGUI: McediaGUI
     private lateinit var randomVariableManager: RandomVariableManager
+    private lateinit var peaceManager: PeaceManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -302,6 +306,12 @@ class TSLplugins : JavaPlugin() {
         // 初始化 RandomVariable 混合分布随机数系统
         randomVariableManager = RandomVariableManager(this)
 
+        // 初始化 Peace 伪和平模式系统
+        peaceManager = PeaceManager(this)
+        val peaceListener = PeaceListener(this, peaceManager)
+        pm.registerEvents(peaceListener, this)
+        peaceManager.startExpirationTask()
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -332,6 +342,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("attr", TimedAttributeCommand(timedAttributeManager))
             dispatcher.registerSubCommand("neko", NekoCommand(nekoManager))
             dispatcher.registerSubCommand("mcedia", McediaCommand(mcediaManager, mcediaGUI))
+            dispatcher.registerSubCommand("peace", PeaceCommand(peaceManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -632,6 +643,13 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadRandomVariableManager() {
         randomVariableManager.reload()
+    }
+
+    /**
+     * 重新加载 Peace 管理器
+     */
+    fun reloadPeaceManager() {
+        peaceManager.loadConfig()
     }
 
     /**

@@ -88,7 +88,7 @@ class WebBridgeClient(
         // 检查真实的连接状态
         val client = clientRef.get()
         if (client == null || !client.isOpen) {
-            plugin.logger.warning("[WebBridge] 未连接到服务器，消息未加入队列")
+            // 未连接时静默丢弃消息，避免刷屏
             return
         }
 
@@ -308,10 +308,12 @@ class WebBridgeClient(
         override fun onClose(code: Int, reason: String, remote: Boolean) {
             val source = if (remote) "服务器" else "客户端"
             plugin.logger.warning("[WebBridge] 连接已关闭 (由${source}发起, code: $code)")
-            plugin.logger.info("[WebBridge] 提示: 使用 /tsl webbridge connect 命令重新连接")
 
             // 清理引用
             clientRef.compareAndSet(this, null)
+
+            // 通知 Manager 连接断开
+            manager.onDisconnected()
         }
 
         override fun onError(ex: Exception) {

@@ -36,3 +36,6 @@ release.properties
 .DS_Store
 Thumbs.db
 
+# Standalone plugins (each has its own git repo)
+StandalonePlugins/
+
