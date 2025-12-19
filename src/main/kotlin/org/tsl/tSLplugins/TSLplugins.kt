@@ -81,6 +81,12 @@ import org.tsl.tSLplugins.RandomVariable.RandomVariableManager
 import org.tsl.tSLplugins.Peace.PeaceManager
 import org.tsl.tSLplugins.Peace.PeaceCommand
 import org.tsl.tSLplugins.Peace.PeaceListener
+import org.tsl.tSLplugins.SuperSnowball.SuperSnowballManager
+import org.tsl.tSLplugins.SuperSnowball.SuperSnowballCommand
+import org.tsl.tSLplugins.SuperSnowball.SuperSnowballListener
+import org.tsl.tSLplugins.RedstoneFreeze.RedstoneFreezeManager
+import org.tsl.tSLplugins.RedstoneFreeze.RedstoneFreezeCommand
+import org.tsl.tSLplugins.RedstoneFreeze.RedstoneFreezeListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -115,6 +121,8 @@ class TSLplugins : JavaPlugin() {
     private lateinit var mcediaGUI: McediaGUI
     private lateinit var randomVariableManager: RandomVariableManager
     private lateinit var peaceManager: PeaceManager
+    private lateinit var superSnowballManager: SuperSnowballManager
+    private lateinit var redstoneFreezeManager: RedstoneFreezeManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -312,6 +320,16 @@ class TSLplugins : JavaPlugin() {
         pm.registerEvents(peaceListener, this)
         peaceManager.startExpirationTask()
 
+        // 初始化 SuperSnowball 超级大雪球系统
+        superSnowballManager = SuperSnowballManager(this)
+        val superSnowballListener = SuperSnowballListener(this, superSnowballManager)
+        pm.registerEvents(superSnowballListener, this)
+
+        // 初始化 RedstoneFreeze 红石冻结系统
+        redstoneFreezeManager = RedstoneFreezeManager(this)
+        val redstoneFreezeListener = RedstoneFreezeListener(this, redstoneFreezeManager)
+        pm.registerEvents(redstoneFreezeListener, this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -343,6 +361,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("neko", NekoCommand(nekoManager))
             dispatcher.registerSubCommand("mcedia", McediaCommand(mcediaManager, mcediaGUI))
             dispatcher.registerSubCommand("peace", PeaceCommand(peaceManager))
+            dispatcher.registerSubCommand("ss", SuperSnowballCommand(superSnowballManager))
+            dispatcher.registerSubCommand("redfreeze", RedstoneFreezeCommand(this, redstoneFreezeManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -428,6 +448,11 @@ class TSLplugins : JavaPlugin() {
         // 清理 Mcedia 系统
         if (::mcediaManager.isInitialized) {
             mcediaManager.shutdown()
+        }
+
+        // 清理 RedstoneFreeze 系统
+        if (::redstoneFreezeManager.isInitialized) {
+            redstoneFreezeManager.cleanup()
         }
 
         // 关闭全局数据库管理器
@@ -650,6 +675,20 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadPeaceManager() {
         peaceManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 SuperSnowball 管理器
+     */
+    fun reloadSuperSnowballManager() {
+        superSnowballManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 RedstoneFreeze 管理器
+     */
+    fun reloadRedstoneFreezeManager() {
+        redstoneFreezeManager.loadConfig()
     }
 
     /**

@@ -121,6 +121,12 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 Peace 功能
             plugin.reloadPeaceManager()
 
+            // 重新加载 SuperSnowball 功能
+            plugin.reloadSuperSnowballManager()
+
+            // 重新加载 RedstoneFreeze 功能
+            plugin.reloadRedstoneFreezeManager()
+
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))
             sender.sendMessage(serializer.deserialize("&7- 命令别名已重载 ($reloadedAliases 个别名)"))

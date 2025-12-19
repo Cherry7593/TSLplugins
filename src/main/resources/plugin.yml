@@ -154,4 +154,12 @@ permissions:
   tsl.mcedia.teleport:
     description: Teleport to mcedia player permission
     default: op
-
+  tsl.ss.give:
+    description: Give super snowball item permission
+    default: op
+  tsl.ss.use:
+    description: Use super snowball permission
+    default: true
+  tsl.redfreeze.use:
+    description: Use redstone freeze command permission
+    default: op

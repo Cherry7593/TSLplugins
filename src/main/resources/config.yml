@@ -2,7 +2,7 @@
 # 版本: 31
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 31
+config-version: 32
 
 # ========================================
 # 全局数据库配置
@@ -908,4 +908,78 @@ peace:
     not_peaceful: "%prefix%&c玩家 &e{player} &c不在伪和平模式中"
     # 列表为空
     list_empty: "%prefix%&7当前没有玩家处于伪和平模式"
+
+# ========================================
+# SuperSnowball 超级大雪球配置
+# ========================================
+super-snowball:
+  # 是否启用超级大雪球功能
+  enabled: true
+
+  # 覆雪效果半径（方块）
+  snow-radius: 5
+
+  # 击飞效果半径（方块，比覆雪稍大）
+  knockback-radius: 7.0
+
+  # 击飞强度
+  knockback-strength: 1.5
+
+  # 额外重力（模拟大雪球下落更快）
+  gravity: 0.06
+
+  # 速度倍率（更慢的飞行速度）
+  velocity-multiplier: 0.6
+
+  # 轨迹粒子数量（每次生成）
+  trail-particle-count: 3
+
+  # 轨迹粒子间隔（tick）
+  trail-particle-interval: 2
+
+  # 落地粒子数量
+  impact-particle-count: 50
+
+  # 雪层生成概率（0.0-1.0）
+  snow-layer-chance: 0.7
+
+  # 最大雪层数
+  max-snow-layers: 3
+
+  # 冻伤效果刻度（140刻开始受伤，0为禁用）
+  freeze-ticks: 100
+
+  # 是否使用自定义模型
+  use-custom-model: true
+
+  # 自定义模型 Key（需要资源包支持）
+  custom-model-key: "cris_tsl:big_snow_ball"
+
+  # 落地音效配置（格式: "音效名:音量:音高"）
+  # 留空使用默认音效（紫水晶+风弹）
+  # 音效名参考: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html
+  impact-sounds: []
+  # 示例:
+  # impact-sounds:
+  #   - "BLOCK_AMETHYST_BLOCK_CHIME:1.5:1.0"
+  #   - "ENTITY_WIND_CHARGE_WIND_BURST:1.0:1.2"
+
+  # 消息配置
+  messages:
+    prefix: "&b[雪球]&r "
+    no_permission: "%prefix%&c没有权限使用超级大雪球"
+
+
+# ============================================
+# 红石冻结系统配置
+# ============================================
+redstone-freeze:
+  # 是否启用红石冻结功能
+  enabled: true
+
+  # 最大冻结半径（区块数）
+  max-radius: 32
+
+  # 冻结区域 BossBar 标题
+  bossbar-title: "§c❄ 当前区域物理已冻结 ❄"
 

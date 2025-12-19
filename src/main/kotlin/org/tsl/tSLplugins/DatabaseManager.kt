@@ -73,6 +73,13 @@ object DatabaseManager {
     fun getTablePrefix(): String = tablePrefix
 
     /**
+     * 检查是否已初始化
+     */
+    fun isInitialized(): Boolean {
+        return executor != null && dbFile != null
+    }
+
+    /**
      * 获取异步执行器
      */
     fun getExecutor(): ExecutorService {

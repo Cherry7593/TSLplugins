@@ -190,8 +190,13 @@ class SQLiteTimedEffectStorage(
     }
 
     override fun deleteExpired(now: Long): CompletableFuture<Int> {
+        // 检查 DatabaseManager 是否已初始化（防止卸载插件时报错）
+        if (!DatabaseManager.isInitialized()) {
+            return CompletableFuture.completedFuture(0)
+        }
         return CompletableFuture.supplyAsync({
             try {
+                if (!DatabaseManager.isInitialized()) return@supplyAsync 0
                 DatabaseManager.getConnection().prepareStatement(
                     "DELETE FROM $tableName WHERE expire_at <= ?"
                 ).use { stmt ->
