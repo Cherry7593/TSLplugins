@@ -173,13 +173,30 @@ class SuperSnowballListener(
                 val checkX = center.blockX + x
                 val checkZ = center.blockZ + z
 
-                // 从雪球位置向下搜索第一个固体方块（最多向下搜索 radius + 3 格）
+                // 从雪球位置向上和向下搜索第一个可放置雪的地面
                 var groundY = -1
-                for (y in centerY downTo (centerY - radius - 3).coerceAtLeast(world.minHeight)) {
+                
+                // 先向上搜索（处理比落点高的地形）
+                for (y in centerY..(centerY + radius + 3).coerceAtMost(world.maxHeight - 1)) {
                     val block = world.getBlockAt(checkX, y, checkZ)
-                    if (block.type.isSolid || block.type == Material.SNOW) {
+                    val blockAbove = world.getBlockAt(checkX, y + 1, checkZ)
+                    // 找到固体方块且上方是空气或雪
+                    if (block.type.isSolid && (blockAbove.type == Material.AIR || blockAbove.type == Material.CAVE_AIR || blockAbove.type == Material.SNOW)) {
                         groundY = y
                         break
+                    }
+                }
+                
+                // 如果向上没找到，再向下搜索
+                if (groundY < 0) {
+                    for (y in (centerY - 1) downTo (centerY - radius - 3).coerceAtLeast(world.minHeight)) {
+                        val block = world.getBlockAt(checkX, y, checkZ)
+                        val blockAbove = world.getBlockAt(checkX, y + 1, checkZ)
+                        // 找到固体方块且上方是空气或雪
+                        if (block.type.isSolid && (blockAbove.type == Material.AIR || blockAbove.type == Material.CAVE_AIR || blockAbove.type == Material.SNOW)) {
+                            groundY = y
+                            break
+                        }
                     }
                 }
 
@@ -195,19 +212,20 @@ class SuperSnowballListener(
                 // 检查目标位置
                 when (targetBlock.type) {
                     Material.AIR, Material.CAVE_AIR -> {
-                        // 空气，放置雪
+                        // 空气，放置雪（限制在配置的最大层数内）
                         targetBlock.type = Material.SNOW
                         val snowData = targetBlock.blockData as? Snow
                         if (snowData != null) {
-                            snowData.layers = Random.nextInt(1, maxLayers + 1).coerceAtMost(snowData.maximumLayers)
+                            snowData.layers = 1.coerceAtMost(maxLayers).coerceAtMost(snowData.maximumLayers)
                             targetBlock.blockData = snowData
                         }
                     }
                     Material.SNOW -> {
-                        // 已有雪，增加层数
+                        // 已有雪，增加层数（但不超过配置的最大层数）
                         val snowData = targetBlock.blockData as? Snow
-                        if (snowData != null && snowData.layers < snowData.maximumLayers) {
-                            val newLayers = (snowData.layers + Random.nextInt(1, 3))
+                        if (snowData != null && snowData.layers < maxLayers) {
+                            val newLayers = (snowData.layers + 1)
+                                .coerceAtMost(maxLayers)
                                 .coerceAtMost(snowData.maximumLayers)
                             snowData.layers = newLayers
                             targetBlock.blockData = snowData
@@ -308,10 +326,7 @@ class SuperSnowballListener(
 
         if (blacklist.contains(material)) return false
 
-        // 玻璃和玻璃板不能放置雪
-        if (material.name.contains("GLASS")) return false
-
-        // 可以放置雪的特殊方块（原版支持）
+        // 可以放置雪的特殊方块
         val whitelist = setOf(
             // 树叶
             Material.OAK_LEAVES, Material.SPRUCE_LEAVES, Material.BIRCH_LEAVES,
@@ -477,8 +492,16 @@ class SuperSnowballListener(
     private fun playImpactSound(location: Location) {
         val world = location.world ?: return
 
+        val sounds = manager.getImpactSounds()
+        if (sounds.isEmpty()) {
+            // 如果没有配置音效，使用硬编码的默认音效
+            world.playSound(location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.BLOCKS, 1.5f, 1.0f)
+            world.playSound(location, Sound.ENTITY_WIND_CHARGE_WIND_BURST, SoundCategory.BLOCKS, 1.0f, 1.2f)
+            return
+        }
+
         // 播放配置的音效
-        manager.getImpactSounds().forEach { soundConfig ->
+        sounds.forEach { soundConfig ->
             world.playSound(location, soundConfig.sound, SoundCategory.BLOCKS, soundConfig.volume, soundConfig.pitch)
         }
     }

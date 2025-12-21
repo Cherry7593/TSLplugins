@@ -1,8 +1,8 @@
 ﻿# TSLplugins 配置文件
-# 版本: 31
+# 版本: 33
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 32
+config-version: 33
 
 # ========================================
 # 全局数据库配置
@@ -982,4 +982,21 @@ redstone-freeze:
 
   # 冻结区域 BossBar 标题
   bossbar-title: "§c❄ 当前区域物理已冻结 ❄"
+
+  # 受影响的红石元件开关（true=冻结, false=不冻结）
+  affected-components:
+    # 红石信号变化
+    redstone-signal: true
+    # 活塞伸出
+    piston-extend: true
+    # 活塞收回
+    piston-retract: true
+    # 方块物理更新（侦测器、重力方块等）
+    block-physics: true
+    # TNT 点燃
+    tnt-prime: true
+    # 爆炸（TNT、苦力怕等）
+    explosion: true
+    # TNT 实体生成
+    tnt-spawn: true
 

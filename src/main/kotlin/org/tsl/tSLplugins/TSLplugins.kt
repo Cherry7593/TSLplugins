@@ -327,7 +327,7 @@ class TSLplugins : JavaPlugin() {
 
         // 初始化 RedstoneFreeze 红石冻结系统
         redstoneFreezeManager = RedstoneFreezeManager(this)
-        val redstoneFreezeListener = RedstoneFreezeListener(this, redstoneFreezeManager)
+        val redstoneFreezeListener = RedstoneFreezeListener(redstoneFreezeManager)
         pm.registerEvents(redstoneFreezeListener, this)
 
         // 注册命令 - 使用新的命令分发架构

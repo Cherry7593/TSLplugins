@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Bukkit
 import org.bukkit.Chunk
+import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
@@ -21,6 +22,15 @@ class RedstoneFreezeManager(private val plugin: JavaPlugin) {
     private var enabled: Boolean = true
     private var maxRadius: Int = 32
     private var bossBarTitle: String = "§c❄ 当前区域物理已冻结 ❄"
+
+    // 受影响的红石元件开关
+    private var affectRedstoneSignal: Boolean = true
+    private var affectPistonExtend: Boolean = true
+    private var affectPistonRetract: Boolean = true
+    private var affectBlockPhysics: Boolean = true
+    private var affectTntPrime: Boolean = true
+    private var affectExplosion: Boolean = true
+    private var affectTntSpawn: Boolean = true
 
     // 冻结状态（全局标记位）
     @Volatile
@@ -66,8 +76,29 @@ class RedstoneFreezeManager(private val plugin: JavaPlugin) {
         maxRadius = section.getInt("max-radius", 32)
         bossBarTitle = section.getString("bossbar-title", "§c❄ 当前区域物理已冻结 ❄") ?: "§c❄ 当前区域物理已冻结 ❄"
 
+        // 加载受影响的红石元件开关
+        val components = section.getConfigurationSection("affected-components")
+        if (components != null) {
+            affectRedstoneSignal = components.getBoolean("redstone-signal", true)
+            affectPistonExtend = components.getBoolean("piston-extend", true)
+            affectPistonRetract = components.getBoolean("piston-retract", true)
+            affectBlockPhysics = components.getBoolean("block-physics", true)
+            affectTntPrime = components.getBoolean("tnt-prime", true)
+            affectExplosion = components.getBoolean("explosion", true)
+            affectTntSpawn = components.getBoolean("tnt-spawn", true)
+        }
+
         plugin.logger.info("[RedstoneFreeze] 配置已加载 - 最大半径: $maxRadius")
     }
+
+    // 元件开关访问器
+    fun isRedstoneSignalAffected(): Boolean = affectRedstoneSignal
+    fun isPistonExtendAffected(): Boolean = affectPistonExtend
+    fun isPistonRetractAffected(): Boolean = affectPistonRetract
+    fun isBlockPhysicsAffected(): Boolean = affectBlockPhysics
+    fun isTntPrimeAffected(): Boolean = affectTntPrime
+    fun isExplosionAffected(): Boolean = affectExplosion
+    fun isTntSpawnAffected(): Boolean = affectTntSpawn
 
     fun isEnabled(): Boolean = enabled
     fun getMaxRadius(): Int = maxRadius
@@ -149,6 +180,64 @@ class RedstoneFreezeManager(private val plugin: JavaPlugin) {
     }
 
     /**
+     * 触发活塞更新（通过在活塞上方放置石头触发邻居更新）
+     * @param player 执行命令的玩家
+     * @param radius 更新半径（区块数）
+     * @param callback 更新完成后的回调
+     */
+    fun triggerPistonUpdates(player: Player, radius: Int, callback: (Int) -> Unit) {
+        val world = player.world
+        val centerX = player.location.blockX shr 4
+        val centerZ = player.location.blockZ shr 4
+        
+        val blockRadius = radius * 16
+        val startX = (centerX shl 4) - blockRadius
+        val endX = (centerX shl 4) + blockRadius + 15
+        val startZ = (centerZ shl 4) - blockRadius
+        val endZ = (centerZ shl 4) + blockRadius + 15
+
+        // 使用区域调度器确保在正确的线程执行
+        Bukkit.getRegionScheduler().run(plugin, player.location) { _ ->
+            var updatedCount = 0
+
+            for (x in startX..endX) {
+                for (z in startZ..endZ) {
+                    for (y in world.minHeight until world.maxHeight) {
+                        val block = world.getBlockAt(x, y, z)
+                        val type = block.type
+
+                        // 只处理活塞
+                        if (type == Material.PISTON || type == Material.STICKY_PISTON) {
+                            // 在活塞周围任意空气位置放置石头触发邻居更新
+                            val neighbors = listOf(
+                                block.getRelative(0, 1, 0),   // 上
+                                block.getRelative(0, -1, 0),  // 下
+                                block.getRelative(1, 0, 0),   // 东
+                                block.getRelative(-1, 0, 0),  // 西
+                                block.getRelative(0, 0, 1),   // 南
+                                block.getRelative(0, 0, -1)   // 北
+                            )
+                            for (neighbor in neighbors) {
+                                if (neighbor.type == Material.AIR) {
+                                    try {
+                                        neighbor.setType(Material.STONE, false)
+                                        neighbor.setType(Material.AIR, true)
+                                        updatedCount++
+                                        break  // 只需触发一次
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            plugin.logger.info("[RedstoneFreeze] 已更新 $updatedCount 个活塞")
+            callback(updatedCount)
+        }
+    }
+
+    /**
      * 内部取消冻结（不输出日志）
      */
     private fun cancelFreezeInternal() {
@@ -175,7 +264,7 @@ class RedstoneFreezeManager(private val plugin: JavaPlugin) {
      */
     private fun createBossBar() {
         freezeBossBar = BossBar.bossBar(
-            Component.text(bossBarTitle.replace("§", "§").replace("&", "§"))
+            Component.text(bossBarTitle.replace("&", "§"))
                 .color(NamedTextColor.RED),
             1.0f,
             BossBar.Color.BLUE,
@@ -217,6 +306,7 @@ class RedstoneFreezeManager(private val plugin: JavaPlugin) {
 
     /**
      * 更新 BossBar 可见性
+     * 注意：在 Folia 中不能从全局线程访问 Chunk 对象，需要通过坐标计算 ChunkKey
      */
     private fun updateBossBarVisibility() {
         val bar = freezeBossBar ?: return
@@ -224,16 +314,24 @@ class RedstoneFreezeManager(private val plugin: JavaPlugin) {
 
         // 遍历该世界的所有在线玩家
         world.players.forEach { player ->
-            val chunkKey = player.location.chunk.chunkKey
+            // 直接从坐标计算 ChunkKey，避免调用 getChunk()（Folia 兼容）
+            val loc = player.location
+            val chunkX = loc.blockX shr 4
+            val chunkZ = loc.blockZ shr 4
+            val chunkKey = Chunk.getChunkKey(chunkX, chunkZ)
             val isInFrozenArea = frozenChunks.contains(chunkKey)
 
             if (isInFrozenArea && !bossBarPlayers.contains(player)) {
-                // 玩家进入冻结区域，显示 BossBar
-                player.showBossBar(bar)
+                // 玩家进入冻结区域，显示 BossBar（使用玩家调度器确保线程安全）
+                player.scheduler.run(plugin, { _ ->
+                    player.showBossBar(bar)
+                }, null)
                 bossBarPlayers.add(player)
             } else if (!isInFrozenArea && bossBarPlayers.contains(player)) {
                 // 玩家离开冻结区域，隐藏 BossBar
-                player.hideBossBar(bar)
+                player.scheduler.run(plugin, { _ ->
+                    player.hideBossBar(bar)
+                }, null)
                 bossBarPlayers.remove(player)
             }
         }

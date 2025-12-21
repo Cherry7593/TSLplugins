@@ -19,9 +19,6 @@ import java.nio.charset.StandardCharsets
 class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     companion object {
-        // 当前配置文件版本
-        const val CURRENT_CONFIG_VERSION = 30
-
         /**
          * 用户专属配置路径列表
          * 这些配置的子节点完全由用户自定义，更新时会保留用户的全部内容
@@ -32,6 +29,26 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
         )
     }
 
+    // 从默认配置动态读取的目标版本（懒加载）
+    private val targetVersion: Int by lazy { readDefaultConfigVersion() }
+
+    /**
+     * 从 resources/config.yml 读取默认配置版本
+     * 这样就不需要手动维护版本常量了
+     */
+    private fun readDefaultConfigVersion(): Int {
+        return try {
+            plugin.getResource("config.yml")?.use { stream ->
+                val defaultConfig = YamlConfiguration()
+                defaultConfig.load(InputStreamReader(stream, StandardCharsets.UTF_8))
+                defaultConfig.getInt("config-version", 0)
+            } ?: 0
+        } catch (e: Exception) {
+            plugin.logger.warning("无法读取默认配置版本: ${e.message}")
+            0
+        }
+    }
+
     /**
      * 检查并更新配置文件
      * @return 是否进行了更新
@@ -39,10 +56,20 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
     fun checkAndUpdate(): Boolean {
         val configFile = File(plugin.dataFolder, "config.yml")
 
+        // 先获取目标版本
+        val latestVersion = targetVersion
+        if (latestVersion == 0) {
+            plugin.logger.warning("无法确定默认配置版本，跳过配置更新检查")
+            if (!configFile.exists()) {
+                plugin.saveDefaultConfig()
+            }
+            return false
+        }
+
         // 如果配置文件不存在，直接保存默认配置
         if (!configFile.exists()) {
             plugin.saveDefaultConfig()
-            plugin.logger.info("配置文件不存在，已创建默认配置文件（版本 $CURRENT_CONFIG_VERSION）")
+            plugin.logger.info("配置文件不存在，已创建默认配置文件（版本 $latestVersion）")
             return true
         }
 
@@ -77,19 +104,19 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             // 无法修复，使用默认配置
             plugin.logger.warning("无法自动修复配置文件，将使用默认配置")
             plugin.saveDefaultConfig()
-            plugin.logger.info("已重置为默认配置文件（版本 $CURRENT_CONFIG_VERSION）")
+            plugin.logger.info("已重置为默认配置文件（版本 $latestVersion）")
             plugin.logger.info("旧配置已备份到: ${corruptedBackup.name}")
             return true
         }
 
         // 版本一致，无需更新
-        if (currentVersion == CURRENT_CONFIG_VERSION) {
+        if (currentVersion == latestVersion) {
             plugin.logger.info("配置文件版本正确（v$currentVersion），无需更新")
             return false
         }
 
         // 需要更新
-        plugin.logger.info("检测到配置文件版本不同（当前: v$currentVersion, 最新: v$CURRENT_CONFIG_VERSION）")
+        plugin.logger.info("检测到配置文件版本不同（当前: v$currentVersion, 最新: v$latestVersion）")
         plugin.logger.info("开始更新配置文件，保留注释并优化格式...")
 
         // 备份旧配置文件（带版本号）
@@ -118,7 +145,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             plugin.logger.info("配置文件更新完成！")
             plugin.logger.info("  - 已保留所有注释和格式")
             plugin.logger.info("  - 已保留用户的配置值")
-            plugin.logger.info("  - 配置文件已更新到版本 $CURRENT_CONFIG_VERSION")
+            plugin.logger.info("  - 配置文件已更新到版本 $latestVersion")
             return true
         } catch (e: Exception) {
             plugin.logger.severe("保存配置文件时出错: ${e.message}")
@@ -415,12 +442,10 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             keyStack.joinToString(".") { it.first } + ".$key"
         }
 
-        // 【关键修复1】config-version 强制使用当前版本，不允许用户值覆盖
+        // config-version 强制使用默认配置的版本，不允许用户值覆盖
         if (fullKey == "config-version") {
-            val commentMatch = """#.*$""".toRegex().find(afterColon)
-            val comment = commentMatch?.value ?: ""
-            val commentPart = if (comment.isNotEmpty()) "  $comment" else ""
-            return ProcessResult("$indent$key: $CURRENT_CONFIG_VERSION$commentPart")
+            // 直接返回默认配置中的版本行，不做任何修改
+            return ProcessResult(line)
         }
 
         // 检查是否有行尾注释
@@ -573,20 +598,45 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 modified = true
             }
 
-            // 修复 2: 移除行尾多余的空格
+            // 修复 2: 将内联 map 转换为块格式（解决混合格式问题）
+            // 例如: - {min: 0.1, max: 1.0, weight: 1.0}
+            // 转换为:
+            // - min: 0.1
+            //   max: 1.0
+            //   weight: 1.0
+            val inlineMapLinePattern = Regex("""^(\s*)-\s*\{([^}]+)\}\s*$""", RegexOption.MULTILINE)
+            if (inlineMapLinePattern.containsMatchIn(content)) {
+                content = inlineMapLinePattern.replace(content) { match ->
+                    val indent = match.groupValues[1]
+                    val mapContent = match.groupValues[2]
+                    val entries = mapContent.split(",").map { it.trim() }
+                    val blockFormat = StringBuilder()
+                    entries.forEachIndexed { index, entry ->
+                        if (index == 0) {
+                            blockFormat.append("$indent- $entry")
+                        } else {
+                            blockFormat.append("\n$indent  $entry")
+                        }
+                    }
+                    blockFormat.toString()
+                }
+                modified = true
+            }
+
+            // 修复 3: 移除行尾多余的空格
             val trailingSpacePattern = Regex("""[ \t]+$""", RegexOption.MULTILINE)
             if (trailingSpacePattern.containsMatchIn(content)) {
                 content = trailingSpacePattern.replace(content, "")
                 modified = true
             }
 
-            // 修复 3: 确保文件末尾有换行符
+            // 修复 4: 确保文件末尾有换行符
             if (!content.endsWith("\n")) {
                 content += "\n"
                 modified = true
             }
 
-            // 修复 4: 修复缩进不一致问题（将 tab 转换为空格）
+            // 修复 5: 修复缩进不一致问题（将 tab 转换为空格）
             if (content.contains("\t")) {
                 content = content.replace("\t", "  ")
                 modified = true

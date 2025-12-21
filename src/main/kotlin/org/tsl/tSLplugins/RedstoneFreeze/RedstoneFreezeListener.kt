@@ -11,14 +11,12 @@ import org.bukkit.event.block.BlockRedstoneEvent
 import org.bukkit.event.block.TNTPrimeEvent
 import org.bukkit.event.entity.EntitySpawnEvent
 import org.bukkit.event.entity.ExplosionPrimeEvent
-import org.bukkit.plugin.java.JavaPlugin
 
 /**
  * 红石冻结监听器
  * 使用三级过滤机制高效拦截红石、活塞、物理事件
  */
 class RedstoneFreezeListener(
-    private val plugin: JavaPlugin,
     private val manager: RedstoneFreezeManager
 ) : Listener {
 
@@ -28,15 +26,17 @@ class RedstoneFreezeListener(
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     fun onBlockRedstone(event: BlockRedstoneEvent) {
-        // 第一级过滤：全局标记位
+        // 快速过滤：冻结未激活时直接返回（性能优化）
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤：检查 Chunk 是否在冻结名单
+        // 检查 Chunk 是否在冻结名单
         val chunkKey = event.block.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：阻止红石信号变化
+        // 检查元件开关
+        if (!manager.isRedstoneSignalAffected()) return
+
+        // 阻止红石信号变化
         event.newCurrent = event.oldCurrent
     }
 
@@ -45,15 +45,13 @@ class RedstoneFreezeListener(
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     fun onPistonExtend(event: BlockPistonExtendEvent) {
-        // 第一级过滤
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤
         val chunkKey = event.block.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：取消活塞伸出
+        if (!manager.isPistonExtendAffected()) return
+
         event.isCancelled = true
     }
 
@@ -62,15 +60,13 @@ class RedstoneFreezeListener(
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     fun onPistonRetract(event: BlockPistonRetractEvent) {
-        // 第一级过滤
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤
         val chunkKey = event.block.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：取消活塞收回
+        if (!manager.isPistonRetractAffected()) return
+
         event.isCancelled = true
     }
 
@@ -79,15 +75,24 @@ class RedstoneFreezeListener(
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     fun onBlockPhysics(event: BlockPhysicsEvent) {
-        // 第一级过滤
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤
         val chunkKey = event.block.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：取消物理更新
+        if (!manager.isBlockPhysicsAffected()) return
+
+        // 如果活塞不受影响，则允许活塞相关的物理更新
+        val blockType = event.block.type
+        if (!manager.isPistonExtendAffected() && !manager.isPistonRetractAffected()) {
+            if (blockType == org.bukkit.Material.PISTON ||
+                blockType == org.bukkit.Material.STICKY_PISTON ||
+                blockType == org.bukkit.Material.PISTON_HEAD ||
+                blockType == org.bukkit.Material.MOVING_PISTON) {
+                return  // 允许活塞物理更新
+            }
+        }
+
         event.isCancelled = true
     }
 
@@ -96,15 +101,13 @@ class RedstoneFreezeListener(
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     fun onTNTPrime(event: TNTPrimeEvent) {
-        // 第一级过滤
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤
         val chunkKey = event.block.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：取消 TNT 点燃
+        if (!manager.isTntPrimeAffected()) return
+
         event.isCancelled = true
     }
 
@@ -113,15 +116,13 @@ class RedstoneFreezeListener(
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     fun onExplosionPrime(event: ExplosionPrimeEvent) {
-        // 第一级过滤
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤
         val chunkKey = event.entity.location.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：取消爆炸
+        if (!manager.isExplosionAffected()) return
+
         event.isCancelled = true
     }
 
@@ -133,15 +134,13 @@ class RedstoneFreezeListener(
         // 只拦截 TNT 实体
         if (event.entityType != EntityType.TNT) return
 
-        // 第一级过滤
         if (!manager.isFreezeActive()) return
-        if (!manager.isEnabled()) return
 
-        // 第二级过滤
         val chunkKey = event.location.chunk.chunkKey
         if (!manager.isChunkFrozen(chunkKey)) return
 
-        // 第三级：取消 TNT 实体生成
+        if (!manager.isTntSpawnAffected()) return
+
         event.isCancelled = true
     }
 
