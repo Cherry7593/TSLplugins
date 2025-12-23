@@ -11,15 +11,22 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 伪和平模式管理器
- * 玩家在指定时间内不会被怪物发现/锁定
+ * 模式1 (peace): 玩家在指定时间内不会被怪物发现/锁定
+ * 模式2 (nospawn): 玩家附近禁止自然生成敌对生物
  */
 class PeaceManager(private val plugin: JavaPlugin) {
 
     private var enabled: Boolean = true
     private var scanIntervalTicks: Long = 20L
+    
+    // NoSpawn 模式配置
+    private var noSpawnRadius: Int = 48
 
     // 在线玩家的和平效果缓存：playerUuid -> expireAt
     private val peacePlayers: ConcurrentHashMap<UUID, Long> = ConcurrentHashMap()
+    
+    // 在线玩家的禁怪效果缓存：playerUuid -> expireAt
+    private val noSpawnPlayers: ConcurrentHashMap<UUID, Long> = ConcurrentHashMap()
 
     // 消息配置
     private val messages: MutableMap<String, String> = mutableMapOf()
@@ -38,6 +45,7 @@ class PeaceManager(private val plugin: JavaPlugin) {
 
         enabled = config.getBoolean("peace.enabled", true)
         scanIntervalTicks = config.getLong("peace.scan-interval-ticks", 20L)
+        noSpawnRadius = config.getInt("peace.nospawn-radius", 48)
 
         // 读取消息配置
         val prefix = config.getString("peace.messages.prefix", "&a[和平]&r ") ?: "&a[和平]&r "
@@ -77,6 +85,17 @@ class PeaceManager(private val plugin: JavaPlugin) {
                             source TEXT DEFAULT 'command'
                         )
                     """.trimIndent())
+                    
+                    // NoSpawn 模式表
+                    stmt.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS peace_nospawn_players (
+                            player_uuid TEXT PRIMARY KEY,
+                            player_name TEXT NOT NULL,
+                            expire_at INTEGER NOT NULL,
+                            created_at INTEGER NOT NULL,
+                            source TEXT DEFAULT 'command'
+                        )
+                    """.trimIndent())
                 }
             }
             plugin.logger.info("[Peace] 数据库表初始化完成")
@@ -105,8 +124,21 @@ class PeaceManager(private val plugin: JavaPlugin) {
                             }
                         }
                     }
+                    
+                    // 加载 NoSpawn 玩家
+                    conn.prepareStatement("SELECT player_uuid, expire_at FROM peace_nospawn_players").use { stmt ->
+                        val rs = stmt.executeQuery()
+                        val now = System.currentTimeMillis()
+                        while (rs.next()) {
+                            val uuid = UUID.fromString(rs.getString("player_uuid"))
+                            val expireAt = rs.getLong("expire_at")
+                            if (expireAt > now) {
+                                noSpawnPlayers[uuid] = expireAt
+                            }
+                        }
+                    }
                 }
-                plugin.logger.info("[Peace] 从数据库加载了 ${peacePlayers.size} 个和平玩家")
+                plugin.logger.info("[Peace] 从数据库加载了 ${peacePlayers.size} 个和平玩家, ${noSpawnPlayers.size} 个禁怪玩家")
             } catch (e: Exception) {
                 plugin.logger.severe("[Peace] 加载数据失败: ${e.message}")
             }
@@ -131,19 +163,18 @@ class PeaceManager(private val plugin: JavaPlugin) {
      */
     private fun scanAndRemoveExpired() {
         val now = System.currentTimeMillis()
-        val expiredUuids = mutableListOf<UUID>()
-
+        
+        // 扫描和平模式
+        val expiredPeaceUuids = mutableListOf<UUID>()
         peacePlayers.forEach { (uuid, expireAt) ->
             if (now >= expireAt) {
-                expiredUuids.add(uuid)
+                expiredPeaceUuids.add(uuid)
             }
         }
 
-        if (expiredUuids.isNotEmpty()) {
-            expiredUuids.forEach { uuid ->
+        if (expiredPeaceUuids.isNotEmpty()) {
+            expiredPeaceUuids.forEach { uuid ->
                 peacePlayers.remove(uuid)
-
-                // 通知玩家
                 val player = Bukkit.getPlayer(uuid)
                 if (player != null && player.isOnline) {
                     player.scheduler.run(plugin, { _ ->
@@ -151,12 +182,38 @@ class PeaceManager(private val plugin: JavaPlugin) {
                     }, null)
                 }
             }
+        }
+        
+        // 扫描禁怪模式
+        val expiredNoSpawnUuids = mutableListOf<UUID>()
+        noSpawnPlayers.forEach { (uuid, expireAt) ->
+            if (now >= expireAt) {
+                expiredNoSpawnUuids.add(uuid)
+            }
+        }
 
-            // 异步删除数据库记录
+        if (expiredNoSpawnUuids.isNotEmpty()) {
+            expiredNoSpawnUuids.forEach { uuid ->
+                noSpawnPlayers.remove(uuid)
+                val player = Bukkit.getPlayer(uuid)
+                if (player != null && player.isOnline) {
+                    player.scheduler.run(plugin, { _ ->
+                        player.sendMessage(colorize(getMessage("nospawn_expired")))
+                    }, null)
+                }
+            }
+        }
+
+        // 异步删除数据库记录
+        if (expiredPeaceUuids.isNotEmpty() || expiredNoSpawnUuids.isNotEmpty()) {
             CompletableFuture.runAsync {
                 try {
                     DatabaseManager.getConnection()?.use { conn ->
                         conn.prepareStatement("DELETE FROM peace_players WHERE expire_at <= ?").use { stmt ->
+                            stmt.setLong(1, now)
+                            stmt.executeUpdate()
+                        }
+                        conn.prepareStatement("DELETE FROM peace_nospawn_players WHERE expire_at <= ?").use { stmt ->
                             stmt.setLong(1, now)
                             stmt.executeUpdate()
                         }
@@ -297,6 +354,150 @@ class PeaceManager(private val plugin: JavaPlugin) {
         return count
     }
 
+    // ========== NoSpawn 禁怪模式方法 ==========
+
+    /**
+     * 设置玩家的禁怪模式持续时间
+     *
+     * @param player 目标玩家
+     * @param durationMs 持续时间（毫秒）
+     * @param source 来源标识
+     * @return 是否成功
+     */
+    fun setNoSpawn(player: Player, durationMs: Long, source: String = "command"): Boolean {
+        if (!enabled) return false
+
+        val now = System.currentTimeMillis()
+        val expireAt = now + durationMs
+
+        // 更新缓存
+        noSpawnPlayers[player.uniqueId] = expireAt
+
+        // 异步写入数据库
+        CompletableFuture.runAsync {
+            try {
+                DatabaseManager.getConnection()?.use { conn ->
+                    conn.prepareStatement("""
+                        INSERT OR REPLACE INTO peace_nospawn_players (player_uuid, player_name, expire_at, created_at, source)
+                        VALUES (?, ?, ?, ?, ?)
+                    """.trimIndent()).use { stmt ->
+                        stmt.setString(1, player.uniqueId.toString())
+                        stmt.setString(2, player.name)
+                        stmt.setLong(3, expireAt)
+                        stmt.setLong(4, now)
+                        stmt.setString(5, source)
+                        stmt.executeUpdate()
+                    }
+                }
+            } catch (e: Exception) {
+                plugin.logger.warning("[Peace] 保存禁怪数据失败: ${e.message}")
+            }
+        }
+
+        plugin.logger.info("[Peace] ${player.name} 获得禁怪模式, 持续 ${durationMs / 1000} 秒, 半径 $noSpawnRadius")
+        return true
+    }
+
+    /**
+     * 检查玩家是否处于禁怪模式
+     */
+    fun hasNoSpawn(uuid: UUID): Boolean {
+        val expireAt = noSpawnPlayers[uuid] ?: return false
+        return System.currentTimeMillis() < expireAt
+    }
+
+    /**
+     * 检查玩家是否处于禁怪模式（Player 版本）
+     */
+    fun hasNoSpawn(player: Player): Boolean {
+        return hasNoSpawn(player.uniqueId)
+    }
+
+    /**
+     * 获取玩家的禁怪模式剩余时间（毫秒）
+     */
+    fun getNoSpawnRemainingTime(uuid: UUID): Long {
+        val expireAt = noSpawnPlayers[uuid] ?: return 0
+        val remaining = expireAt - System.currentTimeMillis()
+        return if (remaining > 0) remaining else 0
+    }
+
+    /**
+     * 清除玩家的禁怪模式
+     */
+    fun clearNoSpawn(uuid: UUID): Boolean {
+        if (!noSpawnPlayers.containsKey(uuid)) return false
+
+        noSpawnPlayers.remove(uuid)
+
+        // 异步删除数据库记录
+        CompletableFuture.runAsync {
+            try {
+                DatabaseManager.getConnection()?.use { conn ->
+                    conn.prepareStatement("DELETE FROM peace_nospawn_players WHERE player_uuid = ?").use { stmt ->
+                        stmt.setString(1, uuid.toString())
+                        stmt.executeUpdate()
+                    }
+                }
+            } catch (e: Exception) {
+                plugin.logger.warning("[Peace] 删除禁怪记录失败: ${e.message}")
+            }
+        }
+
+        return true
+    }
+
+    /**
+     * 获取所有禁怪模式玩家列表
+     */
+    fun listNoSpawnPlayers(): List<PeaceEntry> {
+        val now = System.currentTimeMillis()
+        return noSpawnPlayers.mapNotNull { (uuid, expireAt) ->
+            if (expireAt > now) {
+                val playerName = Bukkit.getOfflinePlayer(uuid).name ?: uuid.toString()
+                PeaceEntry(uuid, playerName, expireAt - now)
+            } else {
+                null
+            }
+        }.sortedByDescending { it.remainingMs }
+    }
+
+    /**
+     * 清除所有禁怪模式
+     */
+    fun clearAllNoSpawn(): Int {
+        val count = noSpawnPlayers.size
+        noSpawnPlayers.clear()
+
+        // 异步清空数据库
+        CompletableFuture.runAsync {
+            try {
+                DatabaseManager.getConnection()?.use { conn ->
+                    conn.createStatement().use { stmt ->
+                        stmt.executeUpdate("DELETE FROM peace_nospawn_players")
+                    }
+                }
+            } catch (e: Exception) {
+                plugin.logger.warning("[Peace] 清空禁怪数据失败: ${e.message}")
+            }
+        }
+
+        return count
+    }
+
+    /**
+     * 获取禁怪模式半径
+     */
+    fun getNoSpawnRadius(): Int = noSpawnRadius
+
+    /**
+     * 获取所有禁怪模式玩家的 UUID 列表（用于监听器快速检查）
+     */
+    fun getNoSpawnPlayerUuids(): Set<UUID> {
+        val now = System.currentTimeMillis()
+        return noSpawnPlayers.filterValues { it > now }.keys
+    }
+
     /**
      * 玩家上线时加载效果
      */
@@ -304,11 +505,20 @@ class PeaceManager(private val plugin: JavaPlugin) {
         if (!enabled) return
 
         // 检查是否有未过期的和平状态
-        val expireAt = peacePlayers[player.uniqueId]
-        if (expireAt != null && expireAt > System.currentTimeMillis()) {
-            val remaining = (expireAt - System.currentTimeMillis()) / 1000
+        val peaceExpireAt = peacePlayers[player.uniqueId]
+        if (peaceExpireAt != null && peaceExpireAt > System.currentTimeMillis()) {
+            val remaining = (peaceExpireAt - System.currentTimeMillis()) / 1000
             player.scheduler.runDelayed(plugin, { _ ->
                 player.sendMessage(colorize(getMessage("rejoin", "time" to formatDuration(remaining * 1000))))
+            }, null, 20L)
+        }
+        
+        // 检查是否有未过期的禁怪状态
+        val noSpawnExpireAt = noSpawnPlayers[player.uniqueId]
+        if (noSpawnExpireAt != null && noSpawnExpireAt > System.currentTimeMillis()) {
+            val remaining = (noSpawnExpireAt - System.currentTimeMillis()) / 1000
+            player.scheduler.runDelayed(plugin, { _ ->
+                player.sendMessage(colorize(getMessage("nospawn_rejoin", "time" to formatDuration(remaining * 1000), "radius" to noSpawnRadius.toString())))
             }, null, 20L)
         }
     }
@@ -325,6 +535,7 @@ class PeaceManager(private val plugin: JavaPlugin) {
      */
     fun shutdown() {
         peacePlayers.clear()
+        noSpawnPlayers.clear()
         plugin.logger.info("[Peace] 管理器已关闭")
     }
 

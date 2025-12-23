@@ -11,6 +11,8 @@ import org.tsl.tSLplugins.Toss.TossManager
 import org.tsl.tSLplugins.BlockStats.BlockStatsManager
 import org.tsl.tSLplugins.NewbieTag.NewbieTagManager
 import org.tsl.tSLplugins.RandomVariable.RandomVariableManager
+import org.tsl.tSLplugins.PapiAlias.PapiAliasManager
+import org.tsl.tSLplugins.PlayTime.PlayTimeManager
 
 /**
  * TSLplugins PlaceholderAPI 扩展
@@ -29,6 +31,11 @@ import org.tsl.tSLplugins.RandomVariable.RandomVariableManager
  * - %tsl_blocks_placed_total% - 玩家放置方块总数
  * - %tsl_newbie_tag% - 萌新标志（根据在线时长）
  * - %tsl_random_变量名% - 混合分布随机数
+ * - %tsl_alias_变量名% - 变量值映射（将原值映射为简写）
+ * - %tsl_playtime% - 今日在线时长（格式化）
+ * - %tsl_playtime_seconds% - 今日在线时长（秒）
+ * - %tsl_playtime_minutes% - 今日在线时长（分钟）
+ * - %tsl_playtime_hours% - 今日在线时长（小时，带小数）
  */
 class TSLPlaceholderExpansion(
     private val plugin: JavaPlugin,
@@ -39,7 +46,9 @@ class TSLPlaceholderExpansion(
     private val tossManager: TossManager?,
     private val blockStatsManager: BlockStatsManager?,
     private val newbieTagManager: NewbieTagManager?,
-    private val randomVariableManager: RandomVariableManager?
+    private val randomVariableManager: RandomVariableManager?,
+    private val papiAliasManager: PapiAliasManager? = null,
+    private val playTimeManager: PlayTimeManager? = null
 ) : PlaceholderExpansion() {
 
     override fun getIdentifier(): String = "tsl"
@@ -126,6 +135,54 @@ class TSLPlaceholderExpansion(
         if (randomVariableManager != null && params.startsWith("random_", ignoreCase = true)) {
             val varName = params.substring(7) // 移除 "random_" 前缀
             return randomVariableManager.getRandomValue(varName)
+        }
+
+        // === PapiAlias 变量 ===
+        // %tsl_alias_变量名% - 变量值映射（将原值映射为简写）
+        if (papiAliasManager != null && params.startsWith("alias_", ignoreCase = true)) {
+            if (!papiAliasManager.isEnabled()) return null
+            
+            val variableName = params.substring(6) // 移除 "alias_" 前缀
+            if (variableName.isEmpty()) return null
+            
+            // 使用 PlaceholderAPI 解析原始变量值
+            val originalPlaceholder = "%$variableName%"
+            val originalValue = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, originalPlaceholder)
+            
+            // 如果解析结果仍然是占位符本身，说明变量不存在
+            if (originalValue == originalPlaceholder) return null
+            
+            // 查找映射并返回
+            return papiAliasManager.getAliasValue(variableName, originalValue)
+        }
+
+        // === PlayTime 变量 ===
+        if (playTimeManager != null && playTimeManager.isEnabled()) {
+            val onlinePlayer = player.player
+            when {
+                // %tsl_playtime% - 今日在线时长（格式化字符串）
+                params.equals("playtime", ignoreCase = true) -> {
+                    if (onlinePlayer == null) return "0秒"
+                    return playTimeManager.getTodayPlayTimeFormatted(onlinePlayer.uniqueId)
+                }
+                // %tsl_playtime_seconds% - 今日在线时长（秒）
+                params.equals("playtime_seconds", ignoreCase = true) -> {
+                    if (onlinePlayer == null) return "0"
+                    return playTimeManager.getTodayPlayTime(onlinePlayer.uniqueId).toString()
+                }
+                // %tsl_playtime_minutes% - 今日在线时长（分钟，整数）
+                params.equals("playtime_minutes", ignoreCase = true) -> {
+                    if (onlinePlayer == null) return "0"
+                    val seconds = playTimeManager.getTodayPlayTime(onlinePlayer.uniqueId)
+                    return (seconds / 60).toString()
+                }
+                // %tsl_playtime_hours% - 今日在线时长（小时，带一位小数）
+                params.equals("playtime_hours", ignoreCase = true) -> {
+                    if (onlinePlayer == null) return "0.0"
+                    val seconds = playTimeManager.getTodayPlayTime(onlinePlayer.uniqueId)
+                    return String.format("%.1f", seconds / 3600.0)
+                }
+            }
         }
 
         return null

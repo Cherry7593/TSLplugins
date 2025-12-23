@@ -1,8 +1,8 @@
 ﻿# TSLplugins 配置文件
-# 版本: 33
+# 版本: 34
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 33
+config-version: 34
 
 # ========================================
 # 全局数据库配置
@@ -62,6 +62,37 @@ timed-attribute:
     list_entry: "&7- &f{attribute} &a{amount} &7| &b{remaining} &7| ID: &8{modifier_uuid}"
     # 清除成功
     clear_success: "%prefix%&a已清除 &e{player} &a的 &f{count} &a个属性效果"
+
+# ========================================
+# PapiAlias 变量映射配置
+# 将 PAPI 变量值映射为简写形式
+# 使用方式: %tsl_alias_<变量名>%
+# 例如: %tsl_alias_guild% 会解析 %guild% 的值并映射
+# ========================================
+papi-alias:
+  # 是否启用变量映射功能
+  enabled: true
+  # 当映射不存在时是否返回原始值（true=返回原值, false=返回原值）
+  return-original-if-not-found: true
+  # 变量映射配置
+  # 格式:
+  #   变量名:
+  #     "原始值": "简写值"
+  mappings:
+    # 示例：公会名称映射
+    # guild:
+    #   "宝可梦": "梦"
+    #   "潮汐亭": "汐"
+    #   "樱花雪": "樱"
+    # 示例：阵营映射
+    # faction:
+    #   "红队": "红"
+    #   "蓝队": "蓝"
+    # 示例：职业映射
+    # class:
+    #   "战士": "战"
+    #   "法师": "法"
+    #   "刺客": "刺"
 
 # ========================================
 # Ignore 聊天屏蔽配置
@@ -867,7 +898,8 @@ random-variable:
 
 # ========================================
 # Peace 伪和平模式配置
-# 玩家在指定时间内不会被怪物发现/锁定
+# 模式1 (peace): 玩家在指定时间内不会被怪物发现/锁定
+# 模式2 (nospawn): 玩家附近禁止敌对生物自然生成
 # ========================================
 peace:
   # 是否启用伪和平功能
@@ -875,6 +907,10 @@ peace:
 
   # 过期扫描间隔（tick）
   scan-interval-ticks: 20
+
+  # 禁怪模式的禁止刷怪半径（格）
+  # 建议范围: 32-64
+  nospawn-radius: 48
 
   # 消息配置
   messages:
@@ -908,6 +944,58 @@ peace:
     not_peaceful: "%prefix%&c玩家 &e{player} &c不在伪和平模式中"
     # 列表为空
     list_empty: "%prefix%&7当前没有玩家处于伪和平模式"
+    # ===== 禁怪模式消息 =====
+    # 禁怪模式设置成功
+    nospawn_set_success: "%prefix%&b已为 &f{player} &b设置禁怪模式，持续 &e{time}&b，半径 &f{radius} &b格"
+    # 获得禁怪模式
+    nospawn_gained: "%prefix%&b你获得了禁怪模式，持续 &e{time}&b，周围 &f{radius} &b格内不再刷怪"
+    # 禁怪模式过期
+    nospawn_expired: "%prefix%&c你的禁怪模式已过期，周围将恢复正常刷怪"
+    # 重新登录提示（禁怪）
+    nospawn_rejoin: "%prefix%&b你仍处于禁怪模式，剩余 &e{time}&b，半径 &f{radius} &b格"
+    # 清除禁怪成功
+    nospawn_clear_success: "%prefix%&b已清除 &f{player} &b的禁怪模式"
+    # 清除全部禁怪成功
+    nospawn_clear_all: "%prefix%&b已清除所有玩家的禁怪模式 (共 &f{count} &b人)"
+    # 禁怪被清除通知
+    nospawn_cleared: "%prefix%&c你的禁怪模式已被管理员清除"
+    # 玩家不在禁怪状态
+    not_nospawn: "%prefix%&c玩家 &e{player} &c不在禁怪模式中"
+    # 禁怪列表为空
+    nospawn_list_empty: "%prefix%&7当前没有玩家处于禁怪模式"
+
+# ========================================
+# PlayTime 玩家在线时长统计配置
+# 统计玩家每日在线时长，支持 PAPI 变量和条件判断
+# ========================================
+playtime:
+  # 是否启用在线时长统计功能
+  enabled: true
+
+  # 自动保存间隔（tick，20 tick = 1 秒）
+  # 默认 6000 tick = 5 分钟
+  save-interval-ticks: 6000
+
+  # 时区设置（用于每日重置）
+  # 默认使用 Asia/Shanghai（北京时间）
+  timezone: "Asia/Shanghai"
+
+  # 消息配置
+  messages:
+    # 命令前缀
+    prefix: "&e[时长]&r "
+    # 功能已禁用
+    disabled: "%prefix%&c在线时长统计功能已禁用"
+    # 查看自己的时长
+    self: "%prefix%&a你今日的在线时长: &f%time%"
+    # 查看他人的时长
+    check: "%prefix%&a%player% &7今日的在线时长: &f%time%"
+    # 排行榜标题
+    top-header: "&6========== 今日在线时长排行榜 =========="
+    # 排行榜条目
+    top-entry: "&e%rank%. &a%player% &7- &f%time%"
+    # 排行榜尾部
+    top-footer: "&6======================================="
 
 # ========================================
 # SuperSnowball 超级大雪球配置

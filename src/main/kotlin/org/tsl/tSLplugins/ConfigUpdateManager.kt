@@ -137,7 +137,30 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
         }
 
         // 合并配置：使用默认配置的格式和注释，但替换为用户的值
-        val updatedConfigText = mergeConfigWithComments(defaultConfigText, currentConfig)
+        var updatedConfigText = mergeConfigWithComments(defaultConfigText, currentConfig)
+
+        // 验证合并后的内容是否为有效 YAML
+        try {
+            val testConfig = YamlConfiguration()
+            testConfig.loadFromString(updatedConfigText)
+            plugin.logger.info("合并后的配置验证通过")
+        } catch (e: Exception) {
+            plugin.logger.warning("合并后的配置存在语法错误，尝试修复: ${e.message}")
+            // 尝试修复合并后的内容
+            updatedConfigText = repairYamlContent(updatedConfigText)
+            
+            // 再次验证
+            try {
+                val testConfig = YamlConfiguration()
+                testConfig.loadFromString(updatedConfigText)
+                plugin.logger.info("配置修复成功")
+            } catch (e2: Exception) {
+                plugin.logger.severe("无法修复合并后的配置: ${e2.message}")
+                // 使用默认配置
+                plugin.logger.info("将使用默认配置")
+                updatedConfigText = defaultConfigText
+            }
+        }
 
         // 保存更新后的配置
         try {
@@ -160,6 +183,47 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             }
             return false
         }
+    }
+
+    /**
+     * 修复 YAML 内容中的语法错误
+     */
+    private fun repairYamlContent(content: String): String {
+        var result = content
+        
+        // 修复 1: 将内联 map 中的 = 替换为 :
+        val inlineMapBlockPattern = Regex("""\{[^}]+\}""")
+        if (inlineMapBlockPattern.containsMatchIn(result)) {
+            result = inlineMapBlockPattern.replace(result) { match ->
+                repairInlineMap(match.value)
+            }
+        }
+        
+        // 修复 2: 将内联 map 转换为块格式
+        val inlineMapLinePattern = Regex("""^(\s*)-\s*\{([^}]+)\}\s*$""", RegexOption.MULTILINE)
+        if (inlineMapLinePattern.containsMatchIn(result)) {
+            result = inlineMapLinePattern.replace(result) { match ->
+                val indent = match.groupValues[1]
+                val mapContent = match.groupValues[2]
+                val entries = parseInlineMapEntries(mapContent)
+                val blockFormat = StringBuilder()
+                entries.forEachIndexed { index, entry ->
+                    if (index == 0) {
+                        blockFormat.append("$indent- $entry")
+                    } else {
+                        blockFormat.append("\n$indent  $entry")
+                    }
+                }
+                blockFormat.toString()
+            }
+        }
+        
+        // 修复 3: Tab 转空格
+        if (result.contains("\t")) {
+            result = result.replace("\t", "  ")
+        }
+        
+        return result
     }
 
     /**
@@ -513,6 +577,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
 
     /**
      * 格式化 List 项的值
+     * 关键修复：Map 类型不能用 toString()，因为 Java Map.toString() 输出 {key=value} 格式
      */
     private fun formatValueForList(value: Any?): String {
         return when (value) {
@@ -523,8 +588,73 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 temp.set("v", value)
                 val raw = temp.saveToString()
                 raw.lineSequence()
-                    .first { it.startsWith("v:") }
-                    .substringAfter("v: ")
+                    .firstOrNull { it.startsWith("v:") }
+                    ?.substringAfter("v: ")
+                    ?: "\"$value\""
+            }
+            is Boolean -> value.toString()
+            is Number -> value.toString()
+            is Map<*, *> -> {
+                // Map 类型：转换为 YAML 内联格式 {key: value, key2: value2}
+                if (value.isEmpty()) "{}"
+                else {
+                    val entries = value.entries.joinToString(", ") { (k, v) ->
+                        "$k: ${formatMapValue(v)}"
+                    }
+                    "{$entries}"
+                }
+            }
+            is org.bukkit.configuration.ConfigurationSection -> {
+                // ConfigurationSection 转换为 Map 后处理
+                val map = value.getValues(false)
+                if (map.isEmpty()) "{}"
+                else {
+                    val entries = map.entries.joinToString(", ") { (k, v) ->
+                        "$k: ${formatMapValue(v)}"
+                    }
+                    "{$entries}"
+                }
+            }
+            else -> {
+                // 使用 YamlConfiguration 序列化其他类型
+                val temp = YamlConfiguration()
+                temp.set("v", value)
+                val raw = temp.saveToString()
+                raw.lineSequence()
+                    .firstOrNull { it.startsWith("v:") }
+                    ?.substringAfter("v: ")
+                    ?: value.toString()
+            }
+        }
+    }
+
+    /**
+     * 格式化 Map 内部的值（用于内联格式）
+     */
+    private fun formatMapValue(value: Any?): String {
+        return when (value) {
+            null -> "null"
+            is String -> {
+                // 检查是否需要引号
+                if (value.contains(":") || value.contains(",") || value.contains("{") || 
+                    value.contains("}") || value.contains("[") || value.contains("]") ||
+                    value.contains("'") || value.contains("\"") || value.contains("#") ||
+                    value.startsWith(" ") || value.endsWith(" ")) {
+                    "\"${value.replace("\"", "\\\"")}\""
+                } else {
+                    value
+                }
+            }
+            is Boolean -> value.toString()
+            is Number -> value.toString()
+            is Map<*, *> -> {
+                if (value.isEmpty()) "{}"
+                else {
+                    val entries = value.entries.joinToString(", ") { (k, v) ->
+                        "$k: ${formatMapValue(v)}"
+                    }
+                    "{$entries}"
+                }
             }
             else -> value.toString()
         }
@@ -543,11 +673,22 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 temp.set("v", value)
                 val raw = temp.saveToString()
                 raw.lineSequence()
-                    .first { it.startsWith("v:") }
-                    .substringAfter("v: ")
+                    .firstOrNull { it.startsWith("v:") }
+                    ?.substringAfter("v: ")
+                    ?: "\"$value\""
             }
             is Boolean -> value.toString()
             is Number -> value.toString()
+            is Map<*, *> -> {
+                // Map 类型：转换为 YAML 内联格式
+                if (value.isEmpty()) "{}"
+                else {
+                    val entries = value.entries.joinToString(", ") { (k, v) ->
+                        "$k: ${formatMapValue(v)}"
+                    }
+                    "{$entries}"
+                }
+            }
             is List<*> -> {
                 // List 类型应该在 buildListBlock 中处理，这里不应该到达
                 // 但为了安全，还是提供一个后备方案
@@ -566,8 +707,9 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 temp.set("v", value)
                 val raw = temp.saveToString()
                 raw.lineSequence()
-                    .first { it.startsWith("v:") }
-                    .substringAfter("v: ")
+                    .firstOrNull { it.startsWith("v:") }
+                    ?.substringAfter("v: ")
+                    ?: value.toString()
             }
         }
     }
@@ -588,12 +730,15 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
             var content = configFile.readText(StandardCharsets.UTF_8)
             var modified = false
 
-            // 修复 1: 将 {key=value} 格式修复为 {key: value}
+            // 修复 1: 将内联 map 中的 = 替换为 :
             // 常见错误: - {min=0.1, max=1.0} 应该是 - {min: 0.1, max: 1.0}
-            val inlineMapPattern = Regex("""(\{[^}]*?)=([^},]*?)([,}])""")
-            while (inlineMapPattern.containsMatchIn(content)) {
-                content = inlineMapPattern.replace(content) { match ->
-                    "${match.groupValues[1]}: ${match.groupValues[2]}${match.groupValues[3]}"
+            // 使用更精确的方法：找到所有 {...} 块，修复其中的 =
+            val inlineMapBlockPattern = Regex("""\{[^}]+\}""")
+            if (inlineMapBlockPattern.containsMatchIn(content)) {
+                content = inlineMapBlockPattern.replace(content) { match ->
+                    // 在内联 map 块内，将所有 key=value 替换为 key: value
+                    // 但要注意不要替换字符串值内的 =
+                    repairInlineMap(match.value)
                 }
                 modified = true
             }
@@ -609,7 +754,7 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 content = inlineMapLinePattern.replace(content) { match ->
                     val indent = match.groupValues[1]
                     val mapContent = match.groupValues[2]
-                    val entries = mapContent.split(",").map { it.trim() }
+                    val entries = parseInlineMapEntries(mapContent)
                     val blockFormat = StringBuilder()
                     entries.forEachIndexed { index, entry ->
                         if (index == 0) {
@@ -642,6 +787,26 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                 modified = true
             }
 
+            // 修复 6: 修复冒号后缺少空格的问题
+            // 例如: key:value 应该是 key: value
+            val colonNoSpacePattern = Regex("""^(\s*[\w\-_]+):([^\s\n])""", RegexOption.MULTILINE)
+            if (colonNoSpacePattern.containsMatchIn(content)) {
+                content = colonNoSpacePattern.replace(content) { match ->
+                    "${match.groupValues[1]}: ${match.groupValues[2]}"
+                }
+                modified = true
+            }
+
+            // 修复 7: 修复重复的冒号
+            // 例如: key:: value 应该是 key: value
+            val doubleColonPattern = Regex("""^(\s*[\w\-_]+)::+""", RegexOption.MULTILINE)
+            if (doubleColonPattern.containsMatchIn(content)) {
+                content = doubleColonPattern.replace(content) { match ->
+                    "${match.groupValues[1]}:"
+                }
+                modified = true
+            }
+
             if (modified) {
                 // 验证修复后的内容是否有效
                 try {
@@ -653,6 +818,19 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
                     return true
                 } catch (e: Exception) {
                     plugin.logger.warning("修复后的配置仍然无效: ${e.message}")
+                    // 尝试更激进的修复 - 完全转换内联格式为块格式
+                    val aggressiveRepair = tryAggressiveRepair(content)
+                    if (aggressiveRepair != null) {
+                        try {
+                            val testConfig2 = YamlConfiguration()
+                            testConfig2.loadFromString(aggressiveRepair)
+                            configFile.writeText(aggressiveRepair, StandardCharsets.UTF_8)
+                            plugin.logger.info("配置文件已通过激进修复方式修复")
+                            return true
+                        } catch (e2: Exception) {
+                            plugin.logger.warning("激进修复也失败: ${e2.message}")
+                        }
+                    }
                     return false
                 }
             }
@@ -661,6 +839,141 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
         } catch (e: Exception) {
             plugin.logger.warning("尝试修复配置文件时出错: ${e.message}")
             return false
+        }
+    }
+
+    /**
+     * 修复内联 map 中的语法错误
+     * 将 {key=value, key2=value2} 转换为 {key: value, key2: value2}
+     */
+    private fun repairInlineMap(inlineMap: String): String {
+        var result = inlineMap
+        
+        // 替换 key=value 为 key: value
+        // 匹配: 单词字符后跟 =，但不在引号内
+        val keyValuePattern = Regex("""(\w+)\s*=\s*([^,}]+)""")
+        result = keyValuePattern.replace(result) { match ->
+            val key = match.groupValues[1]
+            val value = match.groupValues[2].trim()
+            "$key: $value"
+        }
+        
+        return result
+    }
+
+    /**
+     * 解析内联 map 的条目
+     * 处理 "key: value, key2: value2" 格式
+     */
+    private fun parseInlineMapEntries(mapContent: String): List<String> {
+        val entries = mutableListOf<String>()
+        val parts = mapContent.split(",")
+        
+        for (part in parts) {
+            val trimmed = part.trim()
+            if (trimmed.isNotEmpty()) {
+                // 确保格式正确 (key: value)
+                if (trimmed.contains(":")) {
+                    entries.add(trimmed)
+                } else if (trimmed.contains("=")) {
+                    // 修复 = 为 :
+                    entries.add(trimmed.replaceFirst("=", ": "))
+                } else {
+                    entries.add(trimmed)
+                }
+            }
+        }
+        
+        return entries
+    }
+
+    /**
+     * 激进修复：将所有内联格式转换为块格式
+     */
+    private fun tryAggressiveRepair(content: String): String? {
+        try {
+            var result = content
+            
+            // 将所有 List 中的内联 map 转换为块格式
+            val lines = result.lines().toMutableList()
+            val newLines = mutableListOf<String>()
+            var i = 0
+            
+            while (i < lines.size) {
+                val line = lines[i]
+                val trimmed = line.trim()
+                
+                // 检测内联 map 列表项: - {key: value, ...}
+                if (trimmed.startsWith("- {") && trimmed.endsWith("}")) {
+                    val indent = line.takeWhile { it.isWhitespace() }
+                    val mapContent = trimmed.removePrefix("- {").removeSuffix("}")
+                    
+                    // 解析并转换为块格式
+                    val entries = parseInlineMapEntries(mapContent)
+                    if (entries.isNotEmpty()) {
+                        entries.forEachIndexed { index, entry ->
+                            if (index == 0) {
+                                newLines.add("$indent- $entry")
+                            } else {
+                                newLines.add("$indent  $entry")
+                            }
+                        }
+                    } else {
+                        newLines.add(line)
+                    }
+                } else {
+                    newLines.add(line)
+                }
+                i++
+            }
+            
+            return newLines.joinToString("\n")
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    /**
+     * 在加载配置前预先验证和修复文件
+     * 这个方法应该在任何 YAML 解析之前调用
+     */
+    fun preValidateAndRepair(): Boolean {
+        val configFile = File(plugin.dataFolder, "config.yml")
+        if (!configFile.exists()) return true // 文件不存在，将使用默认配置
+        
+        // 尝试验证当前配置
+        try {
+            val testConfig = YamlConfiguration()
+            testConfig.load(configFile)
+            return true // 配置有效
+        } catch (e: Exception) {
+            plugin.logger.warning("检测到配置文件语法错误: ${e.message}")
+            plugin.logger.info("正在尝试自动修复...")
+            
+            // 备份损坏的文件
+            val backupFile = File(plugin.dataFolder, "config-corrupted-${System.currentTimeMillis()}.yml.bak")
+            try {
+                configFile.copyTo(backupFile, overwrite = true)
+                plugin.logger.info("已备份损坏的配置到: ${backupFile.name}")
+            } catch (ex: Exception) {
+                plugin.logger.warning("备份失败: ${ex.message}")
+            }
+            
+            // 尝试修复
+            if (tryRepairYaml(configFile)) {
+                return true
+            }
+            
+            // 修复失败，重置为默认配置
+            plugin.logger.warning("无法自动修复，将重置为默认配置")
+            try {
+                plugin.saveResource("config.yml", true)
+                plugin.logger.info("已重置配置文件，原配置已备份到: ${backupFile.name}")
+                return true
+            } catch (ex: Exception) {
+                plugin.logger.severe("重置配置文件失败: ${ex.message}")
+                return false
+            }
         }
     }
 }

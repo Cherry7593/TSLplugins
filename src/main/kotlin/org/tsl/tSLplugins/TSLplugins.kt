@@ -87,6 +87,11 @@ import org.tsl.tSLplugins.SuperSnowball.SuperSnowballListener
 import org.tsl.tSLplugins.RedstoneFreeze.RedstoneFreezeManager
 import org.tsl.tSLplugins.RedstoneFreeze.RedstoneFreezeCommand
 import org.tsl.tSLplugins.RedstoneFreeze.RedstoneFreezeListener
+import org.tsl.tSLplugins.PapiAlias.PapiAliasManager
+import org.tsl.tSLplugins.PapiAlias.PapiAliasCommand
+import org.tsl.tSLplugins.PlayTime.PlayTimeManager
+import org.tsl.tSLplugins.PlayTime.PlayTimeCommand
+import org.tsl.tSLplugins.PlayTime.PlayTimeListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -123,19 +128,37 @@ class TSLplugins : JavaPlugin() {
     private lateinit var peaceManager: PeaceManager
     private lateinit var superSnowballManager: SuperSnowballManager
     private lateinit var redstoneFreezeManager: RedstoneFreezeManager
+    private lateinit var papiAliasManager: PapiAliasManager
+    private lateinit var playTimeManager: PlayTimeManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
     private lateinit var permissionChecker: PermissionChecker
 
     override fun onEnable() {
-        // 检查并更新配置文件
+        // 首先预验证和修复配置文件（在任何 YAML 解析之前）
         val configUpdateManager = ConfigUpdateManager(this)
+        if (!configUpdateManager.preValidateAndRepair()) {
+            logger.severe("配置文件无法加载，插件将禁用部分功能")
+        }
+        
+        // 检查并更新配置文件版本
         val configUpdated = configUpdateManager.checkAndUpdate()
 
         // 如果配置文件被更新，重新加载配置（确保获取最新的配置）
         if (configUpdated) {
-            reloadConfig()
+            // 再次验证配置文件，防止合并后出现问题
+            if (!configUpdateManager.preValidateAndRepair()) {
+                logger.warning("合并后的配置文件仍有问题，尝试使用默认配置")
+            }
+            try {
+                reloadConfig()
+            } catch (e: Exception) {
+                logger.severe("重新加载配置失败: ${e.message}")
+                logger.info("尝试重置为默认配置...")
+                saveResource("config.yml", true)
+                reloadConfig()
+            }
         }
 
         // 初始化全局数据库管理器
@@ -330,6 +353,15 @@ class TSLplugins : JavaPlugin() {
         val redstoneFreezeListener = RedstoneFreezeListener(redstoneFreezeManager)
         pm.registerEvents(redstoneFreezeListener, this)
 
+        // 初始化 PapiAlias 变量映射系统
+        papiAliasManager = PapiAliasManager(this)
+
+        // 初始化 PlayTime 在线时长统计系统
+        playTimeManager = PlayTimeManager(this)
+        val playTimeListener = PlayTimeListener(playTimeManager)
+        pm.registerEvents(playTimeListener, this)
+        playTimeManager.startSaveTask()
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -363,6 +395,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("peace", PeaceCommand(peaceManager))
             dispatcher.registerSubCommand("ss", SuperSnowballCommand(superSnowballManager))
             dispatcher.registerSubCommand("redfreeze", RedstoneFreezeCommand(this, redstoneFreezeManager))
+            dispatcher.registerSubCommand("papialias", PapiAliasCommand(papiAliasManager))
+            dispatcher.registerSubCommand("playtime", PlayTimeCommand(playTimeManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -372,7 +406,7 @@ class TSLplugins : JavaPlugin() {
 
         // 注册 PlaceholderAPI 扩展（如果 PlaceholderAPI 已加载）
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            // 只注册一个统一的扩展，包含所有变量
+            // 注册统一的 PAPI 扩展，包含所有变量
             TSLPlaceholderExpansion(
                 this,
                 countHandler,
@@ -382,8 +416,11 @@ class TSLplugins : JavaPlugin() {
                 tossManager,
                 blockStatsManager,
                 newbieTagManager,
-                randomVariableManager
+                randomVariableManager,
+                papiAliasManager,
+                playTimeManager
             ).register()
+            
             logger.info("PlaceholderAPI 扩展已注册！")
         } else {
             logger.warning("未检测到 PlaceholderAPI，占位符功能将不可用。")
@@ -453,6 +490,11 @@ class TSLplugins : JavaPlugin() {
         // 清理 RedstoneFreeze 系统
         if (::redstoneFreezeManager.isInitialized) {
             redstoneFreezeManager.cleanup()
+        }
+
+        // 清理 PlayTime 在线时长系统
+        if (::playTimeManager.isInitialized) {
+            playTimeManager.shutdown()
         }
 
         // 关闭全局数据库管理器
