@@ -71,6 +71,10 @@ class SQLiteTimedEffectStorage(
         tryAddColumn("effect_type", "VARCHAR(16) NOT NULL DEFAULT 'ADD'")
         tryAddColumn("created_at", "BIGINT NOT NULL DEFAULT 0")
         tryAddColumn("base_value", "DOUBLE")
+        
+        // 兼容旧版本的 operation 列（如果存在）
+        tryAddColumn("operation", "VARCHAR(16) DEFAULT 'ADD'")
+        tryRemoveNotNull("operation")
 
         // 创建索引
         DatabaseManager.createIndex("CREATE INDEX IF NOT EXISTS idx_player_uuid ON $tableName(player_uuid)")
@@ -87,6 +91,17 @@ class SQLiteTimedEffectStorage(
             ).use { it.executeUpdate() }
         } catch (e: Exception) {
             // 列已存在，忽略
+        }
+    }
+    
+    private fun tryRemoveNotNull(columnName: String) {
+        // SQLite 不支持直接修改列约束，但可以通过设置默认值来解决
+        try {
+            DatabaseManager.getConnection().prepareStatement(
+                "UPDATE $tableName SET $columnName = 'ADD' WHERE $columnName IS NULL"
+            ).use { it.executeUpdate() }
+        } catch (e: Exception) {
+            // 忽略
         }
     }
 
@@ -130,10 +145,11 @@ class SQLiteTimedEffectStorage(
     override fun insert(effect: TimedAttributeEffect): CompletableFuture<Boolean> {
         return CompletableFuture.supplyAsync({
             try {
+                // 包含 operation 列以兼容旧版数据库
                 DatabaseManager.getConnection().prepareStatement("""
                     INSERT INTO $tableName 
-                    (player_uuid, attribute, modifier_uuid, amount, effect_type, created_at, expire_at, base_value, source)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (player_uuid, attribute, modifier_uuid, amount, effect_type, created_at, expire_at, base_value, source, operation)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.trimIndent()).use { stmt ->
                     stmt.setString(1, effect.playerUuid.toString())
                     stmt.setString(2, effect.attributeKey)
@@ -148,6 +164,7 @@ class SQLiteTimedEffectStorage(
                         stmt.setNull(8, java.sql.Types.DOUBLE)
                     }
                     stmt.setString(9, effect.source)
+                    stmt.setString(10, effect.effectType.name) // operation 列用于兼容
                     stmt.executeUpdate() > 0
                 }
             } catch (e: Exception) {

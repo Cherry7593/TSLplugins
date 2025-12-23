@@ -425,29 +425,59 @@ class TimedAttributeCommand(
      * 显示属性列表
      */
     private fun showAttributeList(sender: CommandSender) {
-        sender.sendMessage(serializer.deserialize("&6&l===== 可用属性列表 ====="))
+        sender.sendMessage(serializer.deserialize("&6&l======== 可用属性列表 (1.21.4) ========"))
         sender.sendMessage(serializer.deserialize("&7使用 &e/tsl attr help <属性名> &7查看详情"))
         sender.sendMessage(serializer.deserialize(""))
 
-        // 分类显示
-        sender.sendMessage(serializer.deserialize("&c❤ 生命与防御:"))
-        sender.sendMessage(serializer.deserialize("  &fHEALTH &7(生命) &8| &fARMOR &7(护甲) &8| &fARMOR_TOUGHNESS &7(韧性) &8| &fKNOCKBACK_RES &7(击退抗性)"))
+        // 生命与防御
+        sender.sendMessage(serializer.deserialize("&c&l[生命与防御]"))
+        sender.sendMessage(serializer.deserialize("  &fHP&7/HEALTH &8- &a最大生命值 &7(默认20)"))
+        sender.sendMessage(serializer.deserialize("  &fABS&7/ABSORPTION &8- &a最大吸收值 &7(金心)"))
+        sender.sendMessage(serializer.deserialize("  &fARMOR&7/DEF &8- &a护甲值 &7| &fTOUGHNESS &8- &a护甲韧性"))
+        sender.sendMessage(serializer.deserialize("  &fKB_RES &8- &a击退抗性 &7| &fEXP_KB_RES &8- &a爆炸击退抗性"))
 
-        sender.sendMessage(serializer.deserialize("&c⚔ 攻击:"))
-        sender.sendMessage(serializer.deserialize("  &fDAMAGE &7(伤害) &8| &fATTACK_SPEED &7(攻速) &8| &fATTACK_KNOCKBACK &7(击退)"))
+        // 攻击
+        sender.sendMessage(serializer.deserialize("&c&l[攻击]"))
+        sender.sendMessage(serializer.deserialize("  &fDMG&7/ATK &8- &a攻击伤害 &7| &fATK_SPEED &8- &a攻击速度"))
+        sender.sendMessage(serializer.deserialize("  &fATK_KB &8- &a攻击击退 &7| &fSWEEP &8- &a横扫伤害比例"))
 
-        sender.sendMessage(serializer.deserialize("&a➤ 移动:"))
-        sender.sendMessage(serializer.deserialize("  &fSPEED &7(速度) &8| &fFLYING_SPEED &7(飞行) &8| &fSNEAKING_SPEED &7(潜行)"))
+        // 移动
+        sender.sendMessage(serializer.deserialize("&a&l[移动]"))
+        sender.sendMessage(serializer.deserialize("  &fSPEED&7/SPD &8- &a移动速度 &7(默认0.1)"))
+        sender.sendMessage(serializer.deserialize("  &fFLY &8- &a飞行速度 &7| &fSNEAK &8- &a潜行速度"))
+        sender.sendMessage(serializer.deserialize("  &fSWIM &8- &a水中移动效率 &7| &fMOVE_EFF &8- &a移动效率"))
 
-        sender.sendMessage(serializer.deserialize("&b⬆ 体型与跳跃:"))
-        sender.sendMessage(serializer.deserialize("  &fSCALE &7(体型) &8| &fSTEP_HEIGHT &7(跨步) &8| &fJUMP_STRENGTH &7(跳跃) &8| &fGRAVITY &7(重力)"))
+        // 体型与跳跃
+        sender.sendMessage(serializer.deserialize("&b&l[体型与跳跃]"))
+        sender.sendMessage(serializer.deserialize("  &fSCALE&7/SIZE &8- &a体型大小 &7(0.0625~16)"))
+        sender.sendMessage(serializer.deserialize("  &fSTEP &8- &a跨步高度 &7| &fJUMP &8- &a跳跃力量"))
+        sender.sendMessage(serializer.deserialize("  &fGRAV &8- &a重力 &7(负值=上浮)"))
 
-        sender.sendMessage(serializer.deserialize("&e⚡ 其他:"))
-        sender.sendMessage(serializer.deserialize("  &fLUCK &7(幸运) &8| &fOXYGEN &7(水下呼吸) &8| &fBREAK_SPEED &7(挖掘速度)"))
+        // 摔落
+        sender.sendMessage(serializer.deserialize("&e&l[摔落]"))
+        sender.sendMessage(serializer.deserialize("  &fFALL_DMG &8- &a摔落伤害倍率 &7| &fSAFE_FALL &8- &a安全摔落距离"))
+
+        // 挖掘
+        sender.sendMessage(serializer.deserialize("&d&l[挖掘]"))
+        sender.sendMessage(serializer.deserialize("  &fDIG&7/BREAK_SPEED &8- &a方块破坏速度"))
+        sender.sendMessage(serializer.deserialize("  &fMINE &8- &a挖掘效率 &7| &fWATER_MINE &8- &a水下挖掘速度"))
+
+        // 交互范围
+        sender.sendMessage(serializer.deserialize("&9&l[交互范围]"))
+        sender.sendMessage(serializer.deserialize("  &fBLOCK_RANGE &8- &a方块交互范围 &7(默认4.5)"))
+        sender.sendMessage(serializer.deserialize("  &fREACH&7/ENTITY_RANGE &8- &a实体交互范围 &7(默认3)"))
+
+        // 其他
+        sender.sendMessage(serializer.deserialize("&7&l[其他]"))
+        sender.sendMessage(serializer.deserialize("  &fLUCK &8- &a幸运值 &7| &fOXYGEN&7/O2 &8- &a水下呼吸加成"))
+        sender.sendMessage(serializer.deserialize("  &fBURN &8- &a燃烧时间倍率 &7| &fCAMERA &8- &a相机距离"))
+        sender.sendMessage(serializer.deserialize("  &fFOLLOW &8- &a跟随范围 &7| &fTEMPT &8- &a吸引范围"))
 
         sender.sendMessage(serializer.deserialize(""))
-        sender.sendMessage(serializer.deserialize("&7示例: &e/tsl attr add Steve HEALTH 10 5m"))
-        sender.sendMessage(serializer.deserialize("&7含义: 给 Steve 增加 10 点生命值, 持续 5 分钟"))
+        sender.sendMessage(serializer.deserialize("&6&l========= 使用示例 ========="))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr add Steve HP +10 5m &7- 增加10点生命,5分钟"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr add Steve SCALE +1 30s &7- 体型+1,30秒"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr set Steve SPEED 0.2 1h &7- 速度设为0.2,1小时"))
     }
 
     /**
@@ -489,14 +519,17 @@ class TimedAttributeCommand(
      */
     private fun showUsage(sender: CommandSender) {
         sender.sendMessage(serializer.deserialize("&6&l===== 计时属性效果命令 ====="))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr add <玩家> <属性> <数值> <时间> &7- 添加临时效果"))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr set <玩家> <属性> <数值> &7- 设置属性基础值(永久)"))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr remove <玩家> <ID> &7- 移除效果"))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr list [玩家] &7- 列出效果"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr add <玩家> <属性> <+/-数值> <时间>"))
+        sender.sendMessage(serializer.deserialize("  &7在当前值基础上增减，支持 &f+10&7 或 &f-5&7 格式"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr set <玩家> <属性> <数值> <时间>"))
+        sender.sendMessage(serializer.deserialize("  &7设置固定值，会覆盖之前的效果"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr remove <玩家> <ID> &7- 移除指定效果"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr list [玩家] &7- 列出当前效果"))
         sender.sendMessage(serializer.deserialize("&e/tsl attr clear [玩家] &7- 清除所有效果"))
         sender.sendMessage(serializer.deserialize("&e/tsl attr help [属性] &7- 查看可用属性"))
         sender.sendMessage(serializer.deserialize(""))
-        sender.sendMessage(serializer.deserialize("&7时间格式: &f10s&7(秒), &f5m&7(分), &f2h&7(时), &f1d&7(天)"))
+        sender.sendMessage(serializer.deserialize("&7时间格式: &f30s&7(秒) &f5m&7(分) &f2h&7(时) &f1d&7(天)"))
+        sender.sendMessage(serializer.deserialize("&7常用属性: &fHP SCALE SPEED DMG ARMOR JUMP"))
     }
 
     /**
@@ -648,13 +681,14 @@ class TimedAttributeCommand(
             3 -> {
                 when (args[0].lowercase()) {
                     "add", "set" -> {
-                        // 属性名（简写优先）
-                        val suggestions = mutableListOf<String>()
-                        manager.getAttributeInfoList().forEach {
-                            suggestions.add(it.alias)
-                            suggestions.add(it.key.uppercase())
-                        }
-                        suggestions.filter { it.startsWith(args[2], ignoreCase = true) }.take(15)
+                        // 属性名（常用简写优先）
+                        val commonShorts = listOf(
+                            "HP", "SCALE", "SPEED", "DMG", "ARMOR", "JUMP",
+                            "ATK", "DEF", "FLY", "SNEAK", "GRAV", "LUCK",
+                            "KB_RES", "REACH", "DIG", "FALL", "ABS"
+                        )
+                        val allSuggestions = commonShorts + manager.getAttributeInfoList().map { it.key }
+                        allSuggestions.filter { it.startsWith(args[2], ignoreCase = true) }.distinct().take(20)
                     }
                     "remove" -> {
                         // 修改器 UUID（列出该玩家的活跃效果）

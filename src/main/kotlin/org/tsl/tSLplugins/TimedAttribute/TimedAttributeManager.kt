@@ -241,20 +241,34 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
         val attribute = getAttributeByKey(attributeKey) ?: return
         val attrInstance = player.getAttribute(attribute) ?: return
 
-        val playerEffects = activeEffects[player.uniqueId] ?: return
-        val effects = playerEffects[attributeKey]?.filter { !it.isExpired() } ?: emptyList()
+        val playerEffectsMap = activeEffects[player.uniqueId]
+        val effects = playerEffectsMap?.get(attributeKey)?.filter { !it.isExpired() } ?: emptyList()
 
-        // 获取默认值
-        val baseValue = playerBaseValues[player.uniqueId]?.get(attributeKey) ?: attrInstance.baseValue
+        // 获取默认值（优先使用缓存的原始默认值）
+        val baseValue = playerBaseValues[player.uniqueId]?.get(attributeKey)
+            ?: getAttributeInfo(attributeKey)?.defaultValue
+            ?: attrInstance.baseValue
 
         if (effects.isEmpty()) {
             // 没有效果，恢复到默认值
-            attrInstance.baseValue = baseValue
+            try {
+                attrInstance.baseValue = baseValue
+            } catch (e: Exception) {
+                plugin.logger.warning("[TimedAttribute] 恢复 ${player.name} 的 $attributeKey 失败: ${e.message}")
+            }
+            
+            // 清理效果列表
+            playerEffectsMap?.remove(attributeKey)
+            if (playerEffectsMap?.isEmpty() == true) {
+                activeEffects.remove(player.uniqueId)
+            }
+            
             // 清理默认值缓存
             playerBaseValues[player.uniqueId]?.remove(attributeKey)
             if (playerBaseValues[player.uniqueId]?.isEmpty() == true) {
                 playerBaseValues.remove(player.uniqueId)
             }
+            
             plugin.logger.info("[TimedAttribute] ${player.name} 的 $attributeKey 恢复到默认值 $baseValue")
             return
         }
@@ -284,10 +298,21 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
 
         // 计算最终值
         val addSum = activeAdds.sumOf { it.amount }
-        val finalValue = activeValue + addSum
+        var finalValue = activeValue + addSum
+        
+        // 限制在有效范围内
+        val attrInfo = getAttributeInfo(attributeKey)
+        if (attrInfo != null) {
+            finalValue = finalValue.coerceIn(attrInfo.minValue, attrInfo.maxValue)
+        }
 
         // 应用到玩家属性
-        attrInstance.baseValue = finalValue
+        try {
+            attrInstance.baseValue = finalValue
+        } catch (e: Exception) {
+            plugin.logger.warning("[TimedAttribute] 设置 ${player.name} 的 $attributeKey 失败: ${e.message}")
+            return
+        }
 
         plugin.logger.info("[TimedAttribute] ${player.name} 的 $attributeKey 计算结果: base=$baseValue, activeValue=$activeValue, addSum=$addSum, final=$finalValue")
     }
@@ -527,58 +552,167 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
     private fun buildAttributeAliases(): Map<String, String> {
         val aliases = mutableMapOf<String, String>()
 
-        // 生命与防御
+        // ===== 生命与防御 =====
         aliases["MAX_HEALTH"] = "max_health"
         aliases["HEALTH"] = "max_health"
+        aliases["HP"] = "max_health"
+        aliases["LIFE"] = "max_health"
+        aliases["生命"] = "max_health"
+        
         aliases["MAX_ABSORPTION"] = "max_absorption"
         aliases["ABSORPTION"] = "max_absorption"
+        aliases["ABS"] = "max_absorption"
+        aliases["吸收"] = "max_absorption"
+        
         aliases["ARMOR"] = "armor"
+        aliases["DEF"] = "armor"
+        aliases["护甲"] = "armor"
+        
         aliases["ARMOR_TOUGHNESS"] = "armor_toughness"
+        aliases["TOUGHNESS"] = "armor_toughness"
+        aliases["韧性"] = "armor_toughness"
+        
         aliases["KNOCKBACK_RESISTANCE"] = "knockback_resistance"
+        aliases["KB_RES"] = "knockback_resistance"
+        aliases["KNOCKBACK_RES"] = "knockback_resistance"
+        aliases["击退抗性"] = "knockback_resistance"
+        
         aliases["EXPLOSION_KNOCKBACK_RESISTANCE"] = "explosion_knockback_resistance"
+        aliases["EXP_KB_RES"] = "explosion_knockback_resistance"
+        aliases["爆炸击退抗性"] = "explosion_knockback_resistance"
 
-        // 攻击
+        // ===== 攻击 =====
         aliases["ATTACK_DAMAGE"] = "attack_damage"
         aliases["DAMAGE"] = "attack_damage"
+        aliases["DMG"] = "attack_damage"
+        aliases["ATK"] = "attack_damage"
+        aliases["伤害"] = "attack_damage"
+        
         aliases["ATTACK_SPEED"] = "attack_speed"
+        aliases["ATK_SPEED"] = "attack_speed"
+        aliases["ATKSPD"] = "attack_speed"
+        aliases["攻速"] = "attack_speed"
+        
         aliases["ATTACK_KNOCKBACK"] = "attack_knockback"
+        aliases["ATK_KB"] = "attack_knockback"
+        aliases["击退"] = "attack_knockback"
+        
         aliases["SWEEPING_DAMAGE_RATIO"] = "sweeping_damage_ratio"
+        aliases["SWEEP"] = "sweeping_damage_ratio"
+        aliases["SWEEP_RATIO"] = "sweeping_damage_ratio"
+        aliases["横扫"] = "sweeping_damage_ratio"
 
-        // 移动
+        // ===== 移动 =====
         aliases["MOVEMENT_SPEED"] = "movement_speed"
         aliases["SPEED"] = "movement_speed"
+        aliases["SPD"] = "movement_speed"
+        aliases["MOVE_SPEED"] = "movement_speed"
+        aliases["速度"] = "movement_speed"
+        aliases["移速"] = "movement_speed"
+        
         aliases["FLYING_SPEED"] = "flying_speed"
+        aliases["FLY_SPEED"] = "flying_speed"
+        aliases["FLY"] = "flying_speed"
+        aliases["飞行速度"] = "flying_speed"
+        
         aliases["SNEAKING_SPEED"] = "sneaking_speed"
+        aliases["SNEAK_SPEED"] = "sneaking_speed"
+        aliases["SNEAK"] = "sneaking_speed"
+        aliases["潜行速度"] = "sneaking_speed"
+        
         aliases["WATER_MOVEMENT_EFFICIENCY"] = "water_movement_efficiency"
+        aliases["WATER_SPEED"] = "water_movement_efficiency"
+        aliases["SWIM"] = "water_movement_efficiency"
+        aliases["水中移速"] = "water_movement_efficiency"
+        
         aliases["MOVEMENT_EFFICIENCY"] = "movement_efficiency"
+        aliases["MOVE_EFF"] = "movement_efficiency"
+        aliases["移动效率"] = "movement_efficiency"
 
-        // 体型与跳跃
+        // ===== 体型与跳跃 =====
         aliases["SCALE"] = "scale"
+        aliases["SIZE"] = "scale"
+        aliases["体型"] = "scale"
+        aliases["大小"] = "scale"
+        
         aliases["STEP_HEIGHT"] = "step_height"
+        aliases["STEP"] = "step_height"
+        aliases["跨步高度"] = "step_height"
+        
         aliases["JUMP_STRENGTH"] = "jump_strength"
+        aliases["JUMP"] = "jump_strength"
+        aliases["跳跃"] = "jump_strength"
+        
         aliases["GRAVITY"] = "gravity"
+        aliases["GRAV"] = "gravity"
+        aliases["重力"] = "gravity"
 
-        // 摔落
+        // ===== 摔落 =====
         aliases["FALL_DAMAGE_MULTIPLIER"] = "fall_damage_multiplier"
+        aliases["FALL_DMG"] = "fall_damage_multiplier"
+        aliases["FALL"] = "fall_damage_multiplier"
+        aliases["摔伤"] = "fall_damage_multiplier"
+        
         aliases["SAFE_FALL_DISTANCE"] = "safe_fall_distance"
+        aliases["SAFE_FALL"] = "safe_fall_distance"
+        aliases["安全摔落"] = "safe_fall_distance"
 
-        // 挖掘
+        // ===== 挖掘 =====
         aliases["BLOCK_BREAK_SPEED"] = "block_break_speed"
+        aliases["BREAK_SPEED"] = "block_break_speed"
+        aliases["DIG"] = "block_break_speed"
+        aliases["挖掘速度"] = "block_break_speed"
+        
         aliases["MINING_EFFICIENCY"] = "mining_efficiency"
+        aliases["MINING_EFF"] = "mining_efficiency"
+        aliases["MINE"] = "mining_efficiency"
+        aliases["挖掘效率"] = "mining_efficiency"
+        
         aliases["SUBMERGED_MINING_SPEED"] = "submerged_mining_speed"
+        aliases["SUBMERGED_MINING"] = "submerged_mining_speed"
+        aliases["WATER_MINE"] = "submerged_mining_speed"
+        aliases["水下挖掘"] = "submerged_mining_speed"
 
-        // 交互范围
+        // ===== 交互范围 =====
         aliases["BLOCK_INTERACTION_RANGE"] = "block_interaction_range"
+        aliases["BLOCK_RANGE"] = "block_interaction_range"
+        aliases["方块范围"] = "block_interaction_range"
+        
         aliases["ENTITY_INTERACTION_RANGE"] = "entity_interaction_range"
+        aliases["ENTITY_RANGE"] = "entity_interaction_range"
+        aliases["REACH"] = "entity_interaction_range"
+        aliases["实体范围"] = "entity_interaction_range"
 
-        // 其他
+        // ===== 其他 =====
         aliases["LUCK"] = "luck"
+        aliases["LCK"] = "luck"
+        aliases["幸运"] = "luck"
+        
         aliases["FOLLOW_RANGE"] = "follow_range"
+        aliases["FOLLOW"] = "follow_range"
+        aliases["跟随范围"] = "follow_range"
+        
         aliases["OXYGEN_BONUS"] = "oxygen_bonus"
+        aliases["OXYGEN"] = "oxygen_bonus"
+        aliases["O2"] = "oxygen_bonus"
+        aliases["氧气"] = "oxygen_bonus"
+        
         aliases["BURNING_TIME"] = "burning_time"
+        aliases["BURN_TIME"] = "burning_time"
+        aliases["BURN"] = "burning_time"
+        aliases["燃烧时间"] = "burning_time"
+        
         aliases["SPAWN_REINFORCEMENTS"] = "spawn_reinforcements"
+        aliases["SPAWN_REINF"] = "spawn_reinforcements"
+        aliases["召唤援军"] = "spawn_reinforcements"
+        
         aliases["TEMPT_RANGE"] = "tempt_range"
+        aliases["TEMPT"] = "tempt_range"
+        aliases["吸引范围"] = "tempt_range"
+        
         aliases["CAMERA_DISTANCE"] = "camera_distance"
+        aliases["CAMERA"] = "camera_distance"
+        aliases["相机距离"] = "camera_distance"
 
         return aliases
     }
@@ -672,50 +806,50 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
     fun getAttributeInfoList(): List<AttributeInfo> {
         return listOf(
             // 生命与防御
-            AttributeInfo("max_health", "HEALTH", "最大生命值", 20.0, 1.0, 1024.0),
-            AttributeInfo("max_absorption", "ABSORPTION", "最大吸收值", 0.0, 0.0, 2048.0),
+            AttributeInfo("max_health", "HP", "最大生命值", 20.0, 1.0, 1024.0),
+            AttributeInfo("max_absorption", "ABS", "最大吸收值", 0.0, 0.0, 2048.0),
             AttributeInfo("armor", "ARMOR", "护甲值", 0.0, 0.0, 30.0),
-            AttributeInfo("armor_toughness", "ARMOR_TOUGHNESS", "护甲韧性", 0.0, 0.0, 20.0),
-            AttributeInfo("knockback_resistance", "KNOCKBACK_RES", "击退抗性", 0.0, 0.0, 1.0),
-            AttributeInfo("explosion_knockback_resistance", "EXPLOSION_KB_RES", "爆炸击退抗性", 0.0, 0.0, 1.0),
+            AttributeInfo("armor_toughness", "TOUGHNESS", "护甲韧性", 0.0, 0.0, 20.0),
+            AttributeInfo("knockback_resistance", "KB_RES", "击退抗性", 0.0, 0.0, 1.0),
+            AttributeInfo("explosion_knockback_resistance", "EXP_KB_RES", "爆炸击退抗性", 0.0, 0.0, 1.0),
 
             // 攻击
-            AttributeInfo("attack_damage", "DAMAGE", "攻击伤害", 2.0, 0.0, 2048.0),
+            AttributeInfo("attack_damage", "DMG", "攻击伤害", 2.0, 0.0, 2048.0),
             AttributeInfo("attack_speed", "ATK_SPEED", "攻击速度", 4.0, 0.0, 1024.0),
             AttributeInfo("attack_knockback", "ATK_KB", "攻击击退", 0.0, 0.0, 5.0),
-            AttributeInfo("sweeping_damage_ratio", "SWEEP_RATIO", "横扫伤害比例", 0.0, 0.0, 1.0),
+            AttributeInfo("sweeping_damage_ratio", "SWEEP", "横扫伤害比例", 0.0, 0.0, 1.0),
 
             // 移动
             AttributeInfo("movement_speed", "SPEED", "移动速度", 0.1, 0.0, 1024.0),
-            AttributeInfo("flying_speed", "FLY_SPEED", "飞行速度", 0.4, 0.0, 1024.0),
-            AttributeInfo("sneaking_speed", "SNEAK_SPEED", "潜行速度", 0.3, 0.0, 1.0),
-            AttributeInfo("water_movement_efficiency", "WATER_SPEED", "水中移动效率", 0.0, 0.0, 1.0),
+            AttributeInfo("flying_speed", "FLY", "飞行速度", 0.4, 0.0, 1024.0),
+            AttributeInfo("sneaking_speed", "SNEAK", "潜行速度", 0.3, 0.0, 1.0),
+            AttributeInfo("water_movement_efficiency", "SWIM", "水中移动效率", 0.0, 0.0, 1.0),
             AttributeInfo("movement_efficiency", "MOVE_EFF", "移动效率", 0.0, 0.0, 1.0),
 
             // 体型与跳跃
             AttributeInfo("scale", "SCALE", "体型大小", 1.0, 0.0625, 16.0),
             AttributeInfo("step_height", "STEP", "跨步高度", 0.6, 0.0, 10.0),
             AttributeInfo("jump_strength", "JUMP", "跳跃力量", 0.42, 0.0, 32.0),
-            AttributeInfo("gravity", "GRAVITY", "重力", 0.08, -1.0, 1.0),
+            AttributeInfo("gravity", "GRAV", "重力", 0.08, -1.0, 1.0),
 
             // 摔落
-            AttributeInfo("fall_damage_multiplier", "FALL_DMG", "摔落伤害倍率", 1.0, 0.0, 100.0),
+            AttributeInfo("fall_damage_multiplier", "FALL", "摔落伤害倍率", 1.0, 0.0, 100.0),
             AttributeInfo("safe_fall_distance", "SAFE_FALL", "安全摔落距离", 3.0, -1024.0, 1024.0),
 
             // 挖掘
-            AttributeInfo("block_break_speed", "BREAK_SPEED", "方块破坏速度", 1.0, 0.0, 1024.0),
-            AttributeInfo("mining_efficiency", "MINING_EFF", "挖掘效率", 0.0, 0.0, 1024.0),
-            AttributeInfo("submerged_mining_speed", "SUBMERGED_MINING", "水下挖掘速度", 0.2, 0.0, 20.0),
+            AttributeInfo("block_break_speed", "DIG", "方块破坏速度", 1.0, 0.0, 1024.0),
+            AttributeInfo("mining_efficiency", "MINE", "挖掘效率", 0.0, 0.0, 1024.0),
+            AttributeInfo("submerged_mining_speed", "WATER_MINE", "水下挖掘速度", 0.2, 0.0, 20.0),
 
             // 交互范围
             AttributeInfo("block_interaction_range", "BLOCK_RANGE", "方块交互范围", 4.5, 0.0, 64.0),
-            AttributeInfo("entity_interaction_range", "ENTITY_RANGE", "实体交互范围", 3.0, 0.0, 64.0),
+            AttributeInfo("entity_interaction_range", "REACH", "实体交互范围", 3.0, 0.0, 64.0),
 
             // 其他
             AttributeInfo("luck", "LUCK", "幸运值", 0.0, -1024.0, 1024.0),
             AttributeInfo("follow_range", "FOLLOW", "跟随范围", 32.0, 0.0, 2048.0),
-            AttributeInfo("oxygen_bonus", "OXYGEN", "水下呼吸加成", 0.0, 0.0, 1024.0),
-            AttributeInfo("burning_time", "BURN_TIME", "燃烧时间倍率", 1.0, 0.0, 1024.0),
+            AttributeInfo("oxygen_bonus", "O2", "水下呼吸加成", 0.0, 0.0, 1024.0),
+            AttributeInfo("burning_time", "BURN", "燃烧时间倍率", 1.0, 0.0, 1024.0),
             AttributeInfo("spawn_reinforcements", "SPAWN_REINF", "召唤援军概率", 0.0, 0.0, 1.0),
             AttributeInfo("tempt_range", "TEMPT", "吸引范围", 10.0, 0.0, 2048.0),
             AttributeInfo("camera_distance", "CAMERA", "相机距离", 4.0, 0.0, 32.0)
