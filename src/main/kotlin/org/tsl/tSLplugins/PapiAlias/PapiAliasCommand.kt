@@ -35,6 +35,8 @@ class PapiAliasCommand(
             "reload" -> handleReload(sender)
             "info" -> handleInfo(sender)
             "list" -> handleList(sender, args.drop(1).toTypedArray())
+            "debug" -> handleDebug(sender)
+            "test" -> handleTest(sender, args.drop(1).toTypedArray())
             else -> showUsage(sender)
         }
         
@@ -167,6 +169,79 @@ class PapiAliasCommand(
     }
     
     /**
+     * 处理调试命令 - 打印所有映射的详细信息
+     */
+    private fun handleDebug(sender: CommandSender) {
+        if (!sender.hasPermission("tsl.papialias.debug")) {
+            sender.sendMessage(
+                Component.text("你没有权限执行此命令").color(NamedTextColor.RED)
+            )
+            return
+        }
+        
+        sender.sendMessage(
+            Component.text("===== PapiAlias 调试信息 =====").color(NamedTextColor.GOLD)
+        )
+        
+        for (line in manager.debugPrintMappings()) {
+            sender.sendMessage(Component.text(line).color(NamedTextColor.WHITE))
+        }
+    }
+    
+    /**
+     * 处理测试命令 - 测试映射是否正常工作
+     */
+    private fun handleTest(sender: CommandSender, args: Array<out String>) {
+        if (!sender.hasPermission("tsl.papialias.test")) {
+            sender.sendMessage(
+                Component.text("你没有权限执行此命令").color(NamedTextColor.RED)
+            )
+            return
+        }
+        
+        if (args.size < 2) {
+            sender.sendMessage(
+                Component.text("[PapiAlias] ").color(NamedTextColor.GOLD)
+                    .append(Component.text("用法: /tsl papialias test <变量名> <原始值>").color(NamedTextColor.YELLOW))
+            )
+            sender.sendMessage(
+                Component.text("示例: /tsl papialias test playerGuild_name 千年科技").color(NamedTextColor.GRAY)
+            )
+            return
+        }
+        
+        val variableName = args[0]
+        val originalValue = args.drop(1).joinToString(" ")
+        
+        sender.sendMessage(
+            Component.text("===== 映射测试 =====").color(NamedTextColor.GOLD)
+        )
+        sender.sendMessage(
+            Component.text("变量名: ").color(NamedTextColor.GRAY)
+                .append(Component.text(variableName).color(NamedTextColor.WHITE))
+        )
+        sender.sendMessage(
+            Component.text("原始值: ").color(NamedTextColor.GRAY)
+                .append(Component.text("'$originalValue'").color(NamedTextColor.WHITE))
+        )
+        
+        val result = manager.getAliasValue(variableName, originalValue)
+        
+        sender.sendMessage(
+            Component.text("映射结果: ").color(NamedTextColor.GRAY)
+                .append(Component.text("'$result'").color(
+                    if (result != originalValue) NamedTextColor.GREEN else NamedTextColor.YELLOW
+                ))
+        )
+        
+        if (result == originalValue) {
+            sender.sendMessage(
+                Component.text("提示: 未找到匹配的映射，返回了原值").color(NamedTextColor.YELLOW)
+            )
+        }
+    }
+    
+    /**
      * 显示用法
      */
     private fun showUsage(sender: CommandSender) {
@@ -185,6 +260,14 @@ class PapiAliasCommand(
             Component.text("/tsl papialias list [变量名]").color(NamedTextColor.YELLOW)
                 .append(Component.text(" - 列出映射").color(NamedTextColor.GRAY))
         )
+        sender.sendMessage(
+            Component.text("/tsl papialias debug").color(NamedTextColor.YELLOW)
+                .append(Component.text(" - 显示调试信息").color(NamedTextColor.GRAY))
+        )
+        sender.sendMessage(
+            Component.text("/tsl papialias test <变量> <值>").color(NamedTextColor.YELLOW)
+                .append(Component.text(" - 测试映射").color(NamedTextColor.GRAY))
+        )
     }
     
     override fun tabComplete(
@@ -195,16 +278,17 @@ class PapiAliasCommand(
     ): List<String> {
         return when (args.size) {
             1 -> {
-                listOf("reload", "info", "list")
+                listOf("reload", "info", "list", "debug", "test")
                     .filter { it.startsWith(args[0], ignoreCase = true) }
             }
             2 -> {
-                if (args[0].equals("list", ignoreCase = true)) {
-                    manager.getMappedVariables()
-                        .filter { it.startsWith(args[1], ignoreCase = true) }
-                        .toList()
-                } else {
-                    emptyList()
+                when (args[0].lowercase()) {
+                    "list", "test" -> {
+                        manager.getMappedVariables()
+                            .filter { it.startsWith(args[1], ignoreCase = true) }
+                            .toList()
+                    }
+                    else -> emptyList()
                 }
             }
             else -> emptyList()

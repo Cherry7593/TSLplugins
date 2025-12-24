@@ -72,7 +72,7 @@ timed-attribute:
 papi-alias:
   # 是否启用变量映射功能
   enabled: true
-  # 当映射不存在时是否返回原始值（true=返回原值, false=返回原值）
+  # 当映射不存在时是否返回原始值（true=返回原值, false=返回空字符串）
   return-original-if-not-found: true
   # 变量映射配置
   # 格式:

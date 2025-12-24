@@ -91,12 +91,24 @@ class McediaListener(
 
             event.isCancelled = true
 
-            val mcediaPlayer = manager.getPlayer(armorStand.uniqueId)
-            if (mcediaPlayer != null) {
-                event.player.scheduler.run(plugin, { _ ->
-                    gui.openPlayerEdit(event.player, mcediaPlayer)
-                }, null)
+            var mcediaPlayer = manager.getPlayer(armorStand.uniqueId)
+            
+            // 如果不在缓存中，尝试自动注册（支持手动放置书本召唤的盔甲架）
+            if (mcediaPlayer == null) {
+                val playerName = customName.removePrefix("$prefix:").ifEmpty { customName }
+                mcediaPlayer = McediaPlayer(
+                    uuid = armorStand.uniqueId,
+                    name = playerName,
+                    location = armorStand.location,
+                    createdBy = event.player.uniqueId
+                )
+                manager.addPlayer(mcediaPlayer)
+                event.player.sendMessage("§6[Mcedia] §a已自动记录播放器: §f$playerName")
             }
+            
+            event.player.scheduler.run(plugin, { _ ->
+                gui.openPlayerEdit(event.player, mcediaPlayer)
+            }, null)
         }
     }
 

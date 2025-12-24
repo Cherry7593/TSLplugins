@@ -2,10 +2,9 @@ package org.tsl.tSLplugins.PlayTime
 
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
-import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
-import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
+import org.tsl.tSLplugins.SubCommandHandler
 
 /**
  * 在线时长命令处理器
@@ -19,9 +18,9 @@ import org.bukkit.entity.Player
  */
 class PlayTimeCommand(
     private val manager: PlayTimeManager
-) : CommandExecutor, TabCompleter {
+) : SubCommandHandler {
 
-    override fun onCommand(
+    override fun handle(
         sender: CommandSender,
         command: Command,
         label: String,
@@ -156,10 +155,10 @@ class PlayTimeCommand(
         sender.sendMessage("§e%tsl_playtime_hours% §7- 今日在线时长（小时）")
     }
 
-    override fun onTabComplete(
+    override fun tabComplete(
         sender: CommandSender,
         command: Command,
-        alias: String,
+        label: String,
         args: Array<out String>
     ): List<String> {
         if (!manager.isEnabled()) return emptyList()
@@ -187,5 +186,9 @@ class PlayTimeCommand(
             }
             else -> emptyList()
         }
+    }
+
+    override fun getDescription(): String {
+        return "在线时长统计"
     }
 }

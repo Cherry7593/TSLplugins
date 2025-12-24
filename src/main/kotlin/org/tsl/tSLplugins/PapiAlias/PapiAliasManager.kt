@@ -92,24 +92,67 @@ class PapiAliasManager(private val plugin: JavaPlugin) {
      * 
      * @param variableName 变量名（如 "guild"）
      * @param originalValue 原始值（如 "宝可梦"）
-     * @return 映射后的别名值，如果不存在则根据配置返回原值或 null
+     * @return 映射后的别名值，如果不存在则根据配置返回原值或空字符串
      */
     fun getAliasValue(variableName: String, originalValue: String): String {
         if (!enabled) return originalValue
         
         val variableMap = aliasMappings[variableName.lowercase()]
         if (variableMap == null) {
-            return if (returnOriginalIfNotFound) originalValue else originalValue
+            return if (returnOriginalIfNotFound) originalValue else ""
         }
         
-        // 先尝试精确匹配
-        val aliasValue = variableMap[originalValue]
-        if (aliasValue != null) {
-            return aliasValue
+        // 1. 先尝试精确匹配
+        val exactMatch = variableMap[originalValue]
+        if (exactMatch != null) {
+            return exactMatch
         }
         
-        // 如果没有精确匹配，返回原值
-        return if (returnOriginalIfNotFound) originalValue else originalValue
+        // 2. 尝试去除颜色代码后匹配（处理 & 和 § 颜色代码）
+        val strippedOriginal = stripColorCodes(originalValue)
+        for ((key, value) in variableMap) {
+            val strippedKey = stripColorCodes(key)
+            if (strippedKey == strippedOriginal) {
+                return value
+            }
+        }
+        
+        // 3. 尝试包含匹配（原值包含配置的 key）
+        for ((key, value) in variableMap) {
+            if (originalValue.contains(key) || key.contains(originalValue)) {
+                return value
+            }
+        }
+        
+        // 4. 尝试去色后包含匹配
+        for ((key, value) in variableMap) {
+            val strippedKey = stripColorCodes(key)
+            if (strippedOriginal.contains(strippedKey) || strippedKey.contains(strippedOriginal)) {
+                return value
+            }
+        }
+        
+        // 如果没有匹配，返回原值或空
+        return if (returnOriginalIfNotFound) originalValue else ""
+    }
+    
+    /**
+     * 去除颜色代码
+     * 支持: §x, &x, &#xxxxxx, <gradient:...>, <color:...> 等格式
+     */
+    private fun stripColorCodes(text: String): String {
+        var result = text
+        // 去除 MiniMessage 格式 <gradient:...>内容</gradient> 等
+        result = result.replace(Regex("<[^>]+>"), "")
+        // 去除 &#xxxxxx 格式 (hex color)
+        result = result.replace(Regex("&#[0-9a-fA-F]{6}"), "")
+        // 去除 &x&x&x&x&x&x&x 格式 (hex color)
+        result = result.replace(Regex("&x(&[0-9a-fA-F]){6}"), "")
+        // 去除 §x§x§x§x§x§x§x 格式
+        result = result.replace(Regex("§x(§[0-9a-fA-F]){6}"), "")
+        // 去除 &x 或 §x 格式的颜色代码
+        result = result.replace(Regex("[&§][0-9a-fA-Fk-oK-OrR]"), "")
+        return result
     }
     
     /**
@@ -145,5 +188,21 @@ class PapiAliasManager(private val plugin: JavaPlugin) {
      */
     fun getVariableCount(): Int {
         return aliasMappings.size
+    }
+    
+    /**
+     * 调试：打印当前加载的所有映射
+     */
+    fun debugPrintMappings(): List<String> {
+        val lines = mutableListOf<String>()
+        lines.add("PapiAlias 映射状态: enabled=$enabled, returnOriginal=$returnOriginalIfNotFound")
+        for ((varName, mappings) in aliasMappings) {
+            lines.add("变量 [$varName]:")
+            for ((original, alias) in mappings) {
+                lines.add("  '$original' -> '$alias'")
+                lines.add("  (去色后: '${stripColorCodes(original)}')") 
+            }
+        }
+        return lines
     }
 }
