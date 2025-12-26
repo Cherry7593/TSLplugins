@@ -9,6 +9,7 @@ import org.bukkit.entity.EntityType
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.BookMeta
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -23,16 +24,15 @@ class McediaManager(private val plugin: JavaPlugin) {
     private var defaultScale: Double = 1.0
     private var defaultVolume: Double = 1.0
     private var maxPlayers: Int = 50
-    private var triggerItem: Material? = null  // null 表示空手
+    private var triggerItem: Material? = null
+
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     // 缓存的播放器列表：uuid -> McediaPlayer
     private val players: ConcurrentHashMap<UUID, McediaPlayer> = ConcurrentHashMap()
 
     // SQLite 存储
     private var storage: McediaStorage? = null
-
-    // 消息配置
-    private val messages: MutableMap<String, String> = mutableMapOf()
 
     init {
         loadConfig()
@@ -75,35 +75,15 @@ class McediaManager(private val plugin: JavaPlugin) {
         defaultVolume = config.getDouble("mcedia.default-volume", 1.0)
         maxPlayers = config.getInt("mcedia.max-players", 50)
 
-        // 加载触发物品配置
         val triggerItemStr = config.getString("mcedia.trigger-item", "") ?: ""
         triggerItem = if (triggerItemStr.isBlank() || triggerItemStr.equals("AIR", ignoreCase = true)) {
-            null  // 空手触发
+            null
         } else {
             try {
                 Material.valueOf(triggerItemStr.uppercase())
             } catch (e: IllegalArgumentException) {
-                plugin.logger.warning("[Mcedia] 无效的触发物品: $triggerItemStr，将使用空手触发")
                 null
             }
-        }
-
-        // 读取消息配置
-        val prefix = config.getString("mcedia.messages.prefix", "&6[Mcedia]&r ") ?: "&6[Mcedia]&r "
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("mcedia.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                messages[key] = rawMessage.replace("%prefix%", prefix)
-            }
-        }
-
-        if (enabled) {
-            plugin.logger.info("[Mcedia] 视频播放器管理器已启用")
-        } else {
-            plugin.logger.info("[Mcedia] 视频播放器管理器已禁用")
         }
     }
 
@@ -424,11 +404,7 @@ class McediaManager(private val plugin: JavaPlugin) {
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("mcedia", key, *replacements)
     }
 
     /**

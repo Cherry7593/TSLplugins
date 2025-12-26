@@ -4,6 +4,7 @@ import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.PlayerDataManager
+import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 
 /**
@@ -18,8 +19,8 @@ class RideManager(
     private var enabled: Boolean = true
     private var defaultEnabled: Boolean = true
     private val blacklist: MutableSet<EntityType> = mutableSetOf()
-    private val messages: MutableMap<String, String> = mutableMapOf()
 
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     init {
         loadConfig()
@@ -30,39 +31,18 @@ class RideManager(
      */
     fun loadConfig() {
         val config = plugin.config
-
-        // 读取是否启用
         enabled = config.getBoolean("ride.enabled", true)
-
-        // 读取默认启用状态
         defaultEnabled = config.getBoolean("ride.default_enabled", true)
 
-        // 读取黑名单
         val blacklistStrings = config.getStringList("ride.blacklist")
         blacklist.clear()
         blacklistStrings.forEach { entityName ->
             try {
-                val entityType = EntityType.valueOf(entityName.uppercase())
-                blacklist.add(entityType)
+                blacklist.add(EntityType.valueOf(entityName.uppercase()))
             } catch (e: IllegalArgumentException) {
                 plugin.logger.warning("[Ride] 无效的实体类型: $entityName")
             }
         }
-
-        // 读取消息配置
-        val prefix = config.getString("ride.messages.prefix", "&6[TSL喵]&r ")
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("ride.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                val processedMessage = rawMessage.replace("%prefix%", prefix ?: "")
-                messages[key] = processedMessage
-            }
-        }
-
-        plugin.logger.info("[Ride] 已加载配置 - 默认状态: ${if (defaultEnabled) "启用" else "禁用"}, 黑名单: ${blacklist.size} 种生物")
     }
 
     /**
@@ -86,11 +66,7 @@ class RideManager(
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("ride", key, *replacements)
     }
 
     /**

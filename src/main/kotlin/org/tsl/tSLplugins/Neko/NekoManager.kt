@@ -3,6 +3,7 @@ package org.tsl.tSLplugins.Neko
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -16,11 +17,10 @@ class NekoManager(private val plugin: JavaPlugin) {
     private var suffix: String = "喵~"
     private var scanIntervalTicks: Long = 20L
 
+    private val msg get() = (plugin as TSLplugins).messageManager
+
     // 活跃的猫娘效果：playerUuid -> NekoEffect
     private val activeEffects: ConcurrentHashMap<UUID, NekoEffect> = ConcurrentHashMap()
-
-    // 消息配置
-    private val messages: MutableMap<String, String> = mutableMapOf()
 
     init {
         loadConfig()
@@ -31,28 +31,9 @@ class NekoManager(private val plugin: JavaPlugin) {
      */
     fun loadConfig() {
         val config = plugin.config
-
         enabled = config.getBoolean("neko.enabled", true)
         suffix = config.getString("neko.suffix", "喵~") ?: "喵~"
         scanIntervalTicks = config.getLong("neko.scan-interval-ticks", 20L)
-
-        // 读取消息配置
-        val prefix = config.getString("neko.messages.prefix", "&d[猫娘]&r ") ?: "&d[猫娘]&r "
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("neko.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                messages[key] = rawMessage.replace("%prefix%", prefix)
-            }
-        }
-
-        if (enabled) {
-            plugin.logger.info("[Neko] 猫娘模式已启用，后缀: $suffix")
-        } else {
-            plugin.logger.info("[Neko] 猫娘模式已禁用")
-        }
     }
 
     /**
@@ -193,11 +174,7 @@ class NekoManager(private val plugin: JavaPlugin) {
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("neko", key, *replacements)
     }
 
     /**

@@ -53,7 +53,7 @@ class FixGhostCommand(
             if (currentTime - lastUsed < cooldownTime) {
                 val remaining = ((cooldownTime - (currentTime - lastUsed)) / 1000.0).coerceAtLeast(0.1)
                 val formatted = String.format("%.1f", remaining)
-                sender.sendMessage(manager.getMessage("cooldown", mapOf("%cooldown%" to formatted)))
+                sender.sendMessage(manager.getMessage("cooldown", "cooldown" to formatted))
                 return true
             }
         }
@@ -107,10 +107,8 @@ class FixGhostCommand(
             sender.sendMessage(
                 manager.getMessage(
                     "success",
-                    mapOf(
-                        "%count%" to count.toString(),
-                        "%radius%" to radius.toString()
-                    )
+                    "count" to count.toString(),
+                    "radius" to radius.toString()
                 )
             )
         }, null)

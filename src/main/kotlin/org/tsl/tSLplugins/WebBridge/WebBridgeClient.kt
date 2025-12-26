@@ -239,6 +239,10 @@ class WebBridgeClient(
 
         override fun onOpen(handshakedata: ServerHandshake) {
             plugin.logger.info("[WebBridge] ✅ 连接成功")
+            // 通知 Manager 连接成功，启动定时任务和推送玩家列表
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.onConnected()
+            }
         }
 
         override fun onMessage(message: String) {

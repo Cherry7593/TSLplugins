@@ -7,6 +7,7 @@ import org.bukkit.attribute.Attribute
 import org.bukkit.attribute.AttributeModifier
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -20,6 +21,8 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
     private var scanIntervalTicks: Long = 20L
     private var storage: TimedEffectStorage? = null
 
+    private val msg get() = (plugin as TSLplugins).messageManager
+
     // 在线玩家的活跃效果缓存：playerUuid -> attributeKey -> List<effect>
     private val activeEffects: ConcurrentHashMap<UUID, ConcurrentHashMap<String, MutableList<TimedAttributeEffect>>> =
         ConcurrentHashMap()
@@ -31,8 +34,6 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
     // Attribute 别名映射（简写 -> 完整名称）
     private val attributeAliases: Map<String, String> = buildAttributeAliases()
 
-    private val messages: MutableMap<String, String> = mutableMapOf()
-
     init {
         loadConfig()
     }
@@ -42,34 +43,12 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
      */
     fun loadConfig() {
         val config = plugin.config
-
         enabled = config.getBoolean("timed-attribute.enabled", true)
         scanIntervalTicks = config.getLong("timed-attribute.scan-interval-ticks", 20L)
 
-        // 读取消息配置
-        val prefix = config.getString("timed-attribute.messages.prefix", "&6[属性]&r ") ?: "&6[属性]&r "
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("timed-attribute.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                messages[key] = rawMessage.replace("%prefix%", prefix)
-            }
-        }
-
-        // 如果已有存储，关闭它
         storage?.close()
-
-        if (!enabled) {
-            plugin.logger.info("[TimedAttribute] 模块已禁用")
-            return
-        }
-
-        // 初始化存储 - 使用全局 DatabaseManager
+        if (!enabled) return
         storage = SQLiteTimedEffectStorage(plugin)
-
-        plugin.logger.info("[TimedAttribute] 已加载配置")
     }
 
     /**
@@ -494,11 +473,7 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("timed-attribute", key, *replacements)
     }
 
     /**

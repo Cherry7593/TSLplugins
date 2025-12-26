@@ -3,6 +3,7 @@ package org.tsl.tSLplugins.Scale
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
 
 /**
  * 玩家体型管理器
@@ -12,40 +13,20 @@ class ScaleManager(private val plugin: JavaPlugin) {
 
     private var scaleMin: Double = 0.8
     private var scaleMax: Double = 1.1
-    private var messages: Map<String, String> = mutableMapOf()
 
     init {
         loadConfig()
     }
+
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     /**
      * 从配置文件加载设置
      */
     fun loadConfig() {
         val config = plugin.config
-
-        // 获取体型范围配置
         scaleMin = config.getDouble("scale.min", 0.8)
         scaleMax = config.getDouble("scale.max", 1.1)
-
-        // 加载消息配置
-        val messagesMap = mutableMapOf<String, String>()
-        val prefix = config.getString("scale.messages.prefix", "&c[TSL喵]&r ")
-
-        val scaleSection = config.getConfigurationSection("scale.messages")
-        if (scaleSection != null) {
-            for (key in scaleSection.getKeys(false)) {
-                if (key == "prefix") continue // 跳过 prefix 本身
-                val raw = config.getString("scale.messages.$key", "")
-                val processed = raw?.replace("%prefix%", prefix ?: "") ?: ""
-                messagesMap[key] = processed
-            }
-        }
-
-        this.messages = messagesMap
-
-        // 调试输出
-        plugin.logger.info("[Scale] 已加载 ${messages.size} 条消息配置")
     }
 
     /**
@@ -87,11 +68,9 @@ class ScaleManager(private val plugin: JavaPlugin) {
 
     /**
      * 获取消息
-     * @param key 消息的 key
-     * @return 翻译后的消息
      */
-    fun getMessage(key: String): String {
-        return messages[key] ?: "§c[未知消息: $key]"
+    fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
+        return msg.getModule("scale", key, *replacements)
     }
 
     /**

@@ -4,6 +4,7 @@ import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.DatabaseManager
+import org.tsl.tSLplugins.TSLplugins
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -22,8 +23,10 @@ import java.util.concurrent.ConcurrentHashMap
 class PlayTimeManager(private val plugin: JavaPlugin) {
 
     private var enabled: Boolean = true
-    private var saveIntervalTicks: Long = 6000L // 默认5分钟保存一次
+    private var saveIntervalTicks: Long = 6000L
     private var timezone: ZoneId = ZoneId.systemDefault()
+
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     // 玩家会话开始时间（毫秒）
     private val sessionStartTime: ConcurrentHashMap<UUID, Long> = ConcurrentHashMap()
@@ -33,9 +36,6 @@ class PlayTimeManager(private val plugin: JavaPlugin) {
     
     // 玩家上次记录的日期（用于检测跨日）
     private val lastRecordDate: ConcurrentHashMap<UUID, LocalDate> = ConcurrentHashMap()
-
-    // 消息配置
-    private val messages: MutableMap<String, String> = mutableMapOf()
 
     private var saveTaskId: Int = -1
 
@@ -49,7 +49,6 @@ class PlayTimeManager(private val plugin: JavaPlugin) {
      */
     fun loadConfig() {
         val config = plugin.config
-
         enabled = config.getBoolean("playtime.enabled", true)
         saveIntervalTicks = config.getLong("playtime.save-interval-ticks", 6000L)
         
@@ -57,28 +56,8 @@ class PlayTimeManager(private val plugin: JavaPlugin) {
         timezone = try {
             ZoneId.of(timezoneStr)
         } catch (e: Exception) {
-            plugin.logger.warning("[PlayTime] 无效的时区配置: $timezoneStr，使用系统默认时区")
             ZoneId.systemDefault()
         }
-
-        // 读取消息配置
-        val prefix = config.getString("playtime.messages.prefix", "&e[时长]&r ") ?: "&e[时长]&r "
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("playtime.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                messages[key] = rawMessage.replace("%prefix%", prefix)
-            }
-        }
-
-        if (!enabled) {
-            plugin.logger.info("[PlayTime] 模块已禁用")
-            return
-        }
-
-        plugin.logger.info("[PlayTime] 已加载配置 - 保存间隔: ${saveIntervalTicks / 20}秒, 时区: $timezone")
     }
 
     /**
@@ -428,11 +407,7 @@ class PlayTimeManager(private val plugin: JavaPlugin) {
      * 获取消息
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: return ""
-        for ((placeholder, value) in replacements) {
-            message = message.replace(placeholder, value)
-        }
-        return message.replace("&", "§")
+        return msg.getModule("playtime", key, *replacements)
     }
 
     fun isEnabled(): Boolean = enabled

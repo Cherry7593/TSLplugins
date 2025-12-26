@@ -1,5 +1,8 @@
 package org.tsl.tSLplugins.WebBridge
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.bukkit.Bukkit
 import org.bukkit.plugin.Plugin
 
 /**
@@ -15,10 +18,23 @@ class WebBridgeManager(private val plugin: Plugin) {
 
     private var client: WebBridgeClient? = null
     private var chatListener: WebBridgeChatListener? = null
+    private var playerEventListener: WebBridgePlayerListener? = null
     private var isEnabled = false
 
     // 消息格式配置
     private var webToGameFormat = "&7[&b{source}&7] &f<{playerName}> &7{message}"
+
+    // 玩家列表推送配置
+    private var playerListIntervalSeconds = 30L
+    private var heartbeatIntervalSeconds = 30L
+    private var playerListTask: io.papermc.paper.threadedregions.scheduler.ScheduledTask? = null
+    private var heartbeatTask: io.papermc.paper.threadedregions.scheduler.ScheduledTask? = null
+
+    // JSON 序列化器
+    private val json = Json {
+        prettyPrint = false
+        encodeDefaults = true
+    }
 
     // 自动重连配置
     private var autoReconnect = true
@@ -69,12 +85,20 @@ class WebBridgeManager(private val plugin: Plugin) {
         reconnectIntervalSeconds = config.getLong("reconnect-interval", 30L)
         maxReconnectAttempts = config.getInt("max-reconnect-attempts", 5)
 
+        // 读取玩家列表和心跳配置
+        playerListIntervalSeconds = config.getLong("player-list-interval", 30L)
+        heartbeatIntervalSeconds = config.getLong("heartbeat-interval", 30L)
+
         // 初始化 WebSocket 客户端（不自动连接）
         client = WebBridgeClient(plugin, url, this)
 
         // 注册聊天监听器
         chatListener = WebBridgeChatListener(plugin, this)
         plugin.server.pluginManager.registerEvents(chatListener!!, plugin)
+
+        // 注册玩家进出事件监听器
+        playerEventListener = WebBridgePlayerListener(this)
+        plugin.server.pluginManager.registerEvents(playerEventListener!!, plugin)
 
         plugin.logger.info("[WebBridge] 模块已启用，URL: $url")
 
@@ -97,14 +121,16 @@ class WebBridgeManager(private val plugin: Plugin) {
 
         plugin.logger.info("[WebBridge] 正在关闭模块...")
 
-        // 停止自动重连任务
+        // 停止所有定时任务
         stopAutoReconnect()
+        stopScheduledTasks()
 
         // 停止 WebSocket 客户端
         client?.stop()
         client = null
 
         chatListener = null
+        playerEventListener = null
 
         plugin.logger.info("[WebBridge] 模块已关闭")
     }
@@ -210,6 +236,95 @@ class WebBridgeManager(private val plugin: Plugin) {
      */
     fun getWebToGameFormat(): String = webToGameFormat
 
+    // ========== 玩家列表推送 ==========
+
+    /**
+     * 连接成功时的回调（由 Client 调用）
+     */
+    fun onConnected() {
+        // 连接成功后立即推送玩家列表
+        sendPlayerList()
+        // 启动定时任务
+        startScheduledTasks()
+    }
+
+    /**
+     * 启动定时任务（玩家列表推送 + 心跳）
+     */
+    private fun startScheduledTasks() {
+        stopScheduledTasks() // 先停止旧任务
+
+        // 定时推送玩家列表
+        playerListTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+            if (isConnected()) {
+                sendPlayerList()
+            }
+        }, playerListIntervalSeconds * 20L, playerListIntervalSeconds * 20L)
+
+        // 定时发送心跳
+        heartbeatTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+            if (isConnected()) {
+                sendHeartbeat()
+            }
+        }, heartbeatIntervalSeconds * 20L, heartbeatIntervalSeconds * 20L)
+
+        plugin.logger.info("[WebBridge] 定时任务已启动 (玩家列表: ${playerListIntervalSeconds}s, 心跳: ${heartbeatIntervalSeconds}s)")
+    }
+
+    /**
+     * 停止定时任务
+     */
+    private fun stopScheduledTasks() {
+        playerListTask?.cancel()
+        playerListTask = null
+        heartbeatTask?.cancel()
+        heartbeatTask = null
+    }
+
+    /**
+     * 发送玩家列表事件
+     */
+    fun sendPlayerList() {
+        if (!isConnected()) return
+
+        val players = Bukkit.getOnlinePlayers()
+        val playerInfoList = players.map { PlayerInfo(it.uniqueId.toString(), it.name) }
+
+        // 获取 TPS（Paper/Folia 支持）
+        val tps = try {
+            val tpsArray = Bukkit.getTPS()
+            if (tpsArray.isNotEmpty()) {
+                (tpsArray[0] * 10.0).toLong() / 10.0 // 保留一位小数
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+
+        val eventData = EventData(
+            event = "PLAYER_LIST",
+            id = "pl-${System.currentTimeMillis()}",
+            online = players.size,
+            max = Bukkit.getMaxPlayers(),
+            tps = tps,
+            players = playerInfoList
+        )
+
+        val message = EventMessage(data = eventData)
+        val jsonString = json.encodeToString(message)
+        sendMessage(jsonString)
+    }
+
+    /**
+     * 发送心跳消息
+     */
+    private fun sendHeartbeat() {
+        if (!isConnected()) return
+
+        val heartbeat = HeartbeatMessage()
+        val jsonString = json.encodeToString(heartbeat)
+        sendMessage(jsonString)
+    }
+
     /**
      * 重新加载配置并重新初始化模块
      * 支持运行时动态启用/禁用
@@ -223,13 +338,18 @@ class WebBridgeManager(private val plugin: Plugin) {
         // 先关闭现有连接和清理资源
         if (wasEnabled) {
             plugin.logger.info("[WebBridge] 关闭现有连接...")
+            stopScheduledTasks()
             client?.stop()
             client = null
 
-            // 注销聊天监听器
+            // 注销监听器
             if (chatListener != null) {
                 org.bukkit.event.HandlerList.unregisterAll(chatListener!!)
                 chatListener = null
+            }
+            if (playerEventListener != null) {
+                org.bukkit.event.HandlerList.unregisterAll(playerEventListener!!)
+                playerEventListener = null
             }
         }
 
@@ -287,9 +407,16 @@ class WebBridgeManager(private val plugin: Plugin) {
         // 重新初始化 WebSocket 客户端（不自动连接）
         client = WebBridgeClient(plugin, url, this)
 
-        // 重新注册聊天监听器
+        // 读取玩家列表和心跳配置
+        playerListIntervalSeconds = config.getLong("player-list-interval", 30L)
+        heartbeatIntervalSeconds = config.getLong("heartbeat-interval", 30L)
+
+        // 重新注册监听器
         chatListener = WebBridgeChatListener(plugin, this)
         plugin.server.pluginManager.registerEvents(chatListener!!, plugin)
+
+        playerEventListener = WebBridgePlayerListener(this)
+        plugin.server.pluginManager.registerEvents(playerEventListener!!, plugin)
 
         plugin.logger.info("[WebBridge] 模块重载完成，URL: $url")
 

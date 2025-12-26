@@ -3,6 +3,7 @@ package org.tsl.tSLplugins.Ping
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
 
 /**
  * Ping 功能管理器
@@ -14,7 +15,8 @@ class PingManager(private val plugin: JavaPlugin) {
     private var entriesPerPage: Int = 10
     private var greenThreshold: Int = 100
     private var yellowThreshold: Int = 200
-    private val messages: MutableMap<String, String> = mutableMapOf()
+
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     init {
         loadConfig()
@@ -25,30 +27,10 @@ class PingManager(private val plugin: JavaPlugin) {
      */
     fun loadConfig() {
         val config = plugin.config
-
-        // 读取是否启用
         enabled = config.getBoolean("ping.enabled", true)
-
-        // 读取每页显示数量
         entriesPerPage = config.getInt("ping.entries_per_page", 10)
-
-        // 读取延迟颜色阈值
         greenThreshold = config.getInt("ping.ping_colors.green", 100)
         yellowThreshold = config.getInt("ping.ping_colors.yellow", 200)
-
-        // 读取消息配置
-        val prefix = config.getString("ping.messages.prefix", "&6[TSL喵]&r ")
-        val messagesSection = config.getConfigurationSection("ping.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                val processedMessage = rawMessage.replace("%prefix%", prefix ?: "")
-                messages[key] = processedMessage
-            }
-        }
-
-        plugin.logger.info("[Ping] 已加载配置 - 每页显示: $entriesPerPage, 延迟阈值: $greenThreshold/$yellowThreshold")
     }
 
     /**
@@ -75,11 +57,7 @@ class PingManager(private val plugin: JavaPlugin) {
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("ping", key, *replacements)
     }
 
     /**

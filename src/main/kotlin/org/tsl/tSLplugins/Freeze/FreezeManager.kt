@@ -2,6 +2,7 @@ package org.tsl.tSLplugins.Freeze
 
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -12,7 +13,8 @@ import java.util.concurrent.ConcurrentHashMap
 class FreezeManager(private val plugin: JavaPlugin) {
 
     private var enabled: Boolean = true
-    private val messages: MutableMap<String, String> = mutableMapOf()
+
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     // 冻结的玩家（UUID -> 过期时间戳，-1表示永久）
     private val frozenPlayers: MutableMap<UUID, Long> = ConcurrentHashMap()
@@ -26,25 +28,7 @@ class FreezeManager(private val plugin: JavaPlugin) {
      * 加载配置
      */
     fun loadConfig() {
-        val config = plugin.config
-
-        // 读取是否启用
-        enabled = config.getBoolean("freeze.enabled", true)
-
-        // 读取消息配置
-        val prefix = config.getString("freeze.messages.prefix", "&c[冻结]&r ")
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("freeze.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                val processedMessage = rawMessage.replace("%prefix%", prefix ?: "")
-                messages[key] = processedMessage
-            }
-        }
-
-        plugin.logger.info("[Freeze] 已加载配置")
+        enabled = plugin.config.getBoolean("freeze.enabled", true)
     }
 
     /**
@@ -114,11 +98,7 @@ class FreezeManager(private val plugin: JavaPlugin) {
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("freeze", key, *replacements)
     }
 
     /**

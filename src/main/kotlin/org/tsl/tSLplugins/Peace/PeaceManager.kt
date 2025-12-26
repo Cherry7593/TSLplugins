@@ -4,6 +4,7 @@ import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.DatabaseManager
+import org.tsl.tSLplugins.TSLplugins
 import java.sql.Connection
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
@@ -18,18 +19,15 @@ class PeaceManager(private val plugin: JavaPlugin) {
 
     private var enabled: Boolean = true
     private var scanIntervalTicks: Long = 20L
-    
-    // NoSpawn 模式配置
     private var noSpawnRadius: Int = 48
+
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     // 在线玩家的和平效果缓存：playerUuid -> expireAt
     private val peacePlayers: ConcurrentHashMap<UUID, Long> = ConcurrentHashMap()
     
     // 在线玩家的禁怪效果缓存：playerUuid -> expireAt
     private val noSpawnPlayers: ConcurrentHashMap<UUID, Long> = ConcurrentHashMap()
-
-    // 消息配置
-    private val messages: MutableMap<String, String> = mutableMapOf()
 
     init {
         loadConfig()
@@ -42,29 +40,9 @@ class PeaceManager(private val plugin: JavaPlugin) {
      */
     fun loadConfig() {
         val config = plugin.config
-
         enabled = config.getBoolean("peace.enabled", true)
         scanIntervalTicks = config.getLong("peace.scan-interval-ticks", 20L)
         noSpawnRadius = config.getInt("peace.nospawn-radius", 48)
-
-        // 读取消息配置
-        val prefix = config.getString("peace.messages.prefix", "&a[和平]&r ") ?: "&a[和平]&r "
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("peace.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                messages[key] = rawMessage.replace("%prefix%", prefix)
-            }
-        }
-
-        if (!enabled) {
-            plugin.logger.info("[Peace] 模块已禁用")
-            return
-        }
-
-        plugin.logger.info("[Peace] 已加载配置")
     }
 
     /**
@@ -548,11 +526,7 @@ class PeaceManager(private val plugin: JavaPlugin) {
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("peace", key, *replacements)
     }
 
     /**

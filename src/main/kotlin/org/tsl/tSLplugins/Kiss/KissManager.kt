@@ -3,6 +3,7 @@ package org.tsl.tSLplugins.Kiss
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.PlayerDataManager
+import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -16,14 +17,12 @@ class KissManager(
 ) {
 
     private var enabled: Boolean = true
-    private var cooldown: Long = 1000 // 默认 1 秒冷却
-    private val messages: MutableMap<String, String> = mutableMapOf()
+    private var cooldown: Long = 1000
 
+    private val msg get() = (plugin as TSLplugins).messageManager
 
     // 玩家冷却时间（UUID -> 最后使用时间戳）
     private val playerCooldowns: MutableMap<UUID, Long> = ConcurrentHashMap()
-
-    // 注意：统计数据现在存储在 TSLPlayerProfile 中，不再使用内存 Map
 
     init {
         loadConfig()
@@ -34,28 +33,8 @@ class KissManager(
      */
     fun loadConfig() {
         val config = plugin.config
-
-        // 读取是否启用
         enabled = config.getBoolean("kiss.enabled", true)
-
-        // 读取冷却时间（秒）
-        val cooldownSeconds = config.getDouble("kiss.cooldown", 1.0)
-        cooldown = (cooldownSeconds * 1000).toLong()
-
-        // 读取消息配置
-        val prefix = config.getString("kiss.messages.prefix", "&6[TSL喵]&r ")
-        messages.clear()
-        val messagesSection = config.getConfigurationSection("kiss.messages")
-        if (messagesSection != null) {
-            for (key in messagesSection.getKeys(false)) {
-                if (key == "prefix") continue
-                val rawMessage = messagesSection.getString(key) ?: ""
-                val processedMessage = rawMessage.replace("%prefix%", prefix ?: "")
-                messages[key] = processedMessage
-            }
-        }
-
-        plugin.logger.info("[Kiss] 已加载配置 - 冷却时间: ${cooldownSeconds}秒")
+        cooldown = (config.getDouble("kiss.cooldown", 1.0) * 1000).toLong()
     }
 
     /**
@@ -156,11 +135,7 @@ class KissManager(
      * 获取消息文本
      */
     fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
-        var message = messages[key] ?: key
-        for ((placeholder, value) in replacements) {
-            message = message.replace("{$placeholder}", value)
-        }
-        return message
+        return msg.getModule("kiss", key, *replacements)
     }
 }
 

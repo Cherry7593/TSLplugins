@@ -108,7 +108,23 @@ class PapiAliasManager(private val plugin: JavaPlugin) {
             return exactMatch
         }
         
-        // 2. 尝试去除颜色代码后匹配（处理 & 和 § 颜色代码）
+        // 2. 提取原值中的中文字符进行匹配（核心匹配逻辑）
+        val chineseOriginal = extractChinese(originalValue)
+        if (chineseOriginal.isNotEmpty()) {
+            for ((key, value) in variableMap) {
+                val chineseKey = extractChinese(key)
+                // 中文完全匹配
+                if (chineseKey == chineseOriginal) {
+                    return value
+                }
+                // 中文包含匹配（原值中文包含配置的中文key）
+                if (chineseOriginal.contains(chineseKey) && chineseKey.isNotEmpty()) {
+                    return value
+                }
+            }
+        }
+        
+        // 3. 尝试去除颜色代码后匹配
         val strippedOriginal = stripColorCodes(originalValue)
         for ((key, value) in variableMap) {
             val strippedKey = stripColorCodes(key)
@@ -117,23 +133,24 @@ class PapiAliasManager(private val plugin: JavaPlugin) {
             }
         }
         
-        // 3. 尝试包含匹配（原值包含配置的 key）
-        for ((key, value) in variableMap) {
-            if (originalValue.contains(key) || key.contains(originalValue)) {
-                return value
-            }
-        }
-        
         // 4. 尝试去色后包含匹配
         for ((key, value) in variableMap) {
             val strippedKey = stripColorCodes(key)
-            if (strippedOriginal.contains(strippedKey) || strippedKey.contains(strippedOriginal)) {
+            if (strippedOriginal.contains(strippedKey) && strippedKey.isNotEmpty()) {
                 return value
             }
         }
         
         // 如果没有匹配，返回原值或空
         return if (returnOriginalIfNotFound) originalValue else ""
+    }
+    
+    /**
+     * 提取文本中的中文字符
+     * 用于匹配带有颜色代码的变量值
+     */
+    private fun extractChinese(text: String): String {
+        return text.filter { it.code in 0x4E00..0x9FFF || it.code in 0x3400..0x4DBF }
     }
     
     /**
@@ -200,7 +217,7 @@ class PapiAliasManager(private val plugin: JavaPlugin) {
             lines.add("变量 [$varName]:")
             for ((original, alias) in mappings) {
                 lines.add("  '$original' -> '$alias'")
-                lines.add("  (去色后: '${stripColorCodes(original)}')") 
+                lines.add("  (中文: '${extractChinese(original)}', 去色: '${stripColorCodes(original)}')") 
             }
         }
         return lines

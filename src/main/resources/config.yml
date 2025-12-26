@@ -1,8 +1,9 @@
 ﻿# TSLplugins 配置文件
-# 版本: 34
+# 版本: 36
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
-config-version: 34
+# 消息配置已移至 messages.yml
+config-version: 36
 
 # ========================================
 # 全局数据库配置
@@ -20,54 +21,20 @@ database:
 # TimedAttribute 计时属性效果配置
 # ========================================
 timed-attribute:
-  # 是否启用计时属性效果功能
   enabled: true
-
-  # 过期扫描间隔（tick，20 tick = 1 秒）
-  # 每隔这么多 tick 检查一次过期效果并移除
   scan-interval-ticks: 20
-
-
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&6[属性]&r "
-    # 功能已禁用
-    disabled: "%prefix%&c计时属性效果功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 玩家不在线
-    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
-    # 无效属性
-    invalid_attribute: "%prefix%&c无效的属性: &e{attribute}"
-    # 无效数量
-    invalid_amount: "%prefix%&c无效的数量: &e{amount}"
-    # 无效持续时间
-    invalid_duration: "%prefix%&c无效的持续时间: &e{duration}"
-    # 无效修改器 UUID
-    invalid_modifier_uuid: "%prefix%&c未找到该效果ID: &e{uuid}"
-    # 添加成功
-    add_success: "%prefix%&a已为 &e{player} &a添加 &f{attribute} {amount} &7(持续 {duration}, ID: {modifier_uuid})"
-    # 添加失败
-    add_failed: "%prefix%&c添加属性效果失败"
-    # 移除成功
-    remove_success: "%prefix%&a已移除 &e{player} &a的效果 &7(ID: {modifier_uuid})"
-    # 效果未找到
-    effect_not_found: "%prefix%&c未找到该属性效果"
-    # 没有效果
-    no_effects: "%prefix%&7{player} 没有任何计时属性效果"
-    # 列表标题
-    list_header: "%prefix%&e{player} 的计时属性效果 &7({count} 个)"
-    # 列表条目
-    list_entry: "&7- &f{attribute} &a{amount} &7| &b{remaining} &7| ID: &8{modifier_uuid}"
-    # 清除成功
-    clear_success: "%prefix%&a已清除 &e{player} &a的 &f{count} &a个属性效果"
 
 # ========================================
 # PapiAlias 变量映射配置
 # 将 PAPI 变量值映射为简写形式
 # 使用方式: %tsl_alias_<变量名>%
-# 例如: %tsl_alias_guild% 会解析 %guild% 的值并映射
+# 例如: %tsl_alias_playerGuild_name% 会解析 %playerGuild_name% 的值并映射
+# 
+# 匹配规则（按优先级）：
+#   1. 精确匹配
+#   2. 中文字符匹配 - 只提取中文进行比较（推荐用于带颜色代码的变量）
+#   3. 去色后匹配
+#   4. 去色后包含匹配
 # ========================================
 papi-alias:
   # 是否启用变量映射功能
@@ -77,22 +44,21 @@ papi-alias:
   # 变量映射配置
   # 格式:
   #   变量名:
-  #     "原始值": "简写值"
+  #     "中文关键词": "简写值"
+  # 
+  # 示例：带颜色代码的公会名
+  # 原始值: 『&#fa8f2d轻&#f77127音&#f35220部&#ef341a』
+  # 配置时只需写中文部分，会自动匹配
   mappings:
-    # 示例：公会名称映射
-    # guild:
+    # 示例：公会名称映射（只需写中文，自动匹配带颜色代码的变量）
+    # playerGuild_name:
+    #   "轻音部": "&#fa8f2d[音]"
+    #   "千年科技": "<gradient:#08c8ff:#4cd6ff>『仟』</gradient>"
     #   "宝可梦": "梦"
-    #   "潮汐亭": "汐"
-    #   "樱花雪": "樱"
     # 示例：阵营映射
     # faction:
     #   "红队": "红"
     #   "蓝队": "蓝"
-    # 示例：职业映射
-    # class:
-    #   "战士": "战"
-    #   "法师": "法"
-    #   "刺客": "刺"
 
 # ========================================
 # Ignore 聊天屏蔽配置
@@ -212,17 +178,7 @@ permission-checker:
       commands: []
 # 维护模式配置
 maintenance:
-  # 是否启用维护模式功能
   enabled: true
-  # 命令相关消息
-  messages:
-    # 启用维护模式时的提示
-    enabled: "&a[维护模式] &7服务器维护模式已启用！"
-    # 关闭维护模式时的提示
-    disabled: "&c[维护模式] &7服务器维护模式已关闭！"
-    # 没有权限时的提示
-    no-permission: "&c你没有权限使用此命令！"
-  # 玩家被踢出时显示的消息（多行）
   kick-message:
     - "&c&l⚠ 服务器维护中 ⚠"
   # 服务器列表 MOTD（维护模式下显示）
@@ -245,213 +201,44 @@ maintenance:
     - "&c&l⚠ 服务器维护中 ⚠"
 # 玩家体型调整配置
 scale:
-  # 是否启用体型调整功能
   enabled: true
-  # 最小体型
   min: 0.8
-  # 最大体型
   max: 1.1
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&c[TSL喵]&r "
-    # 成功调整体型时的消息
-    set: "%prefix%你的体型被调整为了 %scale%"
-    # 体型重置时的消息
-    reset: "%prefix%你的体型恢复默认啦"
-    # 用法提示
-    usage: "%prefix%用法: /tsl scale <数值|reset> (范围: %min% - %max%)"
-    # 权限不足
-    no-permission: "%prefix%你没有权限"
-    # 仅玩家可用
-    console-only: "%prefix%只有玩家才能执行该命令"
 # Hat 功能配置
 hat:
-  # 是否启用 Hat 功能
   enabled: true
-  # 冷却时间（秒），设置为 0 表示无冷却
   cooldown: 0.0
-  # 黑名单物品（禁止戴在头上的物品类型）
   blacklist:
     - COMMAND_BLOCK
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&c[Hat]&r "
-    # 功能已禁用
-    disabled: "%prefix%&cHat 功能已禁用"
-    # 没有手持物品
-    no-item: "%prefix%&c请先手持一个物品"
-    # 物品在黑名单中
-    blacklisted: "%prefix%&c该物品不能戴在头上"
-    # 权限不足
-    no-permission: "%prefix%&c你没有权限使用此命令"
-    # 仅玩家可用
-    console-only: "%prefix%&c只有玩家才能使用此命令"
-    # 冷却中
-    cooldown: "%prefix%&c请等待 %cooldown% 秒后再使用"
 # Ping 延迟查询配置
 ping:
-  # 是否启用 Ping 功能
   enabled: true
-  # 每页显示的玩家数量
   entries_per_page: 10
-  # 延迟颜色阈值（毫秒）
   ping_colors:
-    green: 100    # < 100ms 显示绿色
-    yellow: 200   # 100-200ms 显示黄色
-    # > 200ms 显示红色
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&6[TSL喵]&r "
-    # 功能已禁用
-    disabled: "%prefix%&cPing 功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 仅玩家可用
-    console_only: "%prefix%&c此命令只能由玩家执行"
-    # 查看自己的延迟
-    self_ping: "%prefix%&7你的延迟: {color}{ping}ms"
-    # 查看指定玩家的延迟
-    player_ping: "%prefix%&7{player} 的延迟: {color}{ping}ms"
-    # 玩家不在线
-    player_not_found: "%prefix%&c玩家 {player} 不在线"
-    # 没有在线玩家
-    no_players_online: "%prefix%&c当前没有在线玩家"
-    # 平均延迟
-    average_ping: "&7服务器平均延迟: {color}{ping}ms"
-    # 分页标题
-    page_header: "&6&l在线玩家延迟排行 &7- 第 {page}/{total_pages} 页"
+    green: 100
+    yellow: 200
 # Toss 生物举起功能配置
 toss:
-  # 是否启用 Toss 功能
   enabled: true
-  # 是否显示操作提示信息（举起、投掷、放下等提示）
   show_messages: false
-  # 不允许被举起的实体类型
   blacklist:
     - WITHER
     - ENDER_DRAGON
     - WARDEN
     - VILLAGER
     - SHULKER
-  # 每个玩家最多能同时举起的生物数量
   max_lift_count: 5
-  # 玩家默认是否启用举起生物功能
   default_enabled: false
-  # 投掷生物的速度范围
-  #
-  # 普通玩家限制:
-  #   - 必须在 min-max 范围内设置速度
-  #   - 建议范围: 0.5-5.0
-  #
-  # OP/管理员特权 (tsl.toss.velocity.bypass):
-  #   - 可以无视配置限制，设置任意速度
-  #   - 实际上限: 0.0-10.0 (Minecraft 服务器默认限制)
-  #   - 建议不要超过 10.0，可能导致:
-  #     * 实体传送检测触发
-  #     * 服务器性能问题
-  #     * 实体位置异常
-  #
-  # 使用方法:
-  #   /tsl toss velocity <数值> - 设置投掷速度
   throw_velocity:
     min: 1.0
     max: 3.0
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&6[TSL喵]&r "
-    # 功能已禁用
-    disabled: "%prefix%&cToss 功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 仅玩家可用
-    console_only: "%prefix%&c此命令只能由玩家执行"
-    # 玩家已禁用功能
-    player_disabled: "%prefix%&c你的举起功能已禁用，使用 /tsl toss toggle 启用"
-    # 实体在黑名单中
-    entity_blacklisted: "%prefix%&c这种生物不能被举起"
-    # 实体已被举起
-    entity_already_lifted: "%prefix%&c这个生物已经被举起了"
-    # 达到最大举起数量
-    max_limit_reached: "%prefix%&c你已达到举起上限({max})"
-    # 循环引用
-    circular_reference: "%prefix%&c检测到循环引用，无法举起"
-    # 实体已在链中
-    entity_in_chain: "%prefix%&c这个生物已经在你的乘客链中"
-    # 举起成功
-    pickup_success: "%prefix%&a举起了 {entity} ({current}/{max})"
-    # 没有举起任何生物
-    no_entity_lifted: "%prefix%&c你没有举起任何生物"
-    # 投掷成功
-    throw_success: "%prefix%&a投掷了 {entity}！剩余：{remaining}"
-    # 放下所有生物
-    drop_all_success: "%prefix%&a放下了 {count} 个生物"
-    # 切换启用
-    toggle_enabled: "%prefix%&a举起功能已启用"
-    # 切换禁用
-    toggle_disabled: "%prefix%&c举起功能已禁用"
-    # 当前状态
-    status: "%prefix%&7举起功能: {status} &7| 投掷速度: {velocity}"
-    # 速度设置成功
-    velocity_set: "%prefix%&a投掷速度已设置为 {velocity}"
-    # 当前速度
-    velocity_current: "%prefix%&7当前投掷速度: {velocity} &7(范围: {min} - {max})"
-    # 速度无效
-    invalid_velocity: "%prefix%&c无效的速度值"
-    # 速度超出范围
-    velocity_out_of_range: "%prefix%&c速度必须在 {min} 到 {max} 之间"
-    # 用法说明
-    usage: "%prefix%&e使用方法:\n&7/tsl toss toggle &f- 切换举起功能\n&7/tsl toss velocity <数值> &f- 设置投掷速度\n&7Shift + 右键生物 &f- 举起生物\n&7右键空气 &f- 投掷生物\n&7Shift + 右键空气 &f- 放下所有生物"
 # Freeze 冻结玩家功能配置
 freeze:
-  # 是否启用 Freeze 功能
   enabled: true
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&c[冻结]&r "
-    # 功能已禁用
-    disabled: "%prefix%&cFreeze 功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 玩家不存在
-    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
-    # 目标有 bypass 权限
-    target_bypass: "%prefix%&c{player} 拥有冻结豁免权限"
-    # 冻结成功
-    freeze_success: "%prefix%&a已冻结 &e{player} &a持续时间: &e{duration}"
-    # 被冻结提示
-    frozen: "%prefix%&c你已被冻结！持续时间: &e{duration}"
-    # 解冻成功
-    unfreeze_success: "%prefix%&a已解冻 &e{player}"
-    # 被解冻提示
-    unfrozen: "%prefix%&a你已被解冻！"
-    # 冻结过期
-    expired: "%prefix%&a你的冻结时间已结束！"
-    # 玩家未被冻结
-    not_frozen: "%prefix%&c{player} 未被冻结"
-    # 无法使用指令
-    cannot_use_commands: "%prefix%&c你被冻结期间无法使用指令！"
-    # 列表标题
-    list_header: "%prefix%&e当前被冻结的玩家:"
-    # 没有被冻结的玩家
-    no_frozen_players: "%prefix%&7当前没有被冻结的玩家"
-    # 列表条目
-    list_entry: "&7- &e{player} &7[&6{status}&7] &8剩余: &f{time}"
-    # ActionBar 提示
-    actionbar: "&c&l⚠ 你已被冻结 ⚠ &8| &f{time}"
-    # 用法说明
-    usage: "%prefix%&e使用方法:\n&7/tsl freeze <玩家> [时间] &f- 切换冻结状态（自动冻结/解冻）\n&7/tsl freeze list &f- 列出被冻结的玩家\n&8提示: 如果玩家已冻结则解冻，未冻结则冻结"
 # Ride 骑乘生物功能配置
 ride:
-  # 是否启用 Ride 功能
   enabled: true
-  # 玩家默认是否启用骑乘功能
   default_enabled: false
-  # 不允许骑乘的实体类型
   blacklist:
     - WITHER
     - ENDER_DRAGON
@@ -460,74 +247,22 @@ ride:
     - ELDER_GUARDIAN
     - VILLAGER
     - SHULKER
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&6[TSL喵]&r "
-    # 功能已禁用
-    disabled: "%prefix%&cRide 功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 仅玩家可用
-    console_only: "%prefix%&c此命令只能由玩家执行"
-    # 切换启用
-    toggle_enabled: "%prefix%&a骑乘功能已启用"
-    # 切换禁用
-    toggle_disabled: "%prefix%&c骑乘功能已禁用"
-    # 用法说明
-    usage: "%prefix%&e使用方法: &7/tsl ride toggle &f- 切换骑乘功能"
+
 # BabyLock 永久幼年生物配置
 babylock:
-  # 是否启用功能
   enabled: true
-  # 名字前缀列表（满足任一前缀即触发锁定）
   prefixes:
     - "[幼]"
     - "[小]"
     - "[Baby]"
-  # 是否区分大小写
   case_sensitive: false
-  # 防止锁定的生物消失
   prevent_despawn: true
-  # 启用的实体类型（白名单）
-  # 留空表示全部 Ageable 生物均启用
-  # 可选值: ALLAY, CHICKEN, COW, SHEEP, PIG, RABBIT, WOLF, CAT, HORSE, DONKEY, MULE,
-  #         LLAMA, TRADER_LLAMA, FOX, BEE, GOAT, AXOLOTL, CAMEL, SNIFFER 等
   enabled_types: []
-  # 消息配置
-  messages:
-    prefix: "&6[TSL喵]&r "
-    # 锁定成功
-    lock: "%prefix%&d这只 &e{entity} &d现在会永远保持幼年啦！"
-    # 解除成功
-    unlock: "%prefix%&e已解除 &7{entity} &e的幼年锁定，它可以继续成长啦。"
+
 # Kiss 亲吻功能配置
 kiss:
-  # 是否启用 Kiss 功能
   enabled: true
-  # 指令冷却时间（秒）
   cooldown: 1.0
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&d♥ &r"
-    # 功能已禁用
-    disabled: "%prefix%&cKiss 功能已禁用"
-    # 仅玩家可用
-    console_only: "%prefix%&c此命令只能由玩家执行"
-    # 玩家不存在
-    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
-    # 不能亲自己
-    cannot_kiss_self: "%prefix%&c你不能亲自己哦~"
-    # 亲吻成功（发送给发起者）
-    kiss_sent: "%prefix%&d你亲了 &e{player} &d一口~ ♥"
-    # 被亲吻（发送给目标）
-    kiss_received: "%prefix%&d{player} &d亲了你一口~ ♥"
-    # 切换启用
-    toggle_enabled: "%prefix%&a亲吻功能已启用"
-    # 切换禁用
-    toggle_disabled: "%prefix%&c亲吻功能已禁用"
-# ========================================
 # BlockStats 方块统计功能配置
 # ========================================
 blockstats:
@@ -580,32 +315,10 @@ chatbubble:
 # FixGhost 幽灵方块清理功能配置
 # ========================================
 fixghost:
-  # 是否启用 FixGhost 功能
   enabled: true
-
-  # 默认扫描半径（单位：方块）
   default-radius: 5
-
-  # 最大扫描半径（单位：方块，防止滥用）
   max-radius: 5
-
-  # 冷却时间（单位：秒）
   cooldown: 5.0
-
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&e[FixGhost]&r "
-    # 功能已禁用
-    disabled: "%prefix%&c幽灵方块清理功能已禁用"
-    # 没有权限
-    no-permission: "%prefix%&c你没有权限使用此命令"
-    # 仅玩家可用
-    console-only: "%prefix%&c此命令只能由玩家执行"
-    # 冷却中
-    cooldown: "%prefix%&c请等待 &e%cooldown% &c秒后再使用"
-    # 清理成功
-    success: "%prefix%&a已清理你附近 &e%radius% &a格范围内的 &e%count% &a个幽灵方块"
 
 
 # ========================================
@@ -622,6 +335,14 @@ near:
   # 最大搜索半径（单位：方块）
   # 普通玩家的最大范围限制，OP 或有 tsl.near.bypass 权限的玩家无视此限制
   maxRadius: 1000
+
+# ========================================
+# Speed 速度控制配置
+# ========================================
+speed:
+  enabled: true
+  min-multiplier: 0.1
+  max-multiplier: 10.0
 
 # ========================================
 # Phantom 幻翼控制配置
@@ -702,15 +423,16 @@ webbridge:
   # 最大重试次数，超过后停止自动重连
   max-reconnect-attempts: 5
 
-  # 消息格式配置
-  messages:
-    # Web 端消息同步到游戏的格式
-    # 支持占位符:
-    #   {source} - 消息来源（如 "Web"）
-    #   {playerName} - 发送者名称
-    #   {message} - 消息内容
-    # 支持颜色代码（使用 & 符号）
-    web-to-game: "&7[&b{source}&7] &f<{playerName}> &7{message}"
+  # 玩家列表推送间隔（秒）
+  # 每隔这么多秒向 Web 端推送一次玩家列表
+  player-list-interval: 30
+
+  # 心跳间隔（秒）
+  # 用于保持 WebSocket 连接的活跃状态
+  heartbeat-interval: 30
+
+  # Web 端消息同步到游戏的格式
+  web-to-game-format: "&7[&b{source}&7] &f<{playerName}> &7{message}"
 # ========================================
 # EndDragon 末影龙控制功能配置
 # ========================================
@@ -764,87 +486,20 @@ player-count-cmd:
 # Neko 猫娘模式配置
 # ========================================
 neko:
-  # 是否启用猫娘模式功能
   enabled: true
-
-  # 猫娘发言后缀
-  # 可以自定义为任何文本，支持颜色代码
   suffix: "喵~"
-
-  # 过期扫描间隔（tick，20 tick = 1 秒）
   scan-interval-ticks: 20
-
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&d[猫娘]&r "
-    # 功能已禁用
-    disabled: "%prefix%&c猫娘模式功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 玩家不在线
-    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
-    # 无效持续时间
-    invalid_duration: "%prefix%&c无效的持续时间: &e{duration}"
-    # 设置成功
-    set_success: "%prefix%&a已将 &e{player} &a设置为猫娘，持续 &b{duration}"
-    # 设置失败
-    set_failed: "%prefix%&c设置猫娘状态失败"
-    # 取消成功
-    reset_success: "%prefix%&a已取消 &e{player} &a的猫娘状态"
-    # 玩家不是猫娘
-    not_neko: "%prefix%&e{player} &c不是猫娘"
-    # 列表为空
-    list_empty: "%prefix%&7当前没有猫娘玩家"
-    # 玩家收到的通知 - 成为猫娘
-    become_neko: "%prefix%&a你已成为猫娘！持续时间: &b{duration}"
-    # 玩家收到的通知 - 不再是猫娘
-    no_longer_neko: "%prefix%&e你已不再是猫娘了"
 
 # ========================================
 # Mcedia 视频播放器配置
 # ========================================
 mcedia:
-  # 是否启用 Mcedia 视频播放器功能
   enabled: true
-
-  # 播放器盔甲架名称前缀
-  # 只有名称以此开头的盔甲架才会被识别为播放器
   player-name-prefix: "mcedia"
-
-  # 默认缩放
   default-scale: 1.0
-
-  # 默认音量
   default-volume: 1.0
-
-  # 最大播放器数量
   max-players: 50
-
-  # 蹲下+右键触发物品
-  # 只有手持该物品时蹲下右键播放器才会打开配置 GUI
-  # 留空或设为 AIR 表示空手触发
-  # 示例: STICK, BLAZE_ROD, DIAMOND 等
   trigger-item: ""
-
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&6[Mcedia]&r "
-    # 功能已禁用
-    disabled: "%prefix%&c视频播放器功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 玩家不在线
-    player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
-    # 创建成功
-    create_success: "%prefix%&a播放器创建成功！名称: &f{name}"
-    # 创建失败
-    create_failed: "%prefix%&c创建失败，可能已达到最大数量"
-    # 删除成功
-    delete_success: "%prefix%&a播放器已删除: &f{name}"
-    # 未找到播放器
-    not_found: "%prefix%&c未找到播放器: &e{name}"
 
 # ========================================
 # RandomVariable 混合分布随机数配置
@@ -898,104 +553,19 @@ random-variable:
 
 # ========================================
 # Peace 伪和平模式配置
-# 模式1 (peace): 玩家在指定时间内不会被怪物发现/锁定
-# 模式2 (nospawn): 玩家附近禁止敌对生物自然生成
 # ========================================
 peace:
-  # 是否启用伪和平功能
   enabled: true
-
-  # 过期扫描间隔（tick）
   scan-interval-ticks: 20
-
-  # 禁怪模式的禁止刷怪半径（格）
-  # 建议范围: 32-64
   nospawn-radius: 48
-
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&a[和平]&r "
-    # 功能已禁用
-    disabled: "%prefix%&c伪和平功能已禁用"
-    # 没有权限
-    no_permission: "%prefix%&c你没有权限使用此命令"
-    # 玩家不在线
-    player_not_found: "%prefix%&c玩家 &e{player} &c不在线或不存在"
-    # 无效时间格式
-    invalid_duration: "%prefix%&c无效的时间格式，示例: 60, 5m, 2h, 1d"
-    # 设置成功
-    set_success: "%prefix%&a已为 &f{player} &a设置伪和平模式，持续 &e{time}"
-    # 设置失败
-    set_failed: "%prefix%&c设置失败"
-    # 获得和平模式
-    gained: "%prefix%&a你获得了伪和平模式，持续 &e{time}&a，怪物将无法发现你"
-    # 和平模式过期
-    expired: "%prefix%&c你的伪和平模式已过期，怪物可以再次发现你"
-    # 重新登录提示
-    rejoin: "%prefix%&a你仍处于伪和平模式，剩余 &e{time}"
-    # 清除成功
-    clear_success: "%prefix%&a已清除 &f{player} &a的伪和平模式"
-    # 清除全部成功
-    clear_all: "%prefix%&a已清除所有玩家的伪和平模式 (共 &f{count} &a人)"
-    # 被清除通知
-    cleared: "%prefix%&c你的伪和平模式已被管理员清除"
-    # 玩家不在和平状态
-    not_peaceful: "%prefix%&c玩家 &e{player} &c不在伪和平模式中"
-    # 列表为空
-    list_empty: "%prefix%&7当前没有玩家处于伪和平模式"
-    # ===== 禁怪模式消息 =====
-    # 禁怪模式设置成功
-    nospawn_set_success: "%prefix%&b已为 &f{player} &b设置禁怪模式，持续 &e{time}&b，半径 &f{radius} &b格"
-    # 获得禁怪模式
-    nospawn_gained: "%prefix%&b你获得了禁怪模式，持续 &e{time}&b，周围 &f{radius} &b格内不再刷怪"
-    # 禁怪模式过期
-    nospawn_expired: "%prefix%&c你的禁怪模式已过期，周围将恢复正常刷怪"
-    # 重新登录提示（禁怪）
-    nospawn_rejoin: "%prefix%&b你仍处于禁怪模式，剩余 &e{time}&b，半径 &f{radius} &b格"
-    # 清除禁怪成功
-    nospawn_clear_success: "%prefix%&b已清除 &f{player} &b的禁怪模式"
-    # 清除全部禁怪成功
-    nospawn_clear_all: "%prefix%&b已清除所有玩家的禁怪模式 (共 &f{count} &b人)"
-    # 禁怪被清除通知
-    nospawn_cleared: "%prefix%&c你的禁怪模式已被管理员清除"
-    # 玩家不在禁怪状态
-    not_nospawn: "%prefix%&c玩家 &e{player} &c不在禁怪模式中"
-    # 禁怪列表为空
-    nospawn_list_empty: "%prefix%&7当前没有玩家处于禁怪模式"
 
 # ========================================
 # PlayTime 玩家在线时长统计配置
-# 统计玩家每日在线时长，支持 PAPI 变量和条件判断
 # ========================================
 playtime:
-  # 是否启用在线时长统计功能
   enabled: true
-
-  # 自动保存间隔（tick，20 tick = 1 秒）
-  # 默认 6000 tick = 5 分钟
   save-interval-ticks: 6000
-
-  # 时区设置（用于每日重置）
-  # 默认使用 Asia/Shanghai（北京时间）
   timezone: "Asia/Shanghai"
-
-  # 消息配置
-  messages:
-    # 命令前缀
-    prefix: "&e[时长]&r "
-    # 功能已禁用
-    disabled: "%prefix%&c在线时长统计功能已禁用"
-    # 查看自己的时长
-    self: "%prefix%&a你今日的在线时长: &f%time%"
-    # 查看他人的时长
-    check: "%prefix%&a%player% &7今日的在线时长: &f%time%"
-    # 排行榜标题
-    top-header: "&6========== 今日在线时长排行榜 =========="
-    # 排行榜条目
-    top-entry: "&e%rank%. &a%player% &7- &f%time%"
-    # 排行榜尾部
-    top-footer: "&6======================================="
 
 # ========================================
 # SuperSnowball 超级大雪球配置
@@ -1051,12 +621,6 @@ super-snowball:
   # impact-sounds:
   #   - "BLOCK_AMETHYST_BLOCK_CHIME:1.5:1.0"
   #   - "ENTITY_WIND_CHARGE_WIND_BURST:1.0:1.2"
-
-  # 消息配置
-  messages:
-    prefix: "&b[雪球]&r "
-    no_permission: "%prefix%&c没有权限使用超级大雪球"
-
 
 # ============================================
 # 红石冻结系统配置

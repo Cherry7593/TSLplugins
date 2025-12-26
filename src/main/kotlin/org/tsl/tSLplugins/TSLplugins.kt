@@ -134,6 +134,10 @@ class TSLplugins : JavaPlugin() {
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
     private lateinit var permissionChecker: PermissionChecker
+    
+    // 消息管理器（全局单例）
+    lateinit var messageManager: MessageManager
+        private set
 
     override fun onEnable() {
         // 首先预验证和修复配置文件（在任何 YAML 解析之前）
@@ -161,6 +165,9 @@ class TSLplugins : JavaPlugin() {
             }
         }
 
+        // 初始化消息管理器（最先初始化，供其他模块使用）
+        messageManager = MessageManager(this)
+        
         // 初始化全局数据库管理器
         DatabaseManager.init(this)
 
