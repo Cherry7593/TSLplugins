@@ -741,6 +741,13 @@ class TSLplugins : JavaPlugin() {
     }
 
     /**
+     * 重新加载 PapiAlias 管理器
+     */
+    fun reloadPapiAliasManager() {
+        papiAliasManager.loadConfig()
+    }
+
+    /**
      * 初始化人数控制命令模块
      * 根据配置决定是否启用
      */

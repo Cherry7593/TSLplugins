@@ -44,19 +44,37 @@ class AliasManager(private val plugin: JavaPlugin) {
      */
     private fun unregisterAliases() {
         try {
-            val knownCommandsField = commandMap.javaClass.getDeclaredField("knownCommands")
-            knownCommandsField.isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            val knownCommands = knownCommandsField.get(commandMap) as MutableMap<String, Command>
-
-            registeredCommands.forEach { alias ->
-                knownCommands.remove(alias)
-                knownCommands.remove("tslplugins:$alias")
+            // 遍历类层次查找 knownCommands 字段（兼容 Paper/Folia）
+            val knownCommands = getKnownCommands()
+            if (knownCommands != null) {
+                registeredCommands.forEach { alias ->
+                    knownCommands.remove(alias)
+                    knownCommands.remove("tslplugins:$alias")
+                }
             }
             registeredCommands.clear()
         } catch (e: Exception) {
             plugin.logger.warning("注销别名命令时出错: ${e.message}")
         }
+    }
+
+    /**
+     * 获取 knownCommands Map（遍历类层次查找，兼容 Paper/Folia）
+     */
+    private fun getKnownCommands(): MutableMap<String, Command>? {
+        var clazz: Class<*>? = commandMap.javaClass
+        while (clazz != null) {
+            try {
+                val field = clazz.getDeclaredField("knownCommands")
+                field.isAccessible = true
+                @Suppress("UNCHECKED_CAST")
+                return field.get(commandMap) as MutableMap<String, Command>
+            } catch (_: NoSuchFieldException) {
+                clazz = clazz.superclass
+            }
+        }
+        plugin.logger.warning("无法找到 knownCommands 字段")
+        return null
     }
 
     /**
