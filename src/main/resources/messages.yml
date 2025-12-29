@@ -1,0 +1,372 @@
+# TSLplugins 消息配置文件
+# 版本: 1
+# ========================================
+# 所有模块的消息配置统一存储在此文件中
+# 使用 %prefix% 引用全局前缀
+# ========================================
+
+# 全局消息前缀
+prefix: "&6[TSL]&r "
+
+# ========================================
+# 通用消息
+# ========================================
+common:
+  # 功能已禁用
+  disabled: "%prefix%&c该功能已禁用"
+  # 没有权限
+  no_permission: "%prefix%&c你没有权限使用此命令"
+  # 仅玩家可用
+  player_only: "%prefix%&c此命令只能由玩家执行"
+  # 玩家不在线
+  player_not_found: "%prefix%&c玩家 &e{player} &c不在线"
+  # 无效参数
+  invalid_args: "%prefix%&c无效的参数"
+  # 重载成功
+  reload_success: "%prefix%&a配置已重载"
+
+# ========================================
+# TimedAttribute 计时属性效果
+# ========================================
+timed-attribute:
+  # 无效属性
+  invalid_attribute: "%prefix%&c无效的属性: &e{attribute}"
+  # 无效数量
+  invalid_amount: "%prefix%&c无效的数量: &e{amount}"
+  # 无效持续时间
+  invalid_duration: "%prefix%&c无效的持续时间: &e{duration}"
+  # 无效修改器 UUID
+  invalid_modifier_uuid: "%prefix%&c未找到该效果ID: &e{uuid}"
+  # 添加成功
+  add_success: "%prefix%&a已为 &e{player} &a添加 &f{attribute} {amount} &7(持续 {duration}, ID: {modifier_uuid})"
+  # 添加失败
+  add_failed: "%prefix%&c添加属性效果失败"
+  # 移除成功
+  remove_success: "%prefix%&a已移除 &e{player} &a的效果 &7(ID: {modifier_uuid})"
+  # 效果未找到
+  effect_not_found: "%prefix%&c未找到该属性效果"
+  # 没有效果
+  no_effects: "%prefix%&7{player} 没有任何计时属性效果"
+  # 列表标题
+  list_header: "%prefix%&e{player} 的计时属性效果 &7({count} 个)"
+  # 列表条目
+  list_entry: "&7- &f{attribute} &a{amount} &7| &b{remaining} &7| ID: &8{modifier_uuid}"
+  # 清除成功
+  clear_success: "%prefix%&a已清除 &e{player} &a的 &f{count} &a个属性效果"
+
+# ========================================
+# Scale 体型调整
+# ========================================
+scale:
+  # 成功调整体型
+  set: "%prefix%&a你的体型被调整为了 &e{scale}"
+  # 体型重置
+  reset: "%prefix%&a你的体型恢复默认啦"
+  # 用法提示
+  usage: "%prefix%&e用法: /tsl scale <数值|reset> (范围: {min} - {max})"
+
+# ========================================
+# Hat 帽子功能
+# ========================================
+hat:
+  # 没有手持物品
+  no_item: "%prefix%&c请先手持一个物品"
+  # 物品在黑名单中
+  blacklisted: "%prefix%&c该物品不能戴在头上"
+  # 冷却中
+  cooldown: "%prefix%&c请等待 &e{cooldown} &c秒后再使用"
+
+# ========================================
+# Ping 延迟查询
+# ========================================
+ping:
+  # 查看自己的延迟
+  self_ping: "%prefix%&7你的延迟: {color}{ping}ms"
+  # 查看指定玩家的延迟
+  player_ping: "%prefix%&7{player} 的延迟: {color}{ping}ms"
+  # 没有在线玩家
+  no_players_online: "%prefix%&c当前没有在线玩家"
+  # 平均延迟
+  average_ping: "&7服务器平均延迟: {color}{ping}ms"
+  # 分页标题
+  page_header: "&6&l在线玩家延迟排行 &7- 第 {page}/{total_pages} 页"
+
+# ========================================
+# Toss 生物举起
+# ========================================
+toss:
+  # 玩家已禁用功能
+  player_disabled: "%prefix%&c你的举起功能已禁用，使用 /tsl toss toggle 启用"
+  # 实体在黑名单中
+  entity_blacklisted: "%prefix%&c这种生物不能被举起"
+  # 实体已被举起
+  entity_already_lifted: "%prefix%&c这个生物已经被举起了"
+  # 达到最大举起数量
+  max_limit_reached: "%prefix%&c你已达到举起上限({max})"
+  # 循环引用
+  circular_reference: "%prefix%&c检测到循环引用，无法举起"
+  # 实体已在链中
+  entity_in_chain: "%prefix%&c这个生物已经在你的乘客链中"
+  # 举起成功
+  pickup_success: "%prefix%&a举起了 {entity} ({current}/{max})"
+  # 没有举起任何生物
+  no_entity_lifted: "%prefix%&c你没有举起任何生物"
+  # 投掷成功
+  throw_success: "%prefix%&a投掷了 {entity}！剩余：{remaining}"
+  # 放下所有生物
+  drop_all_success: "%prefix%&a放下了 {count} 个生物"
+  # 切换启用
+  toggle_enabled: "%prefix%&a举起功能已启用"
+  # 切换禁用
+  toggle_disabled: "%prefix%&c举起功能已禁用"
+  # 当前状态
+  status: "%prefix%&7举起功能: {status} &7| 投掷速度: {velocity}"
+  # 速度设置成功
+  velocity_set: "%prefix%&a投掷速度已设置为 {velocity}"
+  # 当前速度
+  velocity_current: "%prefix%&7当前投掷速度: {velocity} &7(范围: {min} - {max})"
+  # 速度无效
+  invalid_velocity: "%prefix%&c无效的速度值"
+  # 速度超出范围
+  velocity_out_of_range: "%prefix%&c速度必须在 {min} 到 {max} 之间"
+  # 用法说明
+  usage: |
+    %prefix%&e使用方法:
+    &7/tsl toss toggle &f- 切换举起功能
+    &7/tsl toss velocity <数值> &f- 设置投掷速度
+    &7Shift + 右键生物 &f- 举起生物
+    &7右键空气 &f- 投掷生物
+    &7Shift + 右键空气 &f- 放下所有生物
+
+# ========================================
+# Freeze 冻结玩家
+# ========================================
+freeze:
+  # 目标有 bypass 权限
+  target_bypass: "%prefix%&c{player} 拥有冻结豁免权限"
+  # 冻结成功
+  freeze_success: "%prefix%&a已冻结 &e{player} &a持续时间: &e{duration}"
+  # 被冻结提示
+  frozen: "%prefix%&c你已被冻结！持续时间: &e{duration}"
+  # 解冻成功
+  unfreeze_success: "%prefix%&a已解冻 &e{player}"
+  # 被解冻提示
+  unfrozen: "%prefix%&a你已被解冻！"
+  # 冻结过期
+  expired: "%prefix%&a你的冻结时间已结束！"
+  # 玩家未被冻结
+  not_frozen: "%prefix%&c{player} 未被冻结"
+  # 无法使用指令
+  cannot_use_commands: "%prefix%&c你被冻结期间无法使用指令！"
+  # 列表标题
+  list_header: "%prefix%&e当前被冻结的玩家:"
+  # 没有被冻结的玩家
+  no_frozen_players: "%prefix%&7当前没有被冻结的玩家"
+  # 列表条目
+  list_entry: "&7- &e{player} &7[&6{status}&7] &8剩余: &f{time}"
+  # ActionBar 提示
+  actionbar: "&c&l⚠ 你已被冻结 ⚠ &8| &f{time}"
+  # 用法说明
+  usage: |
+    %prefix%&e使用方法:
+    &7/tsl freeze <玩家> [时间] &f- 切换冻结状态
+    &7/tsl freeze list &f- 列出被冻结的玩家
+
+# ========================================
+# Ride 骑乘生物
+# ========================================
+ride:
+  # 切换启用
+  toggle_enabled: "%prefix%&a骑乘功能已启用"
+  # 切换禁用
+  toggle_disabled: "%prefix%&c骑乘功能已禁用"
+  # 用法说明
+  usage: "%prefix%&e使用方法: &7/tsl ride toggle &f- 切换骑乘功能"
+
+# ========================================
+# BabyLock 永久幼年
+# ========================================
+babylock:
+  # 锁定成功
+  lock: "%prefix%&d这只 &e{entity} &d现在会永远保持幼年啦！"
+  # 解除成功
+  unlock: "%prefix%&e已解除 &7{entity} &e的幼年锁定，它可以继续成长啦。"
+
+# ========================================
+# Kiss 亲吻功能
+# ========================================
+kiss:
+  # 不能亲自己
+  cannot_kiss_self: "%prefix%&c你不能亲自己哦~"
+  # 亲吻成功（发送给发起者）
+  kiss_sent: "%prefix%&d你亲了 &e{player} &d一口~ ♥"
+  # 被亲吻（发送给目标）
+  kiss_received: "%prefix%&d{player} &d亲了你一口~ ♥"
+  # 切换启用
+  toggle_enabled: "%prefix%&a亲吻功能已启用"
+  # 切换禁用
+  toggle_disabled: "%prefix%&c亲吻功能已禁用"
+
+# ========================================
+# FixGhost 幽灵方块清理
+# ========================================
+fixghost:
+  # 冷却中
+  cooldown: "%prefix%&c请等待 &e{cooldown} &c秒后再使用"
+  # 清理成功
+  success: "%prefix%&a已清理你附近 &e{radius} &a格范围内的 &e{count} &a个幽灵方块"
+
+# ========================================
+# Speed 速度控制
+# ========================================
+speed:
+  # 设置行走速度成功
+  walk_success: "%prefix%&a已将你的行走速度设置为 &e{value} &a倍"
+  # 设置飞行速度成功
+  fly_success: "%prefix%&a已将你的飞行速度设置为 &e{value} &a倍"
+  # 查看行走速度
+  walk_current: "%prefix%&a当前行走速度倍率: &e{value}"
+  # 查看飞行速度
+  fly_current: "%prefix%&a当前飞行速度倍率: &e{value}"
+  # 速度超出范围
+  out_of_range: "%prefix%&c速度值超出范围！请输入 {min} 到 {max} 之间的数字"
+  # 无效的速度值
+  invalid_value: "%prefix%&c无效的速度值"
+
+# ========================================
+# Neko 猫娘模式
+# ========================================
+neko:
+  # 无效持续时间
+  invalid_duration: "%prefix%&c无效的持续时间: &e{duration}"
+  # 设置成功
+  set_success: "%prefix%&a已将 &e{player} &a设置为猫娘，持续 &b{duration}"
+  # 设置失败
+  set_failed: "%prefix%&c设置猫娘状态失败"
+  # 取消成功
+  reset_success: "%prefix%&a已取消 &e{player} &a的猫娘状态"
+  # 玩家不是猫娘
+  not_neko: "%prefix%&e{player} &c不是猫娘"
+  # 列表为空
+  list_empty: "%prefix%&7当前没有猫娘玩家"
+  # 玩家收到的通知 - 成为猫娘
+  become_neko: "%prefix%&a你已成为猫娘！持续时间: &b{duration}"
+  # 玩家收到的通知 - 不再是猫娘
+  no_longer_neko: "%prefix%&e你已不再是猫娘了"
+
+# ========================================
+# Mcedia 视频播放器
+# ========================================
+mcedia:
+  # 创建成功
+  create_success: "%prefix%&a播放器创建成功！名称: &f{name}"
+  # 创建失败
+  create_failed: "%prefix%&c创建失败，可能已达到最大数量"
+  # 删除成功
+  delete_success: "%prefix%&a播放器已删除: &f{name}"
+  # 未找到播放器
+  not_found: "%prefix%&c未找到播放器: &e{name}"
+
+# ========================================
+# Peace 伪和平模式
+# ========================================
+peace:
+  # 无效时间格式
+  invalid_duration: "%prefix%&c无效的时间格式，示例: 60, 5m, 2h, 1d"
+  # 设置成功
+  set_success: "%prefix%&a已为 &f{player} &a设置伪和平模式，持续 &e{time}"
+  # 设置失败
+  set_failed: "%prefix%&c设置失败"
+  # 获得和平模式
+  gained: "%prefix%&a你获得了伪和平模式，持续 &e{time}&a，怪物将无法发现你"
+  # 和平模式过期
+  expired: "%prefix%&c你的伪和平模式已过期，怪物可以再次发现你"
+  # 重新登录提示
+  rejoin: "%prefix%&a你仍处于伪和平模式，剩余 &e{time}"
+  # 清除成功
+  clear_success: "%prefix%&a已清除 &f{player} &a的伪和平模式"
+  # 清除全部成功
+  clear_all: "%prefix%&a已清除所有玩家的伪和平模式 (共 &f{count} &a人)"
+  # 被清除通知
+  cleared: "%prefix%&c你的伪和平模式已被管理员清除"
+  # 玩家不在和平状态
+  not_peaceful: "%prefix%&c玩家 &e{player} &c不在伪和平模式中"
+  # 列表为空
+  list_empty: "%prefix%&7当前没有玩家处于伪和平模式"
+  # ===== 禁怪模式消息 =====
+  nospawn_set_success: "%prefix%&b已为 &f{player} &b设置禁怪模式，持续 &e{time}&b，半径 &f{radius} &b格"
+  nospawn_gained: "%prefix%&b你获得了禁怪模式，持续 &e{time}&b，周围 &f{radius} &b格内不再刷怪"
+  nospawn_expired: "%prefix%&c你的禁怪模式已过期，周围将恢复正常刷怪"
+  nospawn_rejoin: "%prefix%&b你仍处于禁怪模式，剩余 &e{time}&b，半径 &f{radius} &b格"
+  nospawn_clear_success: "%prefix%&b已清除 &f{player} &b的禁怪模式"
+  nospawn_clear_all: "%prefix%&b已清除所有玩家的禁怪模式 (共 &f{count} &b人)"
+  nospawn_cleared: "%prefix%&c你的禁怪模式已被管理员清除"
+  not_nospawn: "%prefix%&c玩家 &e{player} &c不在禁怪模式中"
+  nospawn_list_empty: "%prefix%&7当前没有玩家处于禁怪模式"
+
+# ========================================
+# PlayTime 在线时长统计
+# ========================================
+playtime:
+  # 查看自己的时长
+  self: "%prefix%&a你今日的在线时长: &f{time}"
+  # 查看他人的时长
+  check: "%prefix%&a{player} &7今日的在线时长: &f{time}"
+  # 排行榜标题
+  top_header: "&6========== 今日在线时长排行榜 =========="
+  # 排行榜条目
+  top_entry: "&e{rank}. &a{player} &7- &f{time}"
+  # 排行榜尾部
+  top_footer: "&6======================================="
+
+# ========================================
+# SuperSnowball 超级大雪球
+# ========================================
+super-snowball:
+  no_permission: "%prefix%&c没有权限使用超级大雪球"
+
+# ========================================
+# Maintenance 维护模式
+# ========================================
+maintenance:
+  # 启用维护模式时的提示
+  enabled: "%prefix%&a服务器维护模式已启用！"
+  # 关闭维护模式时的提示
+  disabled: "%prefix%&c服务器维护模式已关闭！"
+
+# ========================================
+# Visitor 访客模式
+# ========================================
+visitor:
+  # 获得访客权限时
+  gained_chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
+  gained_title: "&a访客模式"
+  gained_subtitle: "&7已启用"
+  gained_sound: "entity.player.levelup"
+  # 失去访客权限时
+  lost_chat: "&c[访客模式] &7你已退出访客模式，怪物现在可以攻击你了！"
+  lost_title: "&c访客模式"
+  lost_subtitle: "&7已禁用"
+  lost_sound: "block.note_block.bass"
+
+# ========================================
+# WebBridge Web通信桥
+# ========================================
+webbridge:
+  # 连接成功
+  connected: "%prefix%&aWebSocket 连接成功"
+  # 连接失败
+  connect_failed: "%prefix%&cWebSocket 连接失败"
+  # 已断开连接
+  disconnected: "%prefix%&e已断开 WebSocket 连接"
+  # 模块未启用
+  disabled: "%prefix%&cWebBridge 模块未启用"
+  # 玩家列表已发送
+  player_list_sent: "%prefix%&a玩家列表已发送 ({count} 人在线)"
+
+# ========================================
+# PapiAlias 变量映射
+# ========================================
+papi-alias:
+  reload_success: "%prefix%&a变量映射配置已重载，共加载 {count} 个映射"
+  not_found: "%prefix%&c未找到变量 {variable} 的映射"
