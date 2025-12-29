@@ -254,6 +254,8 @@ class WebBridgeClient(
                 when (type) {
                     "chat" -> handleChatMessage(json)
                     "system" -> handleSystemMessage(json)
+                    "event" -> handleEventMessage(json)
+                    "response" -> handleResponseMessage(json)
                     else -> plugin.logger.warning("[WebBridge] 未知消息类型: $type")
                 }
             } catch (e: Exception) {
@@ -306,6 +308,117 @@ class WebBridgeClient(
                 plugin.logger.info("[WebBridge] 系统消息: $systemMessage")
             } catch (e: Exception) {
                 plugin.logger.log(Level.WARNING, "[WebBridge] 处理系统消息失败", e)
+            }
+        }
+
+        /**
+         * 处理事件消息（来自 Web 端）
+         */
+        private fun handleEventMessage(json: kotlinx.serialization.json.JsonObject) {
+            try {
+                val source = json["source"]?.jsonPrimitive?.content
+                if (source != "web") return
+                
+                val data = json["data"]?.jsonObject ?: return
+                val event = data["event"]?.jsonPrimitive?.content ?: return
+                
+                when (event) {
+                    "TITLE_UPDATE" -> handleTitleUpdateEvent(data)
+                    else -> plugin.logger.fine("[WebBridge] 未处理的事件类型: $event")
+                }
+            } catch (e: Exception) {
+                plugin.logger.log(Level.WARNING, "[WebBridge] 处理事件消息失败", e)
+            }
+        }
+
+        /**
+         * 处理称号更新事件
+         */
+        private fun handleTitleUpdateEvent(data: kotlinx.serialization.json.JsonObject) {
+            val playerUuid = data["playerUuid"]?.jsonPrimitive?.content ?: return
+            val playerName = data["playerName"]?.jsonPrimitive?.content
+            val title = if (data["title"]?.jsonPrimitive?.isString == true) {
+                data["title"]?.jsonPrimitive?.content
+            } else null
+            val position = data["position"]?.jsonPrimitive?.content ?: "prefix"
+            val tier = data["tier"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getTitleManager()?.handleTitleUpdate(playerUuid, playerName, title, position, tier)
+            }
+            
+            plugin.logger.info("[WebBridge] 收到称号更新: $playerName -> ${title ?: "(清除)"}")
+        }
+
+        /**
+         * 处理响应消息（来自 Web 端）
+         */
+        private fun handleResponseMessage(json: kotlinx.serialization.json.JsonObject) {
+            try {
+                val source = json["source"]?.jsonPrimitive?.content
+                if (source != "web") return
+                
+                val data = json["data"]?.jsonObject ?: return
+                val action = data["action"]?.jsonPrimitive?.content ?: return
+                
+                when (action) {
+                    "GET_TITLE" -> handleGetTitleResponse(data)
+                    "REDEEM_CODE" -> handleRedeemCodeResponse(data)
+                    "BIND_ACCOUNT" -> handleBindAccountResponse(data)
+                    else -> plugin.logger.fine("[WebBridge] 未处理的响应类型: $action")
+                }
+            } catch (e: Exception) {
+                plugin.logger.log(Level.WARNING, "[WebBridge] 处理响应消息失败", e)
+            }
+        }
+
+        /**
+         * 处理获取称号响应
+         */
+        private fun handleGetTitleResponse(data: kotlinx.serialization.json.JsonObject) {
+            val playerUuid = data["playerUuid"]?.jsonPrimitive?.content ?: return
+            val found = data["found"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            
+            if (!found) return
+            
+            val title = if (data["title"]?.jsonPrimitive?.isString == true) {
+                data["title"]?.jsonPrimitive?.content
+            } else null
+            val position = data["position"]?.jsonPrimitive?.content
+            val tier = data["tier"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getTitleManager()?.handleGetTitleResponse(playerUuid, title, position, tier, found)
+            }
+        }
+
+        /**
+         * 处理兑换码响应
+         */
+        private fun handleRedeemCodeResponse(data: kotlinx.serialization.json.JsonObject) {
+            val requestId = data["id"]?.jsonPrimitive?.content ?: return
+            val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val message = data["message"]?.jsonPrimitive?.content ?: ""
+            val grantedTier = data["grantedTier"]?.jsonPrimitive?.content?.toIntOrNull()
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getTitleManager()?.handleRedeemResponse(requestId, success, message, grantedTier)
+            }
+        }
+
+        /**
+         * 处理账号绑定响应
+         */
+        private fun handleBindAccountResponse(data: kotlinx.serialization.json.JsonObject) {
+            val requestId = data["id"]?.jsonPrimitive?.content ?: return
+            val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val message = data["message"]?.jsonPrimitive?.content ?: ""
+            val error = data["error"]?.jsonPrimitive?.content
+            val userId = data["userId"]?.jsonPrimitive?.content
+            val userName = data["userName"]?.jsonPrimitive?.content
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getBindManager()?.handleBindResponse(requestId, success, message, error, userId, userName)
             }
         }
 

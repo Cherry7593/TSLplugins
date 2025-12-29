@@ -4,16 +4,21 @@ import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
 import org.bukkit.Registry
 import org.bukkit.attribute.Attribute
-import org.bukkit.attribute.AttributeModifier
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
 import org.tsl.tSLplugins.TSLplugins
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.ArrayDeque
 
 /**
- * 计时属性效果管理器
- * 负责效果的添加、移除、过期扫描和玩家上下线处理
+ * 计时属性效果管理器（堆栈版）
+ * 
+ * 设计原则：
+ * - 每个玩家可以同时拥有多种不同属性的效果（如 scale、hp 等）
+ * - 同一属性可以堆叠多个效果，新效果暂停旧效果
+ * - 效果过期后恢复到下一层效果，直到恢复原始值
+ * - 上下线、死亡不影响计时
  */
 class TimedAttributeManager(private val plugin: JavaPlugin) {
 
@@ -23,12 +28,9 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
 
     private val msg get() = (plugin as TSLplugins).messageManager
 
-    // 在线玩家的活跃效果缓存：playerUuid -> attributeKey -> List<effect>
-    private val activeEffects: ConcurrentHashMap<UUID, ConcurrentHashMap<String, MutableList<TimedAttributeEffect>>> =
-        ConcurrentHashMap()
-
-    // 玩家属性的原始默认值缓存：playerUuid -> attributeKey -> baseValue
-    private val playerBaseValues: ConcurrentHashMap<UUID, ConcurrentHashMap<String, Double>> =
+    // 在线玩家的效果堆栈缓存：playerUuid -> attributeKey -> Stack<effect>
+    // 栈顶是活跃效果，下面是暂停的效果
+    private val effectStacks: ConcurrentHashMap<UUID, ConcurrentHashMap<String, ArrayDeque<TimedAttributeEffect>>> =
         ConcurrentHashMap()
 
     // Attribute 别名映射（简写 -> 完整名称）
@@ -65,99 +67,110 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 扫描并移除过期效果
+     * 扫描并处理过期效果
      */
     private fun scanAndRemoveExpired() {
-        val now = System.currentTimeMillis()
-
         // 遍历所有在线玩家的缓存
-        activeEffects.forEach { (playerUuid, attributeEffects) ->
+        effectStacks.forEach { (playerUuid, attributeStacks) ->
             val player = Bukkit.getPlayer(playerUuid)
             if (player == null || !player.isOnline) {
                 return@forEach
             }
 
-            // 检查每个属性的效果
-            val attributesToRecalculate = mutableSetOf<String>()
-
-            attributeEffects.forEach { (attributeKey, effects) ->
-                val expiredEffects = effects.filter { it.isExpired() }
-                if (expiredEffects.isNotEmpty()) {
-                    attributesToRecalculate.add(attributeKey)
-                    // 从数据库删除过期记录
-                    expiredEffects.forEach { effect ->
-                        storage?.deleteByModifier(effect.modifierUuid)
-                    }
+            // 检查每个属性的栈顶效果
+            val attributesToProcess = mutableListOf<String>()
+            
+            attributeStacks.forEach { (attributeKey, stack) ->
+                val topEffect = stack.peekLast()
+                if (topEffect != null && !topEffect.isPaused && topEffect.tick()) {
+                    // 栈顶效果过期
+                    attributesToProcess.add(attributeKey)
                 }
             }
 
-            // 如果有过期效果，重新计算属性值
-            if (attributesToRecalculate.isNotEmpty()) {
+            if (attributesToProcess.isNotEmpty()) {
                 player.scheduler.run(plugin, { _ ->
-                    attributesToRecalculate.forEach { attributeKey ->
-                        // 移除过期效果
-                        attributeEffects[attributeKey]?.removeIf { it.isExpired() }
-                        // 重新计算并应用属性值
-                        recalculateAttribute(player, attributeKey)
+                    attributesToProcess.forEach { attributeKey ->
+                        processExpiredEffect(player, attributeKey)
                     }
                 }, null)
             }
         }
-
-        // 异步清理数据库中的过期记录
-        storage?.deleteExpired(now)
     }
 
     /**
-     * 添加计时属性效果（ADD 类型）
-     *
-     * @param player 目标玩家
-     * @param attributeKey 属性名称（支持别名）
-     * @param amount 增减数量（正数增加，负数减少）
-     * @param durationMs 持续时间（毫秒）
-     * @param source 来源标识
-     * @return 修改器 UUID，失败返回 null
+     * 处理过期效果（弹出栈顶，相对恢复）
+     * 
+     * 相对恢复逻辑：
+     * - 计算 delta = targetValue - capturedValue
+     * - 当前值 -= delta（撤销这个效果的变化量）
+     * - 这样其他模块/插件的修改会被保留
      */
-    fun applyAddEffect(
-        player: Player,
-        attributeKey: String,
-        amount: Double,
-        durationMs: Long,
-        source: String = "command"
-    ): UUID? {
-        return applyEffect(player, attributeKey, amount, EffectType.ADD, durationMs, source)
+    private fun processExpiredEffect(player: Player, attributeKey: String) {
+        val playerStacks = effectStacks[player.uniqueId] ?: return
+        val stack = playerStacks[attributeKey] ?: return
+        
+        val expiredEffect = stack.pollLast() ?: return
+        
+        // 从数据库删除过期效果
+        storage?.deleteByEffectId(expiredEffect.effectId)
+        
+        // 获取当前属性值
+        val currentValue = getAttributeValue(player, attributeKey) ?: return
+        
+        // 计算恢复后的值（撤销这个效果的变化量）
+        val restoredValue = currentValue - expiredEffect.delta
+        
+        // 检查是否还有下一层效果
+        val nextEffect = stack.peekLast()
+        
+        if (nextEffect != null) {
+            // 恢复下一层效果
+            nextEffect.resume()
+            // 下一层效果需要重新应用其 delta
+            val nextRestoredValue = restoredValue + nextEffect.delta
+            applyAttributeValue(player, attributeKey, nextRestoredValue)
+            storage?.save(nextEffect)
+            
+            plugin.logger.info("[TimedAttribute] ${player.name} 的 $attributeKey 效果过期，恢复到下一层: $nextRestoredValue (剩余 ${nextEffect.getRemainingSeconds()}秒)")
+        } else {
+            // 栈空了，撤销变化量
+            applyAttributeValue(player, attributeKey, restoredValue)
+            playerStacks.remove(attributeKey)
+            
+            if (playerStacks.isEmpty()) {
+                effectStacks.remove(player.uniqueId)
+            }
+            
+            plugin.logger.info("[TimedAttribute] ${player.name} 的 $attributeKey 所有效果结束，撤销变化量 (delta=${expiredEffect.delta})，当前值: $restoredValue")
+        }
+    }
+    
+    /**
+     * 获取玩家属性的当前值
+     */
+    private fun getAttributeValue(player: Player, attributeKey: String): Double? {
+        val attribute = getAttributeByKey(attributeKey) ?: return null
+        val attrInstance = player.getAttribute(attribute) ?: return null
+        return attrInstance.baseValue
     }
 
     /**
-     * 添加计时属性效果（SET 类型）
+     * 设置计时属性效果（堆栈模式）
      *
      * @param player 目标玩家
      * @param attributeKey 属性名称（支持别名）
-     * @param value 目标值
+     * @param targetValue 目标值
      * @param durationMs 持续时间（毫秒）
      * @param source 来源标识
-     * @return 修改器 UUID，失败返回 null
+     * @return 效果 ID，失败返回 null
      */
     fun applySetEffect(
         player: Player,
         attributeKey: String,
-        value: Double,
+        targetValue: Double,
         durationMs: Long,
         source: String = "command"
-    ): UUID? {
-        return applyEffect(player, attributeKey, value, EffectType.SET, durationMs, source)
-    }
-
-    /**
-     * 添加计时属性效果（内部方法）
-     */
-    private fun applyEffect(
-        player: Player,
-        attributeKey: String,
-        amount: Double,
-        effectType: EffectType,
-        durationMs: Long,
-        source: String
     ): UUID? {
         if (!enabled) return null
 
@@ -169,232 +182,177 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
             return null
         }
 
-        val modifierUuid = UUID.randomUUID()
+        val effectId = UUID.randomUUID()
         val now = System.currentTimeMillis()
-        val expireAt = now + durationMs
 
         // 在 EntityScheduler 中执行
         player.scheduler.run(plugin, { _ ->
             val attrInstance = player.getAttribute(attribute) ?: return@run
 
-            // 捕获默认值（如果这是该属性的第一个效果）
-            val playerAttrValues = playerBaseValues.computeIfAbsent(player.uniqueId) { ConcurrentHashMap() }
-            val baseValue = playerAttrValues.computeIfAbsent(resolvedAttributeKey) {
-                attrInstance.baseValue
+            // 获取或创建该属性的效果堆栈
+            val playerStacks = effectStacks.computeIfAbsent(player.uniqueId) { ConcurrentHashMap() }
+            val stack = playerStacks.computeIfAbsent(resolvedAttributeKey) { ArrayDeque() }
+
+            // 暂停当前栈顶效果（如果有）
+            val currentTop = stack.peekLast()
+            if (currentTop != null && !currentTop.isPaused) {
+                currentTop.pause()
+                storage?.save(currentTop)
             }
 
+            // 捕获当前属性值（用于计算 delta）
+            val capturedValue = attrInstance.baseValue
+
+            // 限制目标值在有效范围内
+            val attrInfo = getAttributeInfo(resolvedAttributeKey)
+            val clampedValue = if (attrInfo != null) {
+                targetValue.coerceIn(attrInfo.minValue, attrInfo.maxValue)
+            } else {
+                targetValue
+            }
+
+            // 创建新效果
             val effect = TimedAttributeEffect(
                 playerUuid = player.uniqueId,
                 attributeKey = resolvedAttributeKey,
-                modifierUuid = modifierUuid,
-                amount = amount,
-                effectType = effectType,
+                effectId = effectId,
+                targetValue = clampedValue,
+                capturedValue = capturedValue,
+                remainingMs = durationMs,
+                stackIndex = stack.size,
+                isPaused = false,
+                lastTickAt = now,
                 createdAt = now,
-                expireAt = expireAt,
-                baseValue = baseValue,
                 source = source
             )
 
-            // 添加到缓存
-            val playerEffects = activeEffects.computeIfAbsent(player.uniqueId) { ConcurrentHashMap() }
-            val attrEffects = playerEffects.computeIfAbsent(resolvedAttributeKey) { mutableListOf() }
-            attrEffects.add(effect)
+            // 入栈
+            stack.addLast(effect)
 
-            // 重新计算并应用属性值
-            recalculateAttribute(player, resolvedAttributeKey)
+            // 应用属性值
+            applyAttributeValue(player, resolvedAttributeKey, clampedValue)
 
-            // 异步写入数据库
-            storage?.insert(effect)
+            // 保存到数据库
+            storage?.save(effect)
 
-            plugin.logger.info("[TimedAttribute] ${player.name} 的 $resolvedAttributeKey ${effectType.name} $amount, 持续 ${durationMs/1000}秒")
+            val stackSize = stack.size
+            plugin.logger.info("[TimedAttribute] ${player.name} 的 $resolvedAttributeKey 设置为 $clampedValue, 持续 ${durationMs/1000}秒 (堆栈层数: $stackSize)")
         }, null)
 
-        return modifierUuid
+        return effectId
     }
 
     /**
-     * 根据当前效果列表重新计算属性最终值
-     * 实现优先级逻辑：SET 覆盖之前所有操作，ADD 累加
+     * 应用属性值到玩家
      */
-    private fun recalculateAttribute(player: Player, attributeKey: String) {
+    private fun applyAttributeValue(player: Player, attributeKey: String, value: Double) {
         val attribute = getAttributeByKey(attributeKey) ?: return
         val attrInstance = player.getAttribute(attribute) ?: return
 
-        val playerEffectsMap = activeEffects[player.uniqueId]
-        val effects = playerEffectsMap?.get(attributeKey)?.filter { !it.isExpired() } ?: emptyList()
-
-        // 获取默认值（优先使用缓存的原始默认值）
-        val baseValue = playerBaseValues[player.uniqueId]?.get(attributeKey)
-            ?: getAttributeInfo(attributeKey)?.defaultValue
-            ?: attrInstance.baseValue
-
-        if (effects.isEmpty()) {
-            // 没有效果，恢复到默认值
-            try {
-                attrInstance.baseValue = baseValue
-            } catch (e: Exception) {
-                plugin.logger.warning("[TimedAttribute] 恢复 ${player.name} 的 $attributeKey 失败: ${e.message}")
-            }
-            
-            // 清理效果列表
-            playerEffectsMap?.remove(attributeKey)
-            if (playerEffectsMap?.isEmpty() == true) {
-                activeEffects.remove(player.uniqueId)
-            }
-            
-            // 清理默认值缓存
-            playerBaseValues[player.uniqueId]?.remove(attributeKey)
-            if (playerBaseValues[player.uniqueId]?.isEmpty() == true) {
-                playerBaseValues.remove(player.uniqueId)
-            }
-            
-            plugin.logger.info("[TimedAttribute] ${player.name} 的 $attributeKey 恢复到默认值 $baseValue")
-            return
-        }
-
-        // 按创建时间排序
-        val sortedEffects = effects.sortedBy { it.createdAt }
-
-        // 找到最新的未过期 SET
-        val latestSet = sortedEffects.lastOrNull { it.effectType == EffectType.SET }
-
-        val activeValue: Double
-        val activeAdds: List<TimedAttributeEffect>
-
-        if (latestSet != null) {
-            // 有未过期的 SET，使用其值作为 activeValue
-            activeValue = latestSet.amount
-            // 只计算 SET 之后的 ADD
-            activeAdds = sortedEffects.filter {
-                it.effectType == EffectType.ADD && it.createdAt > latestSet.createdAt
-            }
-        } else {
-            // 没有 SET，使用默认值
-            activeValue = baseValue
-            // 所有 ADD 都生效
-            activeAdds = sortedEffects.filter { it.effectType == EffectType.ADD }
-        }
-
-        // 计算最终值
-        val addSum = activeAdds.sumOf { it.amount }
-        var finalValue = activeValue + addSum
-        
-        // 限制在有效范围内
-        val attrInfo = getAttributeInfo(attributeKey)
-        if (attrInfo != null) {
-            finalValue = finalValue.coerceIn(attrInfo.minValue, attrInfo.maxValue)
-        }
-
-        // 应用到玩家属性
         try {
-            attrInstance.baseValue = finalValue
+            attrInstance.baseValue = value
         } catch (e: Exception) {
             plugin.logger.warning("[TimedAttribute] 设置 ${player.name} 的 $attributeKey 失败: ${e.message}")
-            return
-        }
-
-        plugin.logger.info("[TimedAttribute] ${player.name} 的 $attributeKey 计算结果: base=$baseValue, activeValue=$activeValue, addSum=$addSum, final=$finalValue")
-    }
-
-    /**
-     * 直接设置玩家属性的基础值（永久生效）
-     * 类似原版 /attribute 命令
-     *
-     * @param player 目标玩家
-     * @param attributeKey 属性名称（支持别名）
-     * @param value 要设置的值
-     * @return 是否成功设置
-     */
-    fun setAttributeBaseValue(player: Player, attributeKey: String, value: Double): Boolean {
-        val resolvedKey = resolveAttributeKey(attributeKey) ?: return false
-        val attribute = getAttributeByKey(resolvedKey) ?: return false
-
-        return try {
-            // 在 EntityScheduler 中设置属性（Folia 兼容）
-            player.scheduler.run(plugin, { _ ->
-                val attrInstance = player.getAttribute(attribute)
-                if (attrInstance != null) {
-                    attrInstance.baseValue = value
-                    plugin.logger.info("[TimedAttribute] 已设置 ${player.name} 的 $resolvedKey 基础值为 $value")
-                }
-            }, null)
-            true
-        } catch (e: Exception) {
-            plugin.logger.warning("[TimedAttribute] 设置属性基础值失败: ${e.message}")
-            false
         }
     }
 
     /**
-     * 移除指定效果
-     *
-     * @param player 目标玩家
-     * @param modifierUuid 修改器 UUID
-     * @return 是否成功移除
+     * 取消指定属性的所有效果（撤销所有变化量）
      */
-    fun removeEffect(player: Player, modifierUuid: UUID): Boolean {
-        if (!enabled) return false
+    fun cancelEffects(player: Player, attributeKey: String): Int {
+        if (!enabled) return 0
 
-        val playerEffects = activeEffects[player.uniqueId] ?: return false
+        val resolvedKey = resolveAttributeKey(attributeKey) ?: return 0
+        val playerStacks = effectStacks[player.uniqueId] ?: return 0
+        val stack = playerStacks[resolvedKey] ?: return 0
+        
+        val count = stack.size
+        if (count == 0) return 0
 
-        // 查找包含该 modifierUuid 的效果
-        var foundAttributeKey: String? = null
-        for ((attrKey, effects) in playerEffects) {
-            if (effects.any { it.modifierUuid == modifierUuid }) {
-                foundAttributeKey = attrKey
-                break
-            }
-        }
+        // 计算所有效果的总 delta
+        val totalDelta = stack.sumOf { it.delta }
 
-        if (foundAttributeKey == null) return false
-
-        // 在 EntityScheduler 中移除效果
-        val attrKey = foundAttributeKey
+        // 在 EntityScheduler 中取消效果
         player.scheduler.run(plugin, { _ ->
-            playerEffects[attrKey]?.removeIf { it.modifierUuid == modifierUuid }
-            recalculateAttribute(player, attrKey)
-            storage?.deleteByModifier(modifierUuid)
+            // 获取当前值并撤销总变化量
+            val currentValue = getAttributeValue(player, resolvedKey)
+            if (currentValue != null) {
+                val restoredValue = currentValue - totalDelta
+                applyAttributeValue(player, resolvedKey, restoredValue)
+            }
+            
+            // 清空堆栈
+            stack.clear()
+            playerStacks.remove(resolvedKey)
+            
+            if (playerStacks.isEmpty()) {
+                effectStacks.remove(player.uniqueId)
+            }
+            
+            // 从数据库删除
+            storage?.deleteByPlayerAttribute(player.uniqueId, resolvedKey)
+            
+            plugin.logger.info("[TimedAttribute] 已取消 ${player.name} 的 $resolvedKey 所有效果 ($count 层, 总delta=$totalDelta)")
         }, null)
 
-        return true
+        return count
     }
 
     /**
-     * 获取玩家的活跃效果列表
+     * 获取玩家的所有活跃效果（栈顶效果）
      */
     fun listActiveEffects(player: Player): List<TimedAttributeEffect> {
-        val playerEffects = activeEffects[player.uniqueId] ?: return emptyList()
-        return playerEffects.values.flatten().filter { !it.isExpired() }
+        val playerStacks = effectStacks[player.uniqueId] ?: return emptyList()
+        return playerStacks.values.mapNotNull { stack -> 
+            stack.peekLast()?.takeIf { !it.isExpired() }
+        }
     }
 
     /**
-     * 清除玩家的所有计时效果
+     * 获取玩家指定属性的效果堆栈
+     */
+    fun getEffectStack(player: Player, attributeKey: String): List<TimedAttributeEffect> {
+        val resolvedKey = resolveAttributeKey(attributeKey) ?: return emptyList()
+        val stack = effectStacks[player.uniqueId]?.get(resolvedKey) ?: return emptyList()
+        return stack.toList()
+    }
+
+    /**
+     * 清除玩家的所有计时效果（撤销所有变化量）
      */
     fun clearAllEffects(player: Player): Int {
         if (!enabled) return 0
 
-        val playerEffects = activeEffects[player.uniqueId] ?: return 0
-        val count = playerEffects.values.sumOf { it.size }
-
+        val playerStacks = effectStacks[player.uniqueId] ?: return 0
+        
+        // 统计总效果数
+        val count = playerStacks.values.sumOf { it.size }
         if (count == 0) return 0
 
-        // 在 EntityScheduler 中恢复所有属性到默认值
+        // 收集每个属性的总 delta
+        val totalDeltas = mutableMapOf<String, Double>()
+        playerStacks.forEach { (attrKey, stack) ->
+            totalDeltas[attrKey] = stack.sumOf { it.delta }
+        }
+
+        // 在 EntityScheduler 中撤销所有变化量
         player.scheduler.run(plugin, { _ ->
-            val attributeKeys = playerEffects.keys.toList()
-
-            // 清空效果缓存
-            playerEffects.clear()
-
-            // 恢复每个属性到默认值
-            attributeKeys.forEach { attributeKey ->
-                recalculateAttribute(player, attributeKey)
+            totalDeltas.forEach { (attrKey, totalDelta) ->
+                val currentValue = getAttributeValue(player, attrKey)
+                if (currentValue != null) {
+                    val restoredValue = currentValue - totalDelta
+                    applyAttributeValue(player, attrKey, restoredValue)
+                }
             }
 
-            // 清理默认值缓存
-            playerBaseValues.remove(player.uniqueId)
+            // 清空效果缓存
+            playerStacks.clear()
+            effectStacks.remove(player.uniqueId)
 
             // 异步删除该玩家的所有数据库记录
             storage?.deleteByPlayer(player.uniqueId)
+            
+            plugin.logger.info("[TimedAttribute] 已清除 ${player.name} 的所有效果 ($count 层)")
         }, null)
 
         return count
@@ -407,60 +365,98 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
         if (!enabled) return
 
         storage?.loadByPlayer(player.uniqueId)?.thenAccept { effects ->
-            val validEffects = effects.filter { !it.isExpired() }
-            val expiredUuids = effects.filter { it.isExpired() }.map { it.modifierUuid }
+            if (effects.isEmpty()) return@thenAccept
 
-            if (validEffects.isEmpty() && expiredUuids.isEmpty()) return@thenAccept
+            // 按属性分组，并按 stackIndex 排序
+            val effectsByAttribute = effects.groupBy { it.attributeKey }
+                .mapValues { (_, list) -> list.sortedBy { it.stackIndex } }
 
-            // 删除过期记录
-            expiredUuids.forEach { uuid ->
-                storage?.deleteByModifier(uuid)
-            }
+            // 在 EntityScheduler 中恢复效果
+            player.scheduler.run(plugin, { _ ->
+                val playerStacks = effectStacks.computeIfAbsent(player.uniqueId) { ConcurrentHashMap() }
 
-            // 在 EntityScheduler 中恢复有效效果
-            if (validEffects.isNotEmpty()) {
-                player.scheduler.run(plugin, { _ ->
-                    // 按属性分组
-                    val effectsByAttribute = validEffects.groupBy { it.attributeKey }
-
-                    effectsByAttribute.forEach { (attributeKey, attrEffects) ->
-                        val attribute = getAttributeByKey(attributeKey) ?: return@forEach
-                        val attrInstance = player.getAttribute(attribute) ?: return@forEach
-
-                        // 恢复默认值（如果有记录）
-                        val baseValue = attrEffects.firstOrNull { it.baseValue != null }?.baseValue
-                            ?: attrInstance.baseValue
-                        playerBaseValues.computeIfAbsent(player.uniqueId) { ConcurrentHashMap() }[attributeKey] = baseValue
-
-                        // 添加到缓存
-                        val playerEffectsMap = activeEffects.computeIfAbsent(player.uniqueId) { ConcurrentHashMap() }
-                        val attrEffectsList = playerEffectsMap.computeIfAbsent(attributeKey) { mutableListOf() }
-                        attrEffectsList.addAll(attrEffects)
-
-                        // 重新计算属性值
-                        recalculateAttribute(player, attributeKey)
+                effectsByAttribute.forEach { (attributeKey, attrEffects) ->
+                    val stack = ArrayDeque<TimedAttributeEffect>()
+                    
+                    // 过滤掉已过期的效果
+                    val validEffects = attrEffects.filter { !it.isExpired() }
+                    
+                    if (validEffects.isEmpty()) {
+                        // 所有效果都过期了，删除数据库记录
+                        attrEffects.forEach { storage?.deleteByEffectId(it.effectId) }
+                        return@forEach
                     }
 
-                    plugin.logger.info("[TimedAttribute] ${player.name}: 恢复 ${validEffects.size} 个效果")
-                }, null)
-            }
+                    // 重建堆栈
+                    validEffects.forEachIndexed { index, effect ->
+                        effect.stackIndex = index
+                        effect.lastTickAt = System.currentTimeMillis()
+                        // 只有栈顶效果是活跃的
+                        effect.isPaused = (index < validEffects.size - 1)
+                        stack.addLast(effect)
+                    }
+
+                    playerStacks[attributeKey] = stack
+
+                    // 应用栈顶效果
+                    val topEffect = stack.peekLast()
+                    if (topEffect != null) {
+                        applyAttributeValue(player, attributeKey, topEffect.targetValue)
+                    }
+
+                    // 删除过期的效果记录
+                    val expiredEffects = attrEffects.filter { it.isExpired() }
+                    expiredEffects.forEach { storage?.deleteByEffectId(it.effectId) }
+                    
+                    // 保存更新后的效果
+                    storage?.saveAll(validEffects)
+                }
+
+                val totalEffects = playerStacks.values.sumOf { it.size }
+                if (totalEffects > 0) {
+                    plugin.logger.info("[TimedAttribute] ${player.name}: 恢复 $totalEffects 层效果")
+                }
+            }, null)
         }
     }
 
     /**
-     * 玩家下线时清理缓存
+     * 玩家下线时保存效果状态
      */
     fun onPlayerQuit(player: Player) {
-        activeEffects.remove(player.uniqueId)
-        playerBaseValues.remove(player.uniqueId)
+        val playerStacks = effectStacks.remove(player.uniqueId) ?: return
+        
+        // 收集所有效果并保存到数据库
+        val allEffects = mutableListOf<TimedAttributeEffect>()
+        playerStacks.forEach { (_, stack) ->
+            stack.forEach { effect ->
+                // 更新剩余时间（如果是活跃效果）
+                if (!effect.isPaused) {
+                    val now = System.currentTimeMillis()
+                    val elapsed = now - effect.lastTickAt
+                    effect.remainingMs -= elapsed
+                    effect.lastTickAt = now
+                }
+                allEffects.add(effect)
+            }
+        }
+        
+        if (allEffects.isNotEmpty()) {
+            storage?.saveAll(allEffects)
+            plugin.logger.info("[TimedAttribute] ${player.name}: 保存 ${allEffects.size} 层效果")
+        }
     }
 
     /**
      * 关闭管理器
      */
     fun shutdown() {
+        // 保存所有在线玩家的效果
+        Bukkit.getOnlinePlayers().forEach { player ->
+            onPlayerQuit(player)
+        }
         storage?.close()
-        activeEffects.clear()
+        effectStacks.clear()
         plugin.logger.info("[TimedAttribute] 管理器已关闭")
     }
 
@@ -747,20 +743,42 @@ class TimedAttributeManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * 解析操作类型字符串
+     * 重置玩家所有属性到默认值（用于修复旧版本 bug）
+     * 清除所有效果并将属性恢复到游戏默认值
      */
-    fun parseOperation(input: String): AttributeModifier.Operation? {
-        return try {
-            AttributeModifier.Operation.valueOf(input.uppercase())
-        } catch (e: Exception) {
-            // 尝试简写
-            when (input.uppercase()) {
-                "ADD", "ADD_NUMBER" -> AttributeModifier.Operation.ADD_NUMBER
-                "ADD_SCALAR", "SCALAR" -> AttributeModifier.Operation.ADD_SCALAR
-                "MULTIPLY", "MULTIPLY_SCALAR_1" -> AttributeModifier.Operation.MULTIPLY_SCALAR_1
-                else -> null
+    fun resetToDefault(player: Player): Int {
+        if (!enabled) return 0
+
+        // 先清除所有效果（不撤销 delta，因为要完全重置）
+        val playerStacks = effectStacks.remove(player.uniqueId)
+        val effectCount = playerStacks?.values?.sumOf { it.size } ?: 0
+
+        // 在 EntityScheduler 中重置所有属性到默认值
+        player.scheduler.run(plugin, { _ ->
+            var resetCount = 0
+            
+            getAttributeInfoList().forEach { attrInfo ->
+                val attribute = getAttributeByKey(attrInfo.key)
+                if (attribute != null) {
+                    val attrInstance = player.getAttribute(attribute)
+                    if (attrInstance != null && attrInstance.baseValue != attrInfo.defaultValue) {
+                        try {
+                            attrInstance.baseValue = attrInfo.defaultValue
+                            resetCount++
+                        } catch (e: Exception) {
+                            plugin.logger.warning("[TimedAttribute] 重置 ${player.name} 的 ${attrInfo.key} 失败: ${e.message}")
+                        }
+                    }
+                }
             }
-        }
+
+            // 删除数据库记录
+            storage?.deleteByPlayer(player.uniqueId)
+            
+            plugin.logger.info("[TimedAttribute] 已重置 ${player.name} 的所有属性到默认值 (清除 $effectCount 层效果, 重置 $resetCount 个属性)")
+        }, null)
+
+        return effectCount
     }
 
     /**

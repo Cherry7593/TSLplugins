@@ -6,7 +6,7 @@ import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
 /**
- * 计时效果存储接口
+ * 计时效果存储接口（堆栈版）
  */
 interface TimedEffectStorage {
     /**
@@ -15,24 +15,29 @@ interface TimedEffectStorage {
     fun loadByPlayer(playerUuid: UUID): CompletableFuture<List<TimedAttributeEffect>>
 
     /**
-     * 插入新效果
+     * 保存效果（插入或更新）
      */
-    fun insert(effect: TimedAttributeEffect): CompletableFuture<Boolean>
+    fun save(effect: TimedAttributeEffect): CompletableFuture<Boolean>
 
     /**
-     * 根据 modifierUuid 删除效果
+     * 批量保存效果
      */
-    fun deleteByModifier(modifierUuid: UUID): CompletableFuture<Boolean>
+    fun saveAll(effects: List<TimedAttributeEffect>): CompletableFuture<Boolean>
+
+    /**
+     * 根据 effectId 删除效果
+     */
+    fun deleteByEffectId(effectId: UUID): CompletableFuture<Boolean>
+
+    /**
+     * 删除指定玩家指定属性的所有效果
+     */
+    fun deleteByPlayerAttribute(playerUuid: UUID, attributeKey: String): CompletableFuture<Int>
 
     /**
      * 删除指定玩家的所有效果
      */
     fun deleteByPlayer(playerUuid: UUID): CompletableFuture<Int>
-
-    /**
-     * 删除所有已过期的效果
-     */
-    fun deleteExpired(now: Long): CompletableFuture<Int>
 
     /**
      * 关闭存储连接
@@ -41,68 +46,40 @@ interface TimedEffectStorage {
 }
 
 /**
- * SQLite 实现的计时效果存储
+ * SQLite 实现的计时效果存储（堆栈版）
  * 使用全局 DatabaseManager
+ * 
+ * 数据模型：每个玩家每个属性可以有多个效果（堆栈）
  */
 class SQLiteTimedEffectStorage(
     private val plugin: JavaPlugin
 ) : TimedEffectStorage {
 
-    private val tableName = "${DatabaseManager.getTablePrefix()}timed_attribute_effects"
+    private val tableName = "${DatabaseManager.getTablePrefix()}timed_attr_v3"
 
     init {
-        // 创建表（新版本增加 effect_type, created_at, base_value 字段）
+        // 创建新表（堆栈结构）
         DatabaseManager.createTable("""
             CREATE TABLE IF NOT EXISTS $tableName (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                effect_id CHAR(36) PRIMARY KEY,
                 player_uuid CHAR(36) NOT NULL,
                 attribute VARCHAR(64) NOT NULL,
-                modifier_uuid CHAR(36) NOT NULL UNIQUE,
-                amount DOUBLE NOT NULL,
-                effect_type VARCHAR(16) NOT NULL DEFAULT 'ADD',
+                target_value DOUBLE NOT NULL,
+                original_value DOUBLE NOT NULL,
+                remaining_ms BIGINT NOT NULL,
+                stack_index INT NOT NULL,
+                is_paused INT NOT NULL DEFAULT 0,
+                last_tick_at BIGINT NOT NULL,
                 created_at BIGINT NOT NULL,
-                expire_at BIGINT NOT NULL,
-                base_value DOUBLE,
                 source VARCHAR(64)
             )
         """.trimIndent())
 
-        // 尝试添加新列（兼容旧数据库）
-        tryAddColumn("effect_type", "VARCHAR(16) NOT NULL DEFAULT 'ADD'")
-        tryAddColumn("created_at", "BIGINT NOT NULL DEFAULT 0")
-        tryAddColumn("base_value", "DOUBLE")
-        
-        // 兼容旧版本的 operation 列（如果存在）
-        tryAddColumn("operation", "VARCHAR(16) DEFAULT 'ADD'")
-        tryRemoveNotNull("operation")
-
         // 创建索引
-        DatabaseManager.createIndex("CREATE INDEX IF NOT EXISTS idx_player_uuid ON $tableName(player_uuid)")
-        DatabaseManager.createIndex("CREATE INDEX IF NOT EXISTS idx_expire_at ON $tableName(expire_at)")
-        DatabaseManager.createIndex("CREATE INDEX IF NOT EXISTS idx_created_at ON $tableName(created_at)")
+        DatabaseManager.createIndex("CREATE INDEX IF NOT EXISTS idx_v3_player ON $tableName(player_uuid)")
+        DatabaseManager.createIndex("CREATE INDEX IF NOT EXISTS idx_v3_player_attr ON $tableName(player_uuid, attribute)")
 
-        plugin.logger.info("[TimedAttribute] 存储表已初始化")
-    }
-
-    private fun tryAddColumn(columnName: String, columnDef: String) {
-        try {
-            DatabaseManager.getConnection().prepareStatement(
-                "ALTER TABLE $tableName ADD COLUMN $columnName $columnDef"
-            ).use { it.executeUpdate() }
-        } catch (e: Exception) {
-            // 列已存在，忽略
-        }
-    }
-    
-    private fun tryRemoveNotNull(columnName: String) {
-        // SQLite 不支持直接修改列约束，但可以通过设置默认值来解决
-        try {
-            DatabaseManager.getConnection().prepareStatement(
-                "UPDATE $tableName SET $columnName = 'ADD' WHERE $columnName IS NULL"
-            ).use { it.executeUpdate() }
-        } catch (e: Exception) {
-            // 忽略
-        }
+        plugin.logger.info("[TimedAttribute] 存储表已初始化 (v3 堆栈版)")
     }
 
     override fun loadByPlayer(playerUuid: UUID): CompletableFuture<List<TimedAttributeEffect>> {
@@ -110,25 +87,23 @@ class SQLiteTimedEffectStorage(
             val effects = mutableListOf<TimedAttributeEffect>()
             try {
                 DatabaseManager.getConnection().prepareStatement(
-                    "SELECT * FROM $tableName WHERE player_uuid = ?"
+                    "SELECT * FROM $tableName WHERE player_uuid = ? ORDER BY attribute, stack_index"
                 ).use { stmt ->
                     stmt.setString(1, playerUuid.toString())
                     stmt.executeQuery().use { rs ->
                         while (rs.next()) {
-                            val effectTypeStr = try { rs.getString("effect_type") } catch (e: Exception) { "ADD" }
-                            val createdAt = try { rs.getLong("created_at") } catch (e: Exception) { 0L }
-                            val baseValue = try { rs.getDouble("base_value").takeIf { !rs.wasNull() } } catch (e: Exception) { null }
-                            
                             effects.add(
                                 TimedAttributeEffect(
                                     playerUuid = UUID.fromString(rs.getString("player_uuid")),
                                     attributeKey = rs.getString("attribute"),
-                                    modifierUuid = UUID.fromString(rs.getString("modifier_uuid")),
-                                    amount = rs.getDouble("amount"),
-                                    effectType = try { EffectType.valueOf(effectTypeStr ?: "ADD") } catch (e: Exception) { EffectType.ADD },
-                                    createdAt = createdAt,
-                                    expireAt = rs.getLong("expire_at"),
-                                    baseValue = baseValue,
+                                    effectId = UUID.fromString(rs.getString("effect_id")),
+                                    targetValue = rs.getDouble("target_value"),
+                                    capturedValue = rs.getDouble("original_value"),
+                                    remainingMs = rs.getLong("remaining_ms"),
+                                    stackIndex = rs.getInt("stack_index"),
+                                    isPaused = rs.getInt("is_paused") == 1,
+                                    lastTickAt = rs.getLong("last_tick_at"),
+                                    createdAt = rs.getLong("created_at"),
                                     source = rs.getString("source")
                                 )
                             )
@@ -142,50 +117,107 @@ class SQLiteTimedEffectStorage(
         }, DatabaseManager.getExecutor())
     }
 
-    override fun insert(effect: TimedAttributeEffect): CompletableFuture<Boolean> {
+    override fun save(effect: TimedAttributeEffect): CompletableFuture<Boolean> {
         return CompletableFuture.supplyAsync({
             try {
-                // 包含 operation 列以兼容旧版数据库
                 DatabaseManager.getConnection().prepareStatement("""
-                    INSERT INTO $tableName 
-                    (player_uuid, attribute, modifier_uuid, amount, effect_type, created_at, expire_at, base_value, source, operation)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO $tableName 
+                    (effect_id, player_uuid, attribute, target_value, original_value, remaining_ms, stack_index, is_paused, last_tick_at, created_at, source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.trimIndent()).use { stmt ->
-                    stmt.setString(1, effect.playerUuid.toString())
-                    stmt.setString(2, effect.attributeKey)
-                    stmt.setString(3, effect.modifierUuid.toString())
-                    stmt.setDouble(4, effect.amount)
-                    stmt.setString(5, effect.effectType.name)
-                    stmt.setLong(6, effect.createdAt)
-                    stmt.setLong(7, effect.expireAt)
-                    if (effect.baseValue != null) {
-                        stmt.setDouble(8, effect.baseValue)
-                    } else {
-                        stmt.setNull(8, java.sql.Types.DOUBLE)
-                    }
-                    stmt.setString(9, effect.source)
-                    stmt.setString(10, effect.effectType.name) // operation 列用于兼容
+                    stmt.setString(1, effect.effectId.toString())
+                    stmt.setString(2, effect.playerUuid.toString())
+                    stmt.setString(3, effect.attributeKey)
+                    stmt.setDouble(4, effect.targetValue)
+                    stmt.setDouble(5, effect.capturedValue)
+                    stmt.setLong(6, effect.remainingMs)
+                    stmt.setInt(7, effect.stackIndex)
+                    stmt.setInt(8, if (effect.isPaused) 1 else 0)
+                    stmt.setLong(9, effect.lastTickAt)
+                    stmt.setLong(10, effect.createdAt)
+                    stmt.setString(11, effect.source)
                     stmt.executeUpdate() > 0
                 }
             } catch (e: Exception) {
-                plugin.logger.warning("[TimedAttribute] 插入效果失败: ${e.message}")
+                plugin.logger.warning("[TimedAttribute] 保存效果失败: ${e.message}")
                 false
             }
         }, DatabaseManager.getExecutor())
     }
 
-    override fun deleteByModifier(modifierUuid: UUID): CompletableFuture<Boolean> {
+    override fun saveAll(effects: List<TimedAttributeEffect>): CompletableFuture<Boolean> {
+        if (effects.isEmpty()) return CompletableFuture.completedFuture(true)
+        
+        return CompletableFuture.supplyAsync({
+            try {
+                val conn = DatabaseManager.getConnection()
+                conn.autoCommit = false
+                try {
+                    conn.prepareStatement("""
+                        INSERT OR REPLACE INTO $tableName 
+                        (effect_id, player_uuid, attribute, target_value, original_value, remaining_ms, stack_index, is_paused, last_tick_at, created_at, source)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """.trimIndent()).use { stmt ->
+                        for (effect in effects) {
+                            stmt.setString(1, effect.effectId.toString())
+                            stmt.setString(2, effect.playerUuid.toString())
+                            stmt.setString(3, effect.attributeKey)
+                            stmt.setDouble(4, effect.targetValue)
+                            stmt.setDouble(5, effect.capturedValue)
+                            stmt.setLong(6, effect.remainingMs)
+                            stmt.setInt(7, effect.stackIndex)
+                            stmt.setInt(8, if (effect.isPaused) 1 else 0)
+                            stmt.setLong(9, effect.lastTickAt)
+                            stmt.setLong(10, effect.createdAt)
+                            stmt.setString(11, effect.source)
+                            stmt.addBatch()
+                        }
+                        stmt.executeBatch()
+                    }
+                    conn.commit()
+                    true
+                } catch (e: Exception) {
+                    conn.rollback()
+                    throw e
+                } finally {
+                    conn.autoCommit = true
+                }
+            } catch (e: Exception) {
+                plugin.logger.warning("[TimedAttribute] 批量保存效果失败: ${e.message}")
+                false
+            }
+        }, DatabaseManager.getExecutor())
+    }
+
+    override fun deleteByEffectId(effectId: UUID): CompletableFuture<Boolean> {
         return CompletableFuture.supplyAsync({
             try {
                 DatabaseManager.getConnection().prepareStatement(
-                    "DELETE FROM $tableName WHERE modifier_uuid = ?"
+                    "DELETE FROM $tableName WHERE effect_id = ?"
                 ).use { stmt ->
-                    stmt.setString(1, modifierUuid.toString())
+                    stmt.setString(1, effectId.toString())
                     stmt.executeUpdate() > 0
                 }
             } catch (e: Exception) {
                 plugin.logger.warning("[TimedAttribute] 删除效果失败: ${e.message}")
                 false
+            }
+        }, DatabaseManager.getExecutor())
+    }
+
+    override fun deleteByPlayerAttribute(playerUuid: UUID, attributeKey: String): CompletableFuture<Int> {
+        return CompletableFuture.supplyAsync({
+            try {
+                DatabaseManager.getConnection().prepareStatement(
+                    "DELETE FROM $tableName WHERE player_uuid = ? AND attribute = ?"
+                ).use { stmt ->
+                    stmt.setString(1, playerUuid.toString())
+                    stmt.setString(2, attributeKey)
+                    stmt.executeUpdate()
+                }
+            } catch (e: Exception) {
+                plugin.logger.warning("[TimedAttribute] 删除效果失败: ${e.message}")
+                0
             }
         }, DatabaseManager.getExecutor())
     }
@@ -206,29 +238,7 @@ class SQLiteTimedEffectStorage(
         }, DatabaseManager.getExecutor())
     }
 
-    override fun deleteExpired(now: Long): CompletableFuture<Int> {
-        // 检查 DatabaseManager 是否已初始化（防止卸载插件时报错）
-        if (!DatabaseManager.isInitialized()) {
-            return CompletableFuture.completedFuture(0)
-        }
-        return CompletableFuture.supplyAsync({
-            try {
-                if (!DatabaseManager.isInitialized()) return@supplyAsync 0
-                DatabaseManager.getConnection().prepareStatement(
-                    "DELETE FROM $tableName WHERE expire_at <= ?"
-                ).use { stmt ->
-                    stmt.setLong(1, now)
-                    stmt.executeUpdate()
-                }
-            } catch (e: Exception) {
-                plugin.logger.warning("[TimedAttribute] 删除过期效果失败: ${e.message}")
-                0
-            }
-        }, DatabaseManager.getExecutor())
-    }
-
     override fun close() {
-        // 不再单独关闭连接，由 DatabaseManager 统一管理
         plugin.logger.info("[TimedAttribute] 存储已关闭")
     }
 }

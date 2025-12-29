@@ -59,6 +59,8 @@ import org.tsl.tSLplugins.Patrol.PatrolManager
 import org.tsl.tSLplugins.Patrol.PatrolCommand
 import org.tsl.tSLplugins.WebBridge.WebBridgeManager
 import org.tsl.tSLplugins.WebBridge.WebBridgeCommand
+import org.tsl.tSLplugins.WebBridge.BindCommand
+import org.tsl.tSLplugins.Title.TitleCommand
 import org.tsl.tSLplugins.EndDragon.EndDragonManager
 import org.tsl.tSLplugins.EndDragon.EndDragonCommand
 import org.tsl.tSLplugins.EndDragon.EndDragonListener
@@ -394,6 +396,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("spec", SpecCommand(specManager))
             dispatcher.registerSubCommand("patrol", PatrolCommand(patrolManager))
             dispatcher.registerSubCommand("webbridge", WebBridgeCommand(webBridgeManager))
+            dispatcher.registerSubCommand("title", TitleCommand(webBridgeManager))
+            dispatcher.registerSubCommand("bind", BindCommand(webBridgeManager))
             dispatcher.registerSubCommand("enddragon", EndDragonCommand(endDragonManager))
             dispatcher.registerSubCommand("ignore", IgnoreCommand(ignoreManager, playerDataManager))
             dispatcher.registerSubCommand("attr", TimedAttributeCommand(timedAttributeManager))
@@ -675,6 +679,14 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadWebBridgeManager() {
         webBridgeManager.reload()
+    }
+
+    /**
+     * 重新加载 Title 管理器
+     * 支持运行时动态启用/禁用
+     */
+    fun reloadTitleManager() {
+        webBridgeManager.reloadTitleManager()
     }
 
     /**

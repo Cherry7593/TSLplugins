@@ -3,7 +3,14 @@ package org.tsl.tSLplugins.WebBridge
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.bukkit.Bukkit
+import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
+import org.tsl.tSLplugins.Title.TitleManager
+import org.tsl.tSLplugins.Title.GetTitleRequest
+import org.tsl.tSLplugins.Title.GetTitleRequestData
+import org.tsl.tSLplugins.Title.RedeemCodeRequest
+import org.tsl.tSLplugins.Title.RedeemCodeRequestData
+import java.util.UUID
 
 /**
  * WebBridge 管理器
@@ -19,6 +26,8 @@ class WebBridgeManager(private val plugin: Plugin) {
     private var client: WebBridgeClient? = null
     private var chatListener: WebBridgeChatListener? = null
     private var playerEventListener: WebBridgePlayerListener? = null
+    private var titleManager: TitleManager? = null
+    private var bindManager: BindManager? = null
     private var isEnabled = false
 
     // 消息格式配置
@@ -100,6 +109,13 @@ class WebBridgeManager(private val plugin: Plugin) {
         playerEventListener = WebBridgePlayerListener(this)
         plugin.server.pluginManager.registerEvents(playerEventListener!!, plugin)
 
+        // 初始化称号管理器
+        titleManager = TitleManager(plugin)
+        titleManager?.initialize()
+
+        // 初始化绑定管理器
+        bindManager = BindManager(plugin)
+
         plugin.logger.info("[WebBridge] 模块已启用，URL: $url")
 
         // 启动自动重连任务
@@ -131,6 +147,14 @@ class WebBridgeManager(private val plugin: Plugin) {
 
         chatListener = null
         playerEventListener = null
+
+        // 关闭称号管理器
+        titleManager?.shutdown()
+        titleManager = null
+
+        // 关闭绑定管理器
+        bindManager?.shutdown()
+        bindManager = null
 
         plugin.logger.info("[WebBridge] 模块已关闭")
     }
@@ -235,6 +259,92 @@ class WebBridgeManager(private val plugin: Plugin) {
      * 获取 Web 到游戏的消息格式
      */
     fun getWebToGameFormat(): String = webToGameFormat
+
+    /**
+     * 获取称号管理器
+     */
+    fun getTitleManager(): TitleManager? = titleManager
+
+    /**
+     * 获取绑定管理器
+     */
+    fun getBindManager(): BindManager? = bindManager
+
+    // ========== 绑定相关方法 ==========
+
+    /**
+     * 请求账号绑定验证
+     */
+    fun requestBindAccount(player: Player, code: String) {
+        if (!isConnected()) {
+            player.sendMessage("§c[绑定] 服务器未连接")
+            return
+        }
+
+        val requestId = "bind-${System.currentTimeMillis()}-${UUID.randomUUID().toString().substring(0, 8)}"
+
+        val request = BindAccountRequest(
+            data = BindAccountRequestData(
+                id = requestId,
+                playerUuid = player.uniqueId.toString(),
+                playerName = player.name,
+                code = code.uppercase()
+            )
+        )
+
+        // 注册回调
+        bindManager?.registerRequest(requestId, player)
+
+        val jsonString = json.encodeToString(request)
+        sendMessage(jsonString)
+    }
+
+    // ========== 称号相关方法 ==========
+
+    /**
+     * 请求获取玩家称号
+     */
+    fun requestPlayerTitle(playerUuid: String) {
+        if (!isConnected()) return
+        if (titleManager?.isEnabled() != true) return
+
+        val request = GetTitleRequest(
+            data = GetTitleRequestData(
+                id = "gt-${System.currentTimeMillis()}",
+                playerUuid = playerUuid
+            )
+        )
+        val jsonString = json.encodeToString(request)
+        sendMessage(jsonString)
+    }
+
+    /**
+     * 请求兑换码验证
+     */
+    fun requestRedeemCode(player: Player, code: String) {
+        if (!isConnected()) return
+        if (titleManager?.isEnabled() != true) {
+            player.sendMessage("§c[称号] 称号功能未启用")
+            return
+        }
+
+        val requestId = "rc-${System.currentTimeMillis()}"
+        
+        val request = RedeemCodeRequest(
+            data = RedeemCodeRequestData(
+                id = requestId,
+                playerUuid = player.uniqueId.toString(),
+                playerName = player.name,
+                code = code
+            )
+        )
+        
+        // 注册回调
+        titleManager?.registerRedeemRequest(requestId, player)
+        
+        val jsonString = json.encodeToString(request)
+        sendMessage(jsonString)
+    }
 
     // ========== 玩家列表推送 ==========
 
@@ -418,6 +528,11 @@ class WebBridgeManager(private val plugin: Plugin) {
         playerEventListener = WebBridgePlayerListener(this)
         plugin.server.pluginManager.registerEvents(playerEventListener!!, plugin)
 
+        // 重新初始化称号管理器
+        titleManager?.shutdown()
+        titleManager = TitleManager(plugin)
+        titleManager?.initialize()
+
         plugin.logger.info("[WebBridge] 模块重载完成，URL: $url")
 
         // 启动自动重连任务
@@ -426,6 +541,13 @@ class WebBridgeManager(private val plugin: Plugin) {
         } else {
             plugin.logger.info("[WebBridge] 自动重连已禁用，使用 /tsl webbridge connect 手动连接")
         }
+    }
+
+    /**
+     * 重新加载称号管理器配置
+     */
+    fun reloadTitleManager() {
+        titleManager?.reload()
     }
 }
 

@@ -100,6 +100,9 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载 WebBridge 功能（支持动态启用/禁用）
             plugin.reloadWebBridgeManager()
 
+            // 重新加载 Title 功能（依赖 WebBridge）
+            plugin.reloadTitleManager()
+
             // 重新加载 Ignore 功能
             plugin.reloadIgnoreManager()
 

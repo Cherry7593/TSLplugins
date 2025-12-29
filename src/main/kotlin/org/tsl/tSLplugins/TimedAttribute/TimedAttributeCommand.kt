@@ -7,10 +7,8 @@ import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.tsl.tSLplugins.SubCommandHandler
-import java.util.UUID
-
 /**
- * 计时属性效果命令处理器
+ * 计时属性效果命令处理器（堆栈版）
  * 处理 /tsl attr 相关命令
  */
 class TimedAttributeCommand(
@@ -37,11 +35,12 @@ class TimedAttributeCommand(
         }
 
         when (args[0].lowercase()) {
-            "add" -> handleAdd(sender, args.drop(1).toTypedArray())
             "set" -> handleSet(sender, args.drop(1).toTypedArray())
-            "remove" -> handleRemove(sender, args.drop(1).toTypedArray())
+            "cancel" -> handleRemove(sender, args.drop(1).toTypedArray())
             "list" -> handleList(sender, args.drop(1).toTypedArray())
+            "stack" -> handleStack(sender, args.drop(1).toTypedArray())
             "clear" -> handleClear(sender, args.drop(1).toTypedArray())
+            "reset" -> handleReset(sender, args.drop(1).toTypedArray())
             "help" -> handleHelp(sender, args.drop(1).toTypedArray())
             else -> showUsage(sender)
         }
@@ -50,106 +49,7 @@ class TimedAttributeCommand(
     }
 
     /**
-     * 处理添加效果命令（ADD 类型 - 在当前值上增减）
-     * /tsl attr add <player> <attribute> <+/-value> <duration>
-     */
-    private fun handleAdd(sender: CommandSender, args: Array<out String>) {
-        // 权限检查
-        if (!sender.hasPermission("tsl.attribute.add")) {
-            sender.sendMessage(serializer.deserialize(manager.getMessage("no_permission")))
-            return
-        }
-
-        if (args.size < 4) {
-            sender.sendMessage(serializer.deserialize(
-                "&c用法: /tsl attr add <玩家> <属性> <+/-数值> <时间>"
-            ))
-            sender.sendMessage(serializer.deserialize(
-                "&7示例: /tsl attr add Steve SCALE +2 5m"
-            ))
-            sender.sendMessage(serializer.deserialize(
-                "&7示例: /tsl attr add Steve HEALTH -5 30s"
-            ))
-            sender.sendMessage(serializer.deserialize(
-                "&7ADD 在当前值上增减，支持 +N 或 -N 格式"
-            ))
-            return
-        }
-
-        val playerName = args[0]
-        val attributeInput = args[1]
-        var amountStr = args[2]
-        var durationStr = args[3]
-
-        // 查找玩家
-        val target = Bukkit.getPlayer(playerName)
-        if (target == null || !target.isOnline) {
-            sender.sendMessage(serializer.deserialize(
-                manager.getMessage("player_not_found", "player" to playerName)
-            ))
-            return
-        }
-
-        // 解析 PlaceholderAPI 变量（如果可用）
-        if (isPlaceholderAPIAvailable()) {
-            amountStr = PlaceholderAPI.setPlaceholders(target, amountStr)
-            durationStr = PlaceholderAPI.setPlaceholders(target, durationStr)
-        }
-
-        // 解析属性
-        val resolvedAttribute = manager.resolveAttributeKey(attributeInput)
-        if (resolvedAttribute == null) {
-            sender.sendMessage(serializer.deserialize(
-                manager.getMessage("invalid_attribute", "attribute" to attributeInput)
-            ))
-            sender.sendMessage(serializer.deserialize(
-                "&7使用 &e/tsl attr help &7查看可用属性"
-            ))
-            return
-        }
-
-        // 解析增减量（支持 +N、-N、N 格式）
-        val amount = amountStr.replace("+", "").toDoubleOrNull()
-        if (amount == null) {
-            sender.sendMessage(serializer.deserialize(
-                manager.getMessage("invalid_amount", "amount" to amountStr)
-            ))
-            return
-        }
-
-        // 解析持续时间
-        val durationMs = manager.parseDuration(durationStr)
-        if (durationMs == null || durationMs <= 0) {
-            sender.sendMessage(serializer.deserialize(
-                manager.getMessage("invalid_duration", "duration" to durationStr)
-            ))
-            return
-        }
-
-        // 应用 ADD 效果
-        val modifierUuid = manager.applyAddEffect(
-            player = target,
-            attributeKey = resolvedAttribute,
-            amount = amount,
-            durationMs = durationMs,
-            source = "command:${sender.name}"
-        )
-
-        if (modifierUuid != null) {
-            val durationText = formatDuration(durationMs)
-            val sign = if (amount >= 0) "+" else ""
-            sender.sendMessage(serializer.deserialize(
-                "&a已为 &e${target.name} &a添加 &f$resolvedAttribute &a效果: &b$sign$amount &7(${durationText})"
-            ))
-        } else {
-            sender.sendMessage(serializer.deserialize(
-                manager.getMessage("add_failed")
-            ))
-        }
-    }
-
-    /**
-     * 处理设置属性命令（SET 类型 - 直接设置固定值，覆盖之前所有操作）
+     * 处理设置属性命令
      * /tsl attr set <player> <attribute> <value> <duration>
      */
     private fun handleSet(sender: CommandSender, args: Array<out String>) {
@@ -164,10 +64,10 @@ class TimedAttributeCommand(
                 "&c用法: /tsl attr set <玩家> <属性> <数值> <时间>"
             ))
             sender.sendMessage(serializer.deserialize(
-                "&7示例: /tsl attr set Steve SCALE 5 30s"
+                "&7示例: /tsl attr set Steve SCALE 2 30s"
             ))
             sender.sendMessage(serializer.deserialize(
-                "&7SET 直接设置固定值，会覆盖之前所有效果"
+                "&7示例: /tsl attr set Steve HP 40 5m"
             ))
             sender.sendMessage(serializer.deserialize(
                 "&7使用 &e/tsl attr help &7查看可用属性"
@@ -229,7 +129,7 @@ class TimedAttributeCommand(
         val modifierUuid = manager.applySetEffect(
             player = target,
             attributeKey = resolvedAttribute,
-            value = value,
+            targetValue = value,
             durationMs = durationMs,
             source = "command:${sender.name}"
         )
@@ -247,8 +147,8 @@ class TimedAttributeCommand(
     }
 
     /**
-     * 处理移除效果命令
-     * /tsl attr remove <player> <modifierUuid>
+     * 处理取消效果命令
+     * /tsl attr cancel <player> <attribute>
      */
     private fun handleRemove(sender: CommandSender, args: Array<out String>) {
         // 权限检查
@@ -259,16 +159,19 @@ class TimedAttributeCommand(
 
         if (args.size < 2) {
             sender.sendMessage(serializer.deserialize(
-                "&c用法: /tsl attr remove <玩家> <效果ID>"
+                "&c用法: /tsl attr cancel <玩家> <属性>"
             ))
             sender.sendMessage(serializer.deserialize(
-                "&7效果ID可通过 /tsl attr list 查看"
+                "&7示例: /tsl attr cancel Steve SCALE"
+            ))
+            sender.sendMessage(serializer.deserialize(
+                "&7取消该属性的所有堆叠效果，恢复到原始值"
             ))
             return
         }
 
         val playerName = args[0]
-        val modifierUuidStr = args[1]
+        val attributeInput = args[1]
 
         // 查找玩家
         val target = Bukkit.getPlayer(playerName)
@@ -279,23 +182,20 @@ class TimedAttributeCommand(
             return
         }
 
-        // 解析 UUID（支持短格式）
-        val modifierUuid = parseModifierUuid(target, modifierUuidStr)
-        if (modifierUuid == null) {
+        // 解析属性
+        val resolvedAttribute = manager.resolveAttributeKey(attributeInput)
+        if (resolvedAttribute == null) {
             sender.sendMessage(serializer.deserialize(
-                manager.getMessage("invalid_modifier_uuid", "uuid" to modifierUuidStr)
+                manager.getMessage("invalid_attribute", "attribute" to attributeInput)
             ))
             return
         }
 
-        // 移除效果
-        val success = manager.removeEffect(target, modifierUuid)
-        if (success) {
+        // 取消效果
+        val count = manager.cancelEffects(target, resolvedAttribute)
+        if (count > 0) {
             sender.sendMessage(serializer.deserialize(
-                manager.getMessage("remove_success",
-                    "player" to target.name,
-                    "modifier_uuid" to modifierUuid.toString().substring(0, 8)
-                )
+                "&a已取消 &e${target.name} &a的 &f$resolvedAttribute &a效果 &7($count 层)"
             ))
         } else {
             sender.sendMessage(serializer.deserialize(
@@ -348,15 +248,82 @@ class TimedAttributeCommand(
         ))
 
         effects.forEach { effect ->
-            val typeStr = if (effect.effectType == EffectType.SET) "SET" else "ADD"
-            val amountStr = if (effect.effectType == EffectType.ADD) {
-                val sign = if (effect.amount >= 0) "+" else ""
-                "$sign${formatAmount(effect.amount)}"
-            } else {
-                formatAmount(effect.amount)
-            }
+            // 获取该属性的堆栈深度
+            val stackDepth = manager.getEffectStack(target, effect.attributeKey).size
+            val stackInfo = if (stackDepth > 1) " &8[堆栈: $stackDepth 层]" else ""
+            val deltaStr = if (effect.delta >= 0) "+${formatValue(effect.delta)}" else formatValue(effect.delta)
             sender.sendMessage(serializer.deserialize(
-                "&7- &f${effect.attributeKey} &8[$typeStr] &b$amountStr &7剩余: &e${effect.formatRemainingTime()} &8(${effect.modifierUuid.toString().substring(0, 8)})"
+                "&7- &f${effect.attributeKey} &b${formatValue(effect.targetValue)} &7(delta: $deltaStr) &7剩余: &e${effect.formatRemainingTime()}$stackInfo"
+            ))
+        }
+    }
+
+    /**
+     * 处理查看堆栈命令
+     * /tsl attr stack <player> <attribute>
+     */
+    private fun handleStack(sender: CommandSender, args: Array<out String>) {
+        if (!sender.hasPermission("tsl.attribute.list")) {
+            sender.sendMessage(serializer.deserialize(manager.getMessage("no_permission")))
+            return
+        }
+
+        if (args.size < 2) {
+            sender.sendMessage(serializer.deserialize(
+                "&c用法: /tsl attr stack <玩家> <属性>"
+            ))
+            sender.sendMessage(serializer.deserialize(
+                "&7查看指定属性的效果堆栈详情"
+            ))
+            return
+        }
+
+        val playerName = args[0]
+        val attributeInput = args[1]
+
+        val target = Bukkit.getPlayer(playerName)
+        if (target == null || !target.isOnline) {
+            sender.sendMessage(serializer.deserialize(
+                manager.getMessage("player_not_found", "player" to playerName)
+            ))
+            return
+        }
+
+        val resolvedAttribute = manager.resolveAttributeKey(attributeInput)
+        if (resolvedAttribute == null) {
+            sender.sendMessage(serializer.deserialize(
+                manager.getMessage("invalid_attribute", "attribute" to attributeInput)
+            ))
+            return
+        }
+
+        val stack = manager.getEffectStack(target, resolvedAttribute)
+        if (stack.isEmpty()) {
+            sender.sendMessage(serializer.deserialize(
+                "&e${target.name} &7的 &f$resolvedAttribute &7没有活跃效果"
+            ))
+            return
+        }
+
+        sender.sendMessage(serializer.deserialize(
+            "&6===== ${target.name} 的 $resolvedAttribute 效果堆栈 ====="
+        ))
+        
+        // 计算总 delta
+        val totalDelta = stack.sumOf { it.delta }
+        val totalDeltaStr = if (totalDelta >= 0) "+${formatValue(totalDelta)}" else formatValue(totalDelta)
+        sender.sendMessage(serializer.deserialize(
+            "&7总变化量: &f$totalDeltaStr &7(取消后将撤销此变化)"
+        ))
+        sender.sendMessage(serializer.deserialize(""))
+
+        // 从栈底到栈顶显示
+        stack.forEachIndexed { index, effect ->
+            val status = if (effect.isPaused) "&c[暂停]" else "&a[活跃]"
+            val isTop = if (index == stack.size - 1) " &e← 当前" else ""
+            val deltaStr = if (effect.delta >= 0) "+${formatValue(effect.delta)}" else formatValue(effect.delta)
+            sender.sendMessage(serializer.deserialize(
+                "&7层 ${index + 1}: &b${formatValue(effect.targetValue)} &7(delta: $deltaStr) $status &7剩余: ${effect.formatRemainingTime()}$isTop"
             ))
         }
     }
@@ -403,6 +370,54 @@ class TimedAttributeCommand(
         } else {
             sender.sendMessage(serializer.deserialize(
                 manager.getMessage("no_effects", "player" to target.name)
+            ))
+        }
+    }
+
+    /**
+     * 处理重置命令（恢复所有属性到游戏默认值）
+     * /tsl attr reset <player>
+     */
+    private fun handleReset(sender: CommandSender, args: Array<out String>) {
+        // 权限检查
+        if (!sender.hasPermission("tsl.attribute.reset")) {
+            sender.sendMessage(serializer.deserialize(manager.getMessage("no_permission")))
+            return
+        }
+
+        if (args.isEmpty()) {
+            sender.sendMessage(serializer.deserialize(
+                "&c用法: /tsl attr reset <玩家>"
+            ))
+            sender.sendMessage(serializer.deserialize(
+                "&7将玩家的所有属性恢复到游戏默认值"
+            ))
+            sender.sendMessage(serializer.deserialize(
+                "&e警告: 这会清除所有效果并重置属性，用于修复旧版本 bug"
+            ))
+            return
+        }
+
+        val playerName = args[0]
+
+        // 查找玩家
+        val target = Bukkit.getPlayer(playerName)
+        if (target == null || !target.isOnline) {
+            sender.sendMessage(serializer.deserialize(
+                manager.getMessage("player_not_found", "player" to playerName)
+            ))
+            return
+        }
+
+        // 执行重置
+        val effectCount = manager.resetToDefault(target)
+        
+        sender.sendMessage(serializer.deserialize(
+            "&a已重置 &e${target.name} &a的所有属性到默认值"
+        ))
+        if (effectCount > 0) {
+            sender.sendMessage(serializer.deserialize(
+                "&7清除了 $effectCount 层效果"
             ))
         }
     }
@@ -475,8 +490,8 @@ class TimedAttributeCommand(
 
         sender.sendMessage(serializer.deserialize(""))
         sender.sendMessage(serializer.deserialize("&6&l========= 使用示例 ========="))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr add Steve HP +10 5m &7- 增加10点生命,5分钟"))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr add Steve SCALE +1 30s &7- 体型+1,30秒"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr set Steve HP 40 5m &7- 生命设为40,5分钟"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr set Steve SCALE 2 30s &7- 体型设为2,30秒"))
         sender.sendMessage(serializer.deserialize("&e/tsl attr set Steve SPEED 0.2 1h &7- 速度设为0.2,1小时"))
     }
 
@@ -500,58 +515,35 @@ class TimedAttributeCommand(
         sender.sendMessage(serializer.deserialize("&7范围: &c${info.minValue} &7~ &a${info.maxValue}"))
         sender.sendMessage(serializer.deserialize(""))
         sender.sendMessage(serializer.deserialize("&7使用示例:"))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr add <玩家> ${info.alias} <数值> <时间>"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr set <玩家> ${info.alias} <数值> <时间>"))
 
         // 根据属性给出建议示例
         val exampleValue = when (info.key) {
-            "max_health" -> "+10"
-            "movement_speed" -> "+0.05"
-            "attack_damage" -> "+5"
-            "scale" -> "+0.5"
-            "gravity" -> "-0.04"
-            else -> "+1"
+            "max_health" -> "40"
+            "movement_speed" -> "0.2"
+            "attack_damage" -> "10"
+            "scale" -> "2"
+            "gravity" -> "0.04"
+            else -> "5"
         }
-        sender.sendMessage(serializer.deserialize("&7示例: &f/tsl attr add Steve ${info.alias} $exampleValue 5m"))
+        sender.sendMessage(serializer.deserialize("&7示例: &f/tsl attr set Steve ${info.alias} $exampleValue 5m"))
     }
 
     /**
      * 显示用法
      */
     private fun showUsage(sender: CommandSender) {
-        sender.sendMessage(serializer.deserialize("&6&l===== 计时属性效果命令 ====="))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr add <玩家> <属性> <+/-数值> <时间>"))
-        sender.sendMessage(serializer.deserialize("  &7在当前值基础上增减，支持 &f+10&7 或 &f-5&7 格式"))
+        sender.sendMessage(serializer.deserialize("&6&l===== 计时属性效果命令 (堆栈版) ====="))
         sender.sendMessage(serializer.deserialize("&e/tsl attr set <玩家> <属性> <数值> <时间>"))
-        sender.sendMessage(serializer.deserialize("  &7设置固定值，会覆盖之前的效果"))
-        sender.sendMessage(serializer.deserialize("&e/tsl attr remove <玩家> <ID> &7- 移除指定效果"))
+        sender.sendMessage(serializer.deserialize("  &7设置属性值，新效果会暂停旧效果"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr cancel <玩家> <属性> &7- 取消指定属性效果"))
         sender.sendMessage(serializer.deserialize("&e/tsl attr list [玩家] &7- 列出当前效果"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr stack <玩家> <属性> &7- 查看堆栈详情"))
         sender.sendMessage(serializer.deserialize("&e/tsl attr clear [玩家] &7- 清除所有效果"))
+        sender.sendMessage(serializer.deserialize("&e/tsl attr reset <玩家> &7- 重置所有属性到默认"))
         sender.sendMessage(serializer.deserialize("&e/tsl attr help [属性] &7- 查看可用属性"))
         sender.sendMessage(serializer.deserialize(""))
         sender.sendMessage(serializer.deserialize("&7时间格式: &f30s&7(秒) &f5m&7(分) &f2h&7(时) &f1d&7(天)"))
-        sender.sendMessage(serializer.deserialize("&7常用属性: &fHP SCALE SPEED DMG ARMOR JUMP"))
-    }
-
-    /**
-     * 解析修改器 UUID（支持短格式匹配）
-     */
-    private fun parseModifierUuid(player: Player, input: String): UUID? {
-        // 尝试完整 UUID
-        try {
-            return UUID.fromString(input)
-        } catch (e: Exception) {
-            // 忽略，尝试短格式
-        }
-
-        // 短格式匹配（前8位）
-        val effects = manager.listActiveEffects(player)
-        val matches = effects.filter { it.modifierUuid.toString().startsWith(input, ignoreCase = true) }
-
-        return when {
-            matches.size == 1 -> matches[0].modifierUuid
-            matches.size > 1 -> null // 多个匹配，需要更精确的输入
-            else -> null
-        }
     }
 
     /**
@@ -568,82 +560,13 @@ class TimedAttributeCommand(
     }
 
     /**
-     * 格式化数值（带正负号）
+     * 格式化数值
      */
-    private fun formatAmount(amount: Double): String {
-        val formatted = if (amount == amount.toLong().toDouble()) {
-            amount.toLong().toString()
+    private fun formatValue(value: Double): String {
+        return if (value == value.toLong().toDouble()) {
+            value.toLong().toString()
         } else {
-            String.format("%.2f", amount)
-        }
-        return if (amount >= 0) "+$formatted" else formatted
-    }
-
-    /**
-     * 解析带模式的数值
-     *
-     * @param player 目标玩家
-     * @param attributeKey 已解析的属性键名
-     * @param input 输入字符串
-     * @return Triple(实际应用的数值, 是否为绝对设置模式, 操作描述)
-     *
-     * 支持格式：
-     * - +N：在当前基础上增加 N
-     * - -N：在当前基础上减少 N
-     * - N（无符号）：直接将属性设置为 N
-     */
-    private fun parseAmountWithMode(
-        player: Player,
-        attributeKey: String,
-        input: String
-    ): Triple<Double?, Boolean, String> {
-        val trimmed = input.trim()
-
-        // 判断模式
-        return when {
-            // 以 + 开头：增加模式
-            trimmed.startsWith("+") -> {
-                val value = trimmed.substring(1).toDoubleOrNull()
-                Triple(value, false, "增加")
-            }
-            // 以 - 开头：减少模式
-            trimmed.startsWith("-") -> {
-                val value = trimmed.toDoubleOrNull() // 包含负号一起解析
-                Triple(value, false, "减少")
-            }
-            // 无符号：直接设置模式
-            else -> {
-                val targetValue = trimmed.toDoubleOrNull()
-                if (targetValue == null) {
-                    return Triple(null, true, "设置为")
-                }
-
-                // 获取玩家当前属性的基础值
-                val currentBaseValue = getPlayerAttributeBaseValue(player, attributeKey)
-                if (currentBaseValue == null) {
-                    // 如果无法获取当前值，直接使用目标值作为增量
-                    return Triple(targetValue, true, "设置为")
-                }
-
-                // 计算差值：目标值 - 当前基础值
-                val delta = targetValue - currentBaseValue
-                Triple(delta, true, "设置为 $targetValue (差值)")
-            }
-        }
-    }
-
-    /**
-     * 获取玩家属性的基础值
-     */
-    private fun getPlayerAttributeBaseValue(player: Player, attributeKey: String): Double? {
-        return try {
-            val attribute = org.bukkit.Registry.ATTRIBUTE.get(
-                org.bukkit.NamespacedKey.minecraft(attributeKey.lowercase())
-            ) ?: return null
-            val attrInstance = player.getAttribute(attribute) ?: return null
-            attrInstance.baseValue
-        } catch (e: Exception) {
-            null
+            String.format("%.2f", value)
         }
     }
 
@@ -658,12 +581,12 @@ class TimedAttributeCommand(
         return when (args.size) {
             1 -> {
                 // 子命令
-                listOf("add", "set", "remove", "list", "clear", "help")
+                listOf("set", "cancel", "list", "stack", "clear", "reset", "help")
                     .filter { it.startsWith(args[0], ignoreCase = true) }
             }
             2 -> {
                 when (args[0].lowercase()) {
-                    "add", "set", "remove", "list", "clear" -> {
+                    "set", "cancel", "list", "stack", "clear", "reset" -> {
                         // 玩家名
                         Bukkit.getOnlinePlayers()
                             .map { it.name }
@@ -680,7 +603,7 @@ class TimedAttributeCommand(
             }
             3 -> {
                 when (args[0].lowercase()) {
-                    "add", "set" -> {
+                    "set" -> {
                         // 属性名（常用简写优先）
                         val commonShorts = listOf(
                             "HP", "SCALE", "SPEED", "DMG", "ARMOR", "JUMP",
@@ -690,12 +613,12 @@ class TimedAttributeCommand(
                         val allSuggestions = commonShorts + manager.getAttributeInfoList().map { it.key }
                         allSuggestions.filter { it.startsWith(args[2], ignoreCase = true) }.distinct().take(20)
                     }
-                    "remove" -> {
-                        // 修改器 UUID（列出该玩家的活跃效果）
+                    "cancel", "stack" -> {
+                        // 列出该玩家的活跃效果的属性名
                         val player = Bukkit.getPlayer(args[1])
                         if (player != null) {
                             manager.listActiveEffects(player)
-                                .map { it.modifierUuid.toString().substring(0, 8) }
+                                .map { it.attributeKey.uppercase() }
                                 .filter { it.startsWith(args[2], ignoreCase = true) }
                         } else {
                             emptyList()
@@ -706,27 +629,8 @@ class TimedAttributeCommand(
             }
             4 -> {
                 when (args[0].lowercase()) {
-                    "add" -> {
-                        // 数值提示（支持三种模式：+N增加, -N减少, N直接设置）
-                        val info = manager.getAttributeInfo(args[2])
-                        if (info != null) {
-                            // 根据属性给出合理的建议值
-                            val suggestions = when (info.key) {
-                                "max_health" -> listOf("+5", "+10", "-5", "-10", "20", "30", "40")
-                                "movement_speed" -> listOf("+0.05", "+0.1", "-0.05", "0.1", "0.15")
-                                "attack_damage" -> listOf("+2", "+5", "-2", "5", "10", "15")
-                                "scale" -> listOf("+0.5", "-0.3", "1", "1.5", "2")
-                                "armor" -> listOf("+5", "+10", "-5", "10", "15", "20")
-                                else -> listOf("+1", "+5", "-1", "-5", "5", "10")
-                            }
-                            suggestions.filter { it.startsWith(args[3]) }
-                        } else {
-                            listOf("+1", "+5", "-1", "-5", "5", "10")
-                                .filter { it.startsWith(args[3]) }
-                        }
-                    }
                     "set" -> {
-                        // set 命令的数值提示（直接设置基础值）
+                        // set 命令的数值提示
                         val info = manager.getAttributeInfo(args[2])
                         if (info != null) {
                             // 根据属性给出合理的基础值建议
@@ -734,7 +638,7 @@ class TimedAttributeCommand(
                                 "max_health" -> listOf("20", "30", "40", "60", "100")
                                 "movement_speed" -> listOf("0.1", "0.15", "0.2", "0.3")
                                 "attack_damage" -> listOf("1", "5", "10", "15", "20")
-                                "scale" -> listOf("0.5", "1", "1.5", "2", "3")
+                                "scale" -> listOf("0.5", "1", "1.5", "2", "3", "5")
                                 "armor" -> listOf("0", "10", "20", "30")
                                 else -> listOf("1", "5", "10", "20")
                             }
@@ -749,7 +653,7 @@ class TimedAttributeCommand(
             }
             5 -> {
                 when (args[0].lowercase()) {
-                    "add" -> {
+                    "set" -> {
                         // 持续时间
                         listOf("30s", "1m", "5m", "10m", "30m", "1h", "1d")
                             .filter { it.startsWith(args[4], ignoreCase = true) }
