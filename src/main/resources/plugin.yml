@@ -163,3 +163,9 @@ permissions:
   tsl.redfreeze.use:
     description: Use redstone freeze command permission
     default: op
+  tsl.freeze.use:
+    description: Use freeze player command permission
+    default: op
+  tsl.freeze.bypass:
+    description: Bypass being frozen by freeze command
+    default: op

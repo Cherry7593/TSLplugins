@@ -1,232 +1,100 @@
-# MC 插件称号系统对接完成说明
+# 称号系统更新 v2
 
-> 本文档供 Web 端开发参考，说明 MC 插件已完成的称号系统对接内容
+## 更新日期
+2024-12-30
 
-## 概述
+## 更新内容
 
-MC 插件已完成称号系统的全部对接工作，可以：
-- 接收 Web 端推送的称号更新事件
-- 玩家上线时自动请求称号
-- 支持游戏内兑换码验证
-- 通过 LuckPerms 设置玩家 prefix/suffix
+### 1. 简化称号等级
+- **变更**：移除单色称号等级，只保留两种等级
+- **新等级**：
+  | 等级 | 名称 | 功能 |
+  |------|------|------|
+  | 0 | 无称号 | 暂未开通 |
+  | 1 | 渐变称号 | 支持单色和渐变效果 |
+- **影响**：原来的等级 2（渐变称号）现在是等级 1
 
-## WebSocket 消息格式
+### 2. 移除称号括号
+- **变更**：称号文字不再包含方括号 `[]`
+- **旧格式**：`&6[大佬]` 或 `<gradient:#FF0000:#00FF00>[渐变]</gradient>`
+- **新格式**：`&6大佬` 或 `<gradient:#FF0000:#00FF00>渐变</gradient>`
 
-### 1. MC → Web: 获取称号请求 (GET_TITLE)
+### 3. 移除称号位置选项
+- **变更**：不再区分前缀/后缀位置
+- **影响**：称号统一显示在玩家名字前方
+- **API 变更**：`titlePosition` 字段固定为 `"prefix"`
 
-**触发时机**: 玩家加入服务器后 1 秒
+### 4. 称号修改冷却
+- **新增**：每 24 小时只能修改一次称号
+- **影响**：用户在保存称号后，需等待 24 小时才能再次修改
 
-```json
-{
-  "type": "request",
-  "source": "mc",
-  "timestamp": 1735123456789,
-  "data": {
-    "action": "GET_TITLE",
-    "id": "gt-1735123456789",
-    "playerUuid": "02d3b2c1-f448-40a5-83a4-641f91a9a888"
-  }
+## 插件适配指南
+
+### 等级变更
+
+插件端需要更新等级判断逻辑：
+
+```java
+// 旧代码
+// tier 0 = 无称号
+// tier 1 = 单色称号
+// tier 2 = 渐变称号
+
+// 新代码
+// tier 0 = 无称号
+// tier 1 = 渐变称号（支持单色和渐变）
+
+public boolean canUseTitle(int tier) {
+    return tier >= 1;
+}
+
+public boolean canUseGradient(int tier) {
+    return tier >= 1; // 现在等级 1 就可以使用渐变
 }
 ```
 
-### 2. Web → MC: 获取称号响应
+### 数据库迁移
 
-**成功响应**:
-```json
-{
-  "type": "response",
-  "source": "web",
-  "timestamp": 1735123456789,
-  "data": {
-    "action": "GET_TITLE",
-    "id": "gt-1735123456789",
-    "playerUuid": "02d3b2c1-f448-40a5-83a4-641f91a9a888",
-    "title": "<gradient:#ff0000:#ffff00>大佬</gradient>",
-    "position": "prefix",
-    "tier": 2,
-    "found": true
-  }
-}
+如果数据库中有 `titleTier = 2` 的记录，建议将其更新为 `titleTier = 1`：
+
+```sql
+-- 将原来的等级 2 更新为等级 1
+UPDATE player_titles SET title_tier = 1 WHERE title_tier = 2;
 ```
 
-**未找到响应**:
-```json
-{
-  "type": "response",
-  "source": "web",
-  "data": {
-    "action": "GET_TITLE",
-    "id": "gt-1735123456789",
-    "playerUuid": "02d3b2c1-f448-40a5-83a4-641f91a9a888",
-    "found": false
-  }
-}
+### 称号格式变更
+
+移除对方括号的处理：
+
+```java
+// 旧代码可能有类似逻辑
+String displayTitle = "[" + title + "]";
+
+// 新代码：直接使用 title
+String displayTitle = title;
 ```
 
-### 3. Web → MC: 称号更新事件 (TITLE_UPDATE)
+### 聊天消息格式
 
-**触发时机**: 玩家在官网修改称号后主动推送
+建议格式：
 
-```json
-{
-  "type": "event",
-  "source": "web",
-  "timestamp": 1735123456789,
-  "data": {
-    "event": "TITLE_UPDATE",
-    "id": "tu-1735123456789",
-    "playerUuid": "02d3b2c1-f448-40a5-83a4-641f91a9a888",
-    "playerName": "NanKinz1",
-    "title": "<gradient:#ff0000:#ffff00>大佬</gradient>",
-    "position": "prefix",
-    "tier": 2
-  }
-}
+```
+{称号} {玩家名}: {消息}
 ```
 
-**清除称号时 title 为 null**:
-```json
-{
-  "data": {
-    "event": "TITLE_UPDATE",
-    "playerUuid": "...",
-    "title": null,
-    "position": "prefix",
-    "tier": 0
-  }
-}
-```
+### 兑换码等级
 
-### 4. MC → Web: 兑换码验证 (REDEEM_CODE)
+兑换码生成现在只支持生成等级 1（渐变称号）的兑换码。
 
-```json
-{
-  "type": "request",
-  "source": "mc",
-  "timestamp": 1735123456789,
-  "data": {
-    "action": "REDEEM_CODE",
-    "id": "rc-1735123456789",
-    "playerUuid": "02d3b2c1-f448-40a5-83a4-641f91a9a888",
-    "playerName": "NanKinz1",
-    "code": "TITLE-ABC12345"
-  }
-}
-```
+## 向后兼容
 
-### 5. Web → MC: 兑换码响应
-
-**成功**:
-```json
-{
-  "type": "response",
-  "source": "web",
-  "timestamp": 1735123456789,
-  "data": {
-    "action": "REDEEM_CODE",
-    "id": "rc-1735123456789",
-    "success": true,
-    "message": "兑换成功！已解锁全彩称号权限",
-    "grantedTier": 2
-  }
-}
-```
-
-**失败**:
-```json
-{
-  "type": "response",
-  "source": "web",
-  "data": {
-    "action": "REDEEM_CODE",
-    "id": "rc-1735123456789",
-    "success": false,
-    "error": "invalid_code",
-    "message": "兑换码无效或已被使用"
-  }
-}
-```
-
-## 字段说明
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `playerUuid` | string | ✅ | 玩家 UUID，带横线格式 |
-| `playerName` | string | ❌ | 玩家名称 |
-| `title` | string/null | ✅ | 称号内容，null 表示清除 |
-| `position` | string | ✅ | `"prefix"` 或 `"suffix"` |
-| `tier` | number | ✅ | 付费等级 0/1/2 |
-| `found` | boolean | ✅ | GET_TITLE 响应专用 |
-| `id` | string | ✅ | 请求 ID，用于匹配响应 |
-
-## 颜色格式支持
-
-MC 插件直接将 `title` 字段内容设置到 LuckPerms，支持以下格式：
-
-- **传统代码**: `&6[&e大佬&6]`
-- **MiniMessage**: `<gradient:#ff0000:#00ff00>大佬</gradient>`
-- **十六进制**: `<#FF5733>大佬`
-
-> 最终显示效果取决于服务器的聊天插件是否支持对应格式
-
-## LuckPerms 集成细节
-
-- **权重**: 默认 100（可配置）
-- **识别方式**: 按权重识别 TSL 设置的称号
-- **清除逻辑**: 清除该权重的所有 prefix/suffix 后再设置新值
-- **异步操作**: 所有 LP 操作异步执行，不阻塞主线程
-
-## 游戏内命令
-
-| 命令 | 说明 | 权限 |
-|------|------|------|
-| `/tsl title redeem <code>` | 使用兑换码 | `tsl.title.redeem` |
-| `/tsl title info` | 查看当前称号 | 无 |
-| `/tsl title help` | 显示帮助 | 无 |
-
-## 配置项
-
-```yaml
-# config.yml
-title:
-  enabled: true
-  luckperms-priority: 100
-  join-delay: 20
-```
-
-## Web 端需要实现
-
-1. **GET_TITLE 接口**: 根据 playerUuid 查询玩家称号数据
-2. **TITLE_UPDATE 推送**: 玩家在官网修改称号时推送事件
-3. **REDEEM_CODE 接口**: 验证兑换码并返回结果
-4. **数据存储**: 存储玩家称号、位置、等级信息
+- 已存储的旧格式称号（带括号）在用户重新编辑保存后会自动转换为新格式
+- WebSocket 协议保持不变
+- API 接口保持不变
 
 ## 测试建议
 
-1. **基础流程**:
-   - 玩家上线 → MC 发送 GET_TITLE → Web 返回数据 → 称号生效
-   
-2. **实时更新**:
-   - 官网修改称号 → Web 推送 TITLE_UPDATE → MC 即时更新
-   
-3. **兑换码**:
-   - 游戏内输入 `/tsl title redeem CODE` → 验证 → 反馈结果
-
-## 完成状态
-
-| 功能 | 状态 |
-|------|------|
-| 接收 TITLE_UPDATE 事件 | ✅ |
-| 发送 GET_TITLE 请求 | ✅ |
-| 处理 GET_TITLE 响应 | ✅ |
-| 发送 REDEEM_CODE 请求 | ✅ |
-| 处理 REDEEM_CODE 响应 | ✅ |
-| LuckPerms prefix 设置 | ✅ |
-| LuckPerms suffix 设置 | ✅ |
-| 玩家上线自动请求 | ✅ |
-| 称号缓存 | ✅ |
-| 游戏内命令 | ✅ |
-
----
-
-**MC 插件端已完成全部对接，等待 Web 端实现对应接口即可联调。**
+1. 测试等级 1 用户可以使用单色和渐变称号
+2. 测试称号修改冷却功能（24 小时限制）
+3. 测试兑换码只能生成等级 1
+4. 测试已有等级 2 用户的称号显示正常

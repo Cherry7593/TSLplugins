@@ -4,7 +4,6 @@ import net.luckperms.api.LuckPerms
 import net.luckperms.api.LuckPermsProvider
 import net.luckperms.api.model.user.User
 import net.luckperms.api.node.types.PrefixNode
-import net.luckperms.api.node.types.SuffixNode
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.plugin.Plugin
@@ -125,10 +124,9 @@ class TitleManager(private val plugin: Plugin) {
      * 
      * @param uuid 玩家 UUID
      * @param title 称号内容（null 则清除）
-     * @param position "prefix" 或 "suffix"
      * @param tier 付费等级
      */
-    fun setPlayerTitle(uuid: UUID, title: String?, position: String, tier: Int = 0) {
+    fun setPlayerTitle(uuid: UUID, title: String?, tier: Int = 0) {
         val lp = luckPerms ?: return
         
         // 异步加载用户（玩家可能不在线）
@@ -141,15 +139,10 @@ class TitleManager(private val plugin: Plugin) {
             // 1. 清除旧的 TSL 称号
             clearTslTitle(user)
             
-            // 2. 设置新称号
+            // 2. 设置新称号（统一使用 prefix）
             if (!title.isNullOrEmpty()) {
-                if (position == "prefix") {
-                    val node = PrefixNode.builder(title, titlePriority).build()
-                    user.data().add(node)
-                } else {
-                    val node = SuffixNode.builder(title, titlePriority).build()
-                    user.data().add(node)
-                }
+                val node = PrefixNode.builder(title, titlePriority).build()
+                user.data().add(node)
             }
             
             // 3. 保存
@@ -157,7 +150,7 @@ class TitleManager(private val plugin: Plugin) {
             
             // 4. 更新缓存
             if (!title.isNullOrEmpty()) {
-                titleCache[uuid] = TitleData(title, position, tier)
+                titleCache[uuid] = TitleData(title, tier)
             } else {
                 titleCache.remove(uuid)
             }
@@ -171,23 +164,20 @@ class TitleManager(private val plugin: Plugin) {
      * 清除玩家的 TSL 称号
      */
     private fun clearTslTitle(user: User) {
-        // 清除权重等于 titlePriority 的前后缀（我们设置的）
+        // 清除权重等于 titlePriority 的前缀（我们设置的）
         user.data().clear { node ->
-            when (node) {
-                is PrefixNode -> node.priority == titlePriority
-                is SuffixNode -> node.priority == titlePriority
-                else -> false
-            }
+            node is PrefixNode && node.priority == titlePriority
         }
     }
 
     /**
      * 处理称号更新事件（来自 WebSocket）
+     * 注意：position 参数已废弃，统一使用 prefix
      */
     fun handleTitleUpdate(playerUuid: String, playerName: String?, title: String?, position: String, tier: Int) {
         try {
             val uuid = UUID.fromString(playerUuid)
-            setPlayerTitle(uuid, title, position, tier)
+            setPlayerTitle(uuid, title, tier)
             
             // 如果玩家在线，发送通知
             val player = Bukkit.getPlayer(uuid)
@@ -205,15 +195,16 @@ class TitleManager(private val plugin: Plugin) {
 
     /**
      * 处理获取称号响应（来自 WebSocket）
+     * 注意：position 参数已废弃，统一使用 prefix
      */
     fun handleGetTitleResponse(playerUuid: String, title: String?, position: String?, tier: Int, found: Boolean) {
-        if (!found || title == null || position == null) {
+        if (!found || title == null) {
             return
         }
         
         try {
             val uuid = UUID.fromString(playerUuid)
-            setPlayerTitle(uuid, title, position, tier)
+            setPlayerTitle(uuid, title, tier)
         } catch (e: Exception) {
             plugin.logger.warning("[Title] 处理称号响应失败: ${e.message}")
         }
@@ -230,8 +221,8 @@ class TitleManager(private val plugin: Plugin) {
         
         if (success) {
             player.sendMessage("§a[称号] §a$message")
-            if (grantedTier != null) {
-                player.sendMessage("§a[称号] §7你现在可以使用 Tier $grantedTier 的称号功能了！")
+            if (grantedTier != null && grantedTier >= 1) {
+                player.sendMessage("§a[称号] §7你现在可以使用渐变称号功能了！")
             }
         } else {
             player.sendMessage("§a[称号] §c$message")
@@ -271,6 +262,5 @@ class TitleManager(private val plugin: Plugin) {
  */
 data class TitleData(
     val title: String,
-    val position: String,
     val tier: Int
 )

@@ -100,8 +100,7 @@ class TitleCommand(
         
         if (titleData != null) {
             sender.sendMessage(serializer.deserialize("&7当前称号: ${titleData.title}"))
-            sender.sendMessage(serializer.deserialize("&7位置: &f${if (titleData.position == "prefix") "前缀" else "后缀"}"))
-            sender.sendMessage(serializer.deserialize("&7等级: &f${getTierName(titleData.tier)}"))
+            sender.sendMessage(serializer.deserialize("&7权限等级: &f${getTierName(titleData.tier)}"))
         } else {
             sender.sendMessage(serializer.deserialize("&7当前没有设置称号"))
         }
@@ -124,12 +123,12 @@ class TitleCommand(
 
     /**
      * 获取等级名称
+     * v2: 简化为两个等级 (0=无称号, 1=渐变称号)
      */
     private fun getTierName(tier: Int): String {
-        return when (tier) {
-            0 -> "免费版"
-            1 -> "基础版"
-            2 -> "全彩版"
+        return when {
+            tier <= 0 -> "无称号"
+            tier >= 1 -> "渐变称号"
             else -> "未知"
         }
     }
