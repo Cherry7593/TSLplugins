@@ -159,7 +159,7 @@ class TimedAttributeCommand(
 
         if (args.size < 2) {
             sender.sendMessage(serializer.deserialize(
-                "&c用法: /tsl attr cancel <玩家> <属性>"
+                "&c用法: /tsl attr cancel <玩家> <属性> "
             ))
             sender.sendMessage(serializer.deserialize(
                 "&7示例: /tsl attr cancel Steve SCALE"
