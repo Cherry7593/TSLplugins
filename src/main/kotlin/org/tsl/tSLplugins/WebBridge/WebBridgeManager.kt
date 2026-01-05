@@ -10,6 +10,9 @@ import org.tsl.tSLplugins.Title.GetTitleRequest
 import org.tsl.tSLplugins.Title.GetTitleRequestData
 import org.tsl.tSLplugins.Title.RedeemCodeRequest
 import org.tsl.tSLplugins.Title.RedeemCodeRequestData
+import org.tsl.tSLplugins.TSLplugins
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 /**
@@ -29,6 +32,10 @@ class WebBridgeManager(private val plugin: Plugin) {
     private var titleManager: TitleManager? = null
     private var bindManager: BindManager? = null
     private var isEnabled = false
+
+    // 服务器标识配置（多服务器支持）
+    private var serverId: String = ""
+    private var serverName: String = "未命名服务器"
 
     // 消息格式配置
     private var webToGameFormat = "&7[&b{source}&7] &f<{playerName}> &7{message}"
@@ -78,12 +85,19 @@ class WebBridgeManager(private val plugin: Plugin) {
             return
         }
 
-        val url = wsConfig.getString("url")
+        val baseUrl = wsConfig.getString("url")
+        val token = wsConfig.getString("token", "")
 
-        if (url.isNullOrBlank()) {
+        if (baseUrl.isNullOrBlank()) {
             plugin.logger.warning("[WebBridge] WebSocket URL 未配置")
             return
         }
+
+        // 读取服务器标识配置
+        loadOrGenerateServerId(config)
+
+        // 构建完整的 WebSocket URL
+        val url = buildWebSocketUrl(baseUrl, token)
 
         // 读取消息格式配置
         val msgConfig = config.getConfigurationSection("messages")
@@ -413,6 +427,8 @@ class WebBridgeManager(private val plugin: Plugin) {
         val eventData = EventData(
             event = "PLAYER_LIST",
             id = "pl-${System.currentTimeMillis()}",
+            serverId = serverId,
+            serverName = serverName,
             online = players.size,
             max = Bukkit.getMaxPlayers(),
             tps = tps,
@@ -434,6 +450,70 @@ class WebBridgeManager(private val plugin: Plugin) {
         val jsonString = json.encodeToString(heartbeat)
         sendMessage(jsonString)
     }
+
+    // ========== 服务器标识管理 ==========
+
+    /**
+     * 加载或生成服务器标识
+     */
+    private fun loadOrGenerateServerId(config: org.bukkit.configuration.ConfigurationSection) {
+        val serverConfig = config.getConfigurationSection("server")
+        
+        serverId = serverConfig?.getString("id", "") ?: ""
+        serverName = serverConfig?.getString("name", "未命名服务器") ?: "未命名服务器"
+        
+        // 如果 serverId 为空，生成新的 UUID
+        if (serverId.isBlank()) {
+            serverId = UUID.randomUUID().toString()
+            
+            // 保存到配置文件
+            plugin.config.set("webbridge.server.id", serverId)
+            plugin.saveConfig()
+            
+            plugin.logger.info("[WebBridge] 已生成服务器标识: $serverId")
+        } else {
+            plugin.logger.info("[WebBridge] 服务器标识: $serverId")
+        }
+        
+        plugin.logger.info("[WebBridge] 服务器名称: $serverName")
+    }
+
+    /**
+     * 构建 WebSocket URL（包含 serverId 和 serverName 参数）
+     */
+    private fun buildWebSocketUrl(baseUrl: String, token: String?): String {
+        val sb = StringBuilder(baseUrl)
+        
+        // 检查是否已有查询参数
+        val hasQuery = baseUrl.contains("?")
+        sb.append(if (hasQuery) "&" else "?")
+        
+        // 添加 from 参数
+        sb.append("from=mc")
+        
+        // 添加 serverId
+        sb.append("&serverId=").append(serverId)
+        
+        // 添加 serverName（URL 编码）
+        sb.append("&serverName=").append(URLEncoder.encode(serverName, StandardCharsets.UTF_8))
+        
+        // 添加 token（如果有）
+        if (!token.isNullOrBlank()) {
+            sb.append("&token=").append(token)
+        }
+        
+        return sb.toString()
+    }
+
+    /**
+     * 获取服务器 ID
+     */
+    fun getServerId(): String = serverId
+
+    /**
+     * 获取服务器名称
+     */
+    fun getServerName(): String = serverName
 
     /**
      * 重新加载配置并重新初始化模块
@@ -497,13 +577,20 @@ class WebBridgeManager(private val plugin: Plugin) {
             return
         }
 
-        val url = wsConfig.getString("url")
+        val baseUrl = wsConfig.getString("url")
+        val token = wsConfig.getString("token", "")
 
-        if (url.isNullOrBlank()) {
+        if (baseUrl.isNullOrBlank()) {
             plugin.logger.warning("[WebBridge] WebSocket URL 未配置")
             isEnabled = false
             return
         }
+
+        // 读取服务器标识配置
+        loadOrGenerateServerId(config)
+
+        // 构建完整的 WebSocket URL
+        val url = buildWebSocketUrl(baseUrl, token)
 
         // 读取消息格式配置
         val msgConfig = config.getConfigurationSection("messages")

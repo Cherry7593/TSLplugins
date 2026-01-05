@@ -67,6 +67,8 @@ class WebBridgeCommand(private val manager: WebBridgeManager) : SubCommandHandle
         sender.sendMessage("§e模块状态: ${if (manager.isEnabled()) "§a已启用" else "§c未启用"}")
 
         if (manager.isEnabled()) {
+            sender.sendMessage("§e服务器ID: §f${manager.getServerId()}")
+            sender.sendMessage("§e服务器名称: §f${manager.getServerName()}")
             sender.sendMessage("§e连接状态: ${if (manager.isConnected()) "§a已连接" else "§c未连接"}")
             sender.sendMessage("§e队列长度: §f${manager.getQueueSize()} 条消息")
         }

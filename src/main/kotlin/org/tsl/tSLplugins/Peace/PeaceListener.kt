@@ -1,7 +1,6 @@
 package org.tsl.tSLplugins.Peace
 
 import org.bukkit.Bukkit
-import org.bukkit.entity.Enemy
 import org.bukkit.entity.Monster
 import org.bukkit.entity.Player
 import org.bukkit.entity.Slime
@@ -9,6 +8,12 @@ import org.bukkit.entity.MagmaCube
 import org.bukkit.entity.Phantom
 import org.bukkit.entity.Ghast
 import org.bukkit.entity.Shulker
+import org.bukkit.entity.Hoglin
+import org.bukkit.entity.Piglin
+import org.bukkit.entity.PiglinBrute
+import org.bukkit.entity.Zoglin
+import org.bukkit.entity.Warden
+import org.bukkit.entity.Breeze
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -71,15 +76,22 @@ class PeaceListener(
         // 只处理自然生成的敌对生物
         if (event.spawnReason != CreatureSpawnEvent.SpawnReason.NATURAL) return
         
-        // 检查是否是敌对生物（包括 Monster, Slime, MagmaCube, Phantom, Ghast, Shulker 等）
+        // 检查是否是敌对生物
+        // Monster 包括: Zombie, Skeleton, Creeper, Spider, Enderman, Witch, 
+        //                Stray, Husk, Drowned, Bogged, 等所有普通敌对怪物
         val entity = event.entity
-        val isHostile = entity is Monster || 
-                        entity is Slime ||      // 史莱姆（史莱姆区块刷怪）
+        val isHostile = entity is Monster ||    // 包含所有骷髅变种(Stray/Bogged/Wither Skeleton)
+                        entity is Slime ||      // 史莱姆
                         entity is MagmaCube ||  // 岩浆怪
                         entity is Phantom ||    // 幻翼
                         entity is Ghast ||      // 恶魂
                         entity is Shulker ||    // 潜影贝
-                        entity is Enemy         // Paper API 的 Enemy 接口（更通用）
+                        entity is Hoglin ||     // 疣猕兽
+                        entity is Piglin ||     // 猪灵
+                        entity is PiglinBrute ||
+                        entity is Zoglin ||     // 僵尸疣猕兽
+                        entity is Warden ||     // 监守者
+                        entity is Breeze        // 旋风人
         
         if (!isHostile) return
         
