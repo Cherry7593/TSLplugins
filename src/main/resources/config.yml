@@ -414,13 +414,10 @@ webbridge:
   # 是否启用 WebBridge 功能
   enabled: false
 
-  # 服务器标识配置（多服务器支持）
-  server:
-    # 服务器唯一标识（首次启动自动生成，请勿手动修改）
-    # 这个 ID 用于区分不同的 MC 服务器
-    id: ""
-    # 服务器显示名称（会显示在 QQ 群的玩家列表图片中）
-    name: "生存服"
+  # 服务器唯一标识（首次启动自动生成，请勿手动修改）
+  # 用于多服务器支持，区分不同的 MC 服务器
+  # 服务器显示名称在 Web 后台设置
+  server-id: ""
 
   # WebSocket 配置
   websocket:
@@ -428,7 +425,7 @@ webbridge:
     #
     # 重要：
     # 1. 使用 127.0.0.1 而不是 localhost（避免 DNS 解析问题）
-    # 2. 无需在 URL 中手动添加 serverId/serverName，插件会自动添加
+    # 2. 无需在 URL 中手动添加 serverId，插件会自动添加
     # 3. 如有 token 认证，可在下方 token 配置项填写
     #
     # 配置完成后使用 /tsl webbridge connect 命令连接

@@ -21,7 +21,6 @@ data class EventData(
     val event: String,
     val id: String,
     val serverId: String? = null,
-    val serverName: String? = null,
     val online: Int? = null,
     val max: Int? = null,
     val tps: Double? = null,
