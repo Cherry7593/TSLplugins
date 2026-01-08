@@ -94,6 +94,9 @@ import org.tsl.tSLplugins.PapiAlias.PapiAliasCommand
 import org.tsl.tSLplugins.PlayTime.PlayTimeManager
 import org.tsl.tSLplugins.PlayTime.PlayTimeCommand
 import org.tsl.tSLplugins.PlayTime.PlayTimeListener
+import org.tsl.tSLplugins.Vault.VaultManager
+import org.tsl.tSLplugins.Vault.VaultListener
+import org.tsl.tSLplugins.Vault.VaultNBTHelper
 
 class TSLplugins : JavaPlugin() {
 
@@ -132,6 +135,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var redstoneFreezeManager: RedstoneFreezeManager
     private lateinit var papiAliasManager: PapiAliasManager
     private lateinit var playTimeManager: PlayTimeManager
+    private lateinit var vaultManager: VaultManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -370,6 +374,12 @@ class TSLplugins : JavaPlugin() {
         val playTimeListener = PlayTimeListener(playTimeManager)
         pm.registerEvents(playTimeListener, this)
         playTimeManager.startSaveTask()
+
+        // 初始化 Vault 宝库修复系统
+        VaultNBTHelper.init(this)
+        vaultManager = VaultManager(this)
+        val vaultListener = VaultListener(this, vaultManager)
+        pm.registerEvents(vaultListener, this)
 
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
@@ -757,6 +767,13 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadPapiAliasManager() {
         papiAliasManager.loadConfig()
+    }
+
+    /**
+     * 重新加载 Vault 宝库修复管理器
+     */
+    fun reloadVaultManager() {
+        vaultManager.reload()
     }
 
     /**

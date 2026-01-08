@@ -3,7 +3,7 @@
 # ========================================
 # 注意: 请勿修改 config-version，它用于自动更新配置文件
 # 消息配置已移至 messages.yml
-config-version: 36
+config-version: 37
 
 # ========================================
 # 全局数据库配置
@@ -670,3 +670,28 @@ redstone-freeze:
     # TNT 实体生成
     tnt-spawn: true
 
+# ========================================
+# Vault 宝库重置模块
+# ========================================
+# 双重检测：epoch 周期 + resumesAt 异常值
+# 玩家右键宝库时检查，满足任一条件则使用 /data 命令重置
+vault:
+  # 是否启用
+  enabled: true
+
+  # 当前周期（自动维护，请勿手动修改）
+  current-epoch: 1
+
+  # 重置间隔（天）
+  reset-interval-days: 15
+
+  # 上次重置时间戳（自动维护）
+  last-reset-timestamp: 0
+
+  # 异常阈值（游戏刻）
+  # 如果 resumesAt 超过当前游戏时间 + 此值，判定为异常
+  # 默认 100000 ticks ≈ 83 分钟
+  abnormal-threshold: 100000
+
+  # 调试模式
+  debug: false
