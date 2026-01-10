@@ -370,3 +370,36 @@ webbridge:
 papi-alias:
   reload_success: "%prefix%&a变量映射配置已重载，共加载 {count} 个映射"
   not_found: "%prefix%&c未找到变量 {variable} 的映射"
+
+# ========================================
+# Vote 指令投票
+# ========================================
+vote:
+  # 功能已禁用
+  disabled: "%prefix%&c投票功能已禁用"
+  # 没有权限
+  no_permission: "%prefix%&c你没有权限执行此操作"
+  # 已有投票进行中
+  already_active: "%prefix%&c已有投票正在进行中，请等待结束"
+  # 无效的投票类型
+  invalid_key: "%prefix%&c无效的投票类型: &e{key}"
+  # 冷却中
+  on_cooldown: "%prefix%&c该投票正在冷却中，剩余 &e{seconds}秒"
+  # 没有进行中的投票
+  no_active_vote: "%prefix%&7当前没有进行中的投票"
+  # 已经投过票
+  already_voted: "%prefix%&e你已经投过票了"
+  # 投票成功
+  vote_cast: "%prefix%&a你的票已记录"
+  # 投票广播前缀
+  vote_broadcast_prefix: "&a&l[投票] &e{initiator} &7发起投票: &f{key} &7| 需要 &e{required} &7票 | 持续 &e{duration}秒"
+  # 投票广播后缀
+  vote_broadcast_suffix: ""
+  # 投票通过
+  vote_passed: "&a&l[投票通过] &f{key} &7| 赞成: &a{votes}&7/&e{required}"
+  # 投票失败
+  vote_failed: "&c&l[投票失败] &f{key} &7| 赞成: &c{votes}&7/&e{required} &7(票数不足)"
+  # 投票被取消
+  vote_cancelled: "%prefix%&e当前投票已被取消"
+  # 强制取消成功
+  vote_force_cancelled: "%prefix%&a已强制取消当前投票"

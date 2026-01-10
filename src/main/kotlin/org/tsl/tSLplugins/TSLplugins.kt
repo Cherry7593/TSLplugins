@@ -97,6 +97,8 @@ import org.tsl.tSLplugins.PlayTime.PlayTimeListener
 import org.tsl.tSLplugins.Vault.VaultManager
 import org.tsl.tSLplugins.Vault.VaultListener
 import org.tsl.tSLplugins.Vault.VaultNBTHelper
+import org.tsl.tSLplugins.Vote.VoteManager
+import org.tsl.tSLplugins.Vote.VoteCommand
 
 class TSLplugins : JavaPlugin() {
 
@@ -136,6 +138,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var papiAliasManager: PapiAliasManager
     private lateinit var playTimeManager: PlayTimeManager
     private lateinit var vaultManager: VaultManager
+    private lateinit var voteManager: VoteManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -381,6 +384,9 @@ class TSLplugins : JavaPlugin() {
         val vaultListener = VaultListener(this, vaultManager)
         pm.registerEvents(vaultListener, this)
 
+        // 初始化 Vote 投票系统
+        voteManager = VoteManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -418,6 +424,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("redfreeze", RedstoneFreezeCommand(this, redstoneFreezeManager))
             dispatcher.registerSubCommand("papialias", PapiAliasCommand(papiAliasManager))
             dispatcher.registerSubCommand("playtime", PlayTimeCommand(playTimeManager))
+            dispatcher.registerSubCommand("vote", VoteCommand(voteManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -774,6 +781,13 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadVaultManager() {
         vaultManager.reload()
+    }
+
+    /**
+     * 重新加载 Vote 投票管理器
+     */
+    fun reloadVoteManager() {
+        voteManager.reload()
     }
 
     /**

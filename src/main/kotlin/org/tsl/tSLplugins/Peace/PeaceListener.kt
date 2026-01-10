@@ -73,8 +73,10 @@ class PeaceListener(
     fun onCreatureSpawn(event: CreatureSpawnEvent) {
         if (!manager.isEnabled()) return
         
-        // 只处理自然生成的敌对生物
-        if (event.spawnReason != CreatureSpawnEvent.SpawnReason.NATURAL) return
+        // 只处理自然生成和史莱姆分裂
+        val reason = event.spawnReason
+        if (reason != CreatureSpawnEvent.SpawnReason.NATURAL && 
+            reason != CreatureSpawnEvent.SpawnReason.SLIME_SPLIT) return
         
         // 检查是否是敌对生物
         // Monster 包括: Zombie, Skeleton, Creeper, Spider, Enderman, Witch, 

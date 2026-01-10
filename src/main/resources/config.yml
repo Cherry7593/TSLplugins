@@ -695,3 +695,24 @@ vault:
 
   # 调试模式
   debug: false
+
+# Vote 指令投票
+vote:
+  enabled: false
+  cooldown-seconds: 60
+  default-duration-seconds: 30
+  default-percentage: 0.5
+  # 投票配置 (command支持{initiator}/{votes}变量)
+  votes:
+    day:
+      command: "time set day"
+      percentage: 0.3
+      duration: 30
+      description: "切换为白天"
+      permission: ""
+    clear:
+      command: "weather clear"
+      percentage: 0.3
+      duration: 30
+      description: "天气晴朗"
+      permission: ""
