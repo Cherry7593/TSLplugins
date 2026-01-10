@@ -1,225 +1,125 @@
 ﻿# TSLplugins 配置文件
-# 版本: 36
-# ========================================
-# 注意: 请勿修改 config-version，它用于自动更新配置文件
-# 消息配置已移至 messages.yml
 config-version: 37
 
-# ========================================
-# 全局数据库配置
-# 所有需要数据库存储的模块共用此配置
-# ========================================
+# 数据库
 database:
-  # 表名前缀
   table-prefix: tsl_
-  # SQLite 配置
   sqlite:
-    # 数据库文件路径（相对于插件目录）
     file: data/tslplugins.db
 
-# ========================================
-# TimedAttribute 计时属性效果配置
-# ========================================
+# 计时属性效果
 timed-attribute:
-  enabled: true
+  enabled: false
   scan-interval-ticks: 20
 
-# ========================================
-# PapiAlias 变量映射配置
-# 将 PAPI 变量值映射为简写形式
-# 使用方式: %tsl_alias_<变量名>%
-# 例如: %tsl_alias_playerGuild_name% 会解析 %playerGuild_name% 的值并映射
-# 
-# 匹配规则（按优先级）：
-#   1. 精确匹配
-#   2. 中文字符匹配 - 只提取中文进行比较（推荐用于带颜色代码的变量）
-#   3. 去色后匹配
-#   4. 去色后包含匹配
-# ========================================
+# PAPI变量映射 (%tsl_alias_变量名%)
 papi-alias:
-  # 是否启用变量映射功能
-  enabled: true
-  # 当映射不存在时是否返回原始值（true=返回原值, false=返回空字符串）
+  enabled: false
   return-original-if-not-found: true
-  # 变量映射配置
-  # 格式:
-  #   变量名:
-  #     "中文关键词": "简写值"
-  # 
-  # 示例：带颜色代码的公会名
-  # 原始值: 『&#fa8f2d轻&#f77127音&#f35220部&#ef341a』
-  # 配置时只需写中文部分，会自动匹配
-  mappings:
-    # 示例：公会名称映射（只需写中文，自动匹配带颜色代码的变量）
-    # playerGuild_name:
-    #   "轻音部": "&#fa8f2d[音]"
-    #   "千年科技": "<gradient:#08c8ff:#4cd6ff>『仟』</gradient>"
-    #   "宝可梦": "梦"
-    # 示例：阵营映射
-    # faction:
-    #   "红队": "红"
-    #   "蓝队": "蓝"
+  mappings: {}
 
-# ========================================
-# Ignore 聊天屏蔽配置
-# ========================================
+# 聊天屏蔽
 ignore:
-  # 是否启用聊天屏蔽功能
-  enabled: true
-  # 每个玩家最多可屏蔽的玩家数量
+  enabled: false
   max-ignore-count: 100
 
-# ========================================
-# Snow Anti-Melt 雪防融化配置
-# ========================================
+# 雪防融化
 snow-anti-melt:
-  # 是否启用雪防融化功能
-  # 启用后，雪层和雪块不会因光照融化
-  enabled: true
+  enabled: false
 
-# MOTD 假玩家配置
+# MOTD假玩家
 fakeplayer:
-  # 是否启用假玩家功能
-  enabled: true
-  # 显示的在线人数 = 实际在线 + count（可为负，最小为 0）
+  enabled: false
   count: 3
-# 命令别名配置
+
+# 命令别名 (配置见aliases.yml)
 alias:
-  # 是否启用命令别名功能
-  enabled: true
-  # 请在 aliases.yml 文件中配置命令别名
-  # 使用 /tsl aliasreload 重载别名配置
-# 成就消息配置
+  enabled: false
+
+# 成就消息过滤
 advancement:
-  # 是否启用成就消息过滤功能
-  enabled: true
-# 农田保护配置
+  enabled: false
+
+# 农田保护
 farmprotect:
-  # 是否启用农田保护功能
-  enabled: true
-# Visitor 模式配置
+  enabled: false
+
+# 访客模式
 visitor:
-  # 是否启用 Visitor 功能
-  enabled: true
-  # 访客权限组列表（在这些权限组中的玩家会被视为访客）
-  # 如果玩家同时拥有多个权限组，以 LuckPerms 的主权限组（primary group）为准
+  enabled: false
   groups:
     - "visitor"
     - "guest"
-  # 访客限制配置
   restrictions:
-    # 是否禁止访客破坏方块
     block-break: true
-    # 是否禁止访客放置方块
     block-place: true
-    # 是否禁止访客使用物品（食物除外）
     item-use: true
-    # 是否禁止访客打开容器（箱子、桶、潜影盒等）
     container-open: true
-    # 是否禁止访客触发红石设施（压力板、按钮、拉杆等）
     pressure-plate: true
-    # 是否禁止访客攻击实体（包括怪物和其他玩家）
     entity-damage: true
-  # 获得访客权限时的提示
   gained:
-    chat: "&a[访客模式] &7你已进入访客模式，怪物将不会攻击你，并且你会发光！"
+    chat: "&a[访客模式] &7已进入访客模式"
     title: "&a访客模式"
     subtitle: "&7已启用"
     sound: "entity.player.levelup"
-  # 失去访客权限时的提示
   lost:
-    chat: "&c[访客模式] &7你已退出访客模式，怪物现在可以攻击你了！"
+    chat: "&c[访客模式] &7已退出访客模式"
     title: "&c访客模式"
     subtitle: "&7已禁用"
     sound: "block.note_block.bass"
-# 权限检测配置（支持多规则）
+
+# 权限检测
 permission-checker:
-  # 是否启用权限检测
-  enabled: true
-
-  # 权限检测规则列表
-  # 每个规则可以独立配置变量检测和权限组修改
+  enabled: false
   rules:
-    # 规则1：白名单玩家自动设为正式玩家
     whitelist-check:
-      # 变量名称（PlaceholderAPI 变量）
       variable: "%player_is_whitelisted%"
-      # 期望值
       value: "true"
-      # 目标权限组
       target-group: "normal"
-      # 修改模式：set（覆盖）或 add（添加）
-      # set: 删除玩家所有现有权限组，设置为目标组
-      # add: 保留玩家现有权限组，添加目标组
       mode: "set"
-      # 是否执行命令
-      execute-commands: false
-      # 执行的命令列表（%player% 会被替换为玩家名）
-      commands:
-        - "say 欢迎 %player% 通过白名单验证！"
-
-    # 规则2：VIP 玩家自动添加 VIP 组
-    vip-check:
-      variable: "%vault_eco_balance%"
-      value: "1000"
-      target-group: "vip"
-      mode: "add"  # 添加模式：保留现有权限组
-      execute-commands: false
-      commands:
-        - "bc %player% 成为了 VIP！"
-
-    # 规则3：示例 - 生存模式玩家
-    gamemode-check:
-      variable: "%player_gamemode%"
-      value: "SURVIVAL"
-      target-group: "survival"
-      mode: "add"
       execute-commands: false
       commands: []
-# 维护模式配置
+
+# 维护模式
 maintenance:
-  enabled: true
+  enabled: false
   kick-message:
     - "&c&l⚠ 服务器维护中 ⚠"
-  # 服务器列表 MOTD（维护模式下显示）
   motd:
     - "&c&l⚠ 服务器维护中 ⚠"
-    - "&7正在进行维护，请稍后再试"
-  # 版本栏文本（替代原本的 "1.21.x"）
+    - "&7正在维护，请稍后再试"
   version-text: "&c维护中 ✖"
-  # 是否显示为不兼容版本（显示红色X）
   show-incompatible-version: true
-  # 是否显示假玩家数量
   show-fake-players: true
-  # 假在线人数
   fake-online: 0
-  # 假最大人数
   fake-max: 0
-  # 玩家列表悬浮提示（鼠标放到人数上显示的内容）
-  # 每一行会显示为一个"玩家"
   hover-message:
     - "&c&l⚠ 服务器维护中 ⚠"
-# 玩家体型调整配置
+
+# 玩家体型
 scale:
-  enabled: true
+  enabled: false
   min: 0.8
   max: 1.1
-# Hat 功能配置
+
+# Hat头戴
 hat:
-  enabled: true
+  enabled: false
   cooldown: 0.0
   blacklist:
     - COMMAND_BLOCK
-# Ping 延迟查询配置
+
+# Ping延迟
 ping:
-  enabled: true
+  enabled: false
   entries_per_page: 10
   ping_colors:
     green: 100
     yellow: 200
-# Toss 生物举起功能配置
+
+# 生物举起
 toss:
-  enabled: true
+  enabled: false
   show_messages: false
   blacklist:
     - WITHER
@@ -232,12 +132,14 @@ toss:
   throw_velocity:
     min: 1.0
     max: 3.0
-# Freeze 冻结玩家功能配置
+
+# 冻结玩家
 freeze:
-  enabled: true
-# Ride 骑乘生物功能配置
+  enabled: false
+
+# 骑乘生物
 ride:
-  enabled: true
+  enabled: false
   default_enabled: false
   blacklist:
     - WITHER
@@ -248,9 +150,9 @@ ride:
     - VILLAGER
     - SHULKER
 
-# BabyLock 永久幼年生物配置
+# 永久幼年生物
 babylock:
-  enabled: true
+  enabled: false
   prefixes:
     - "[幼]"
     - "[小]"
@@ -259,284 +161,128 @@ babylock:
   prevent_despawn: true
   enabled_types: []
 
-# Kiss 亲吻功能配置
+# 亲吻功能
 kiss:
-  enabled: true
+  enabled: false
   cooldown: 1.0
-# BlockStats 方块统计功能配置
-# ========================================
+
+# 方块统计
 blockstats:
-  # 是否启用 BlockStats 功能
-  enabled: true
+  enabled: false
 
-# ========================================
-# ChatBubble 聊天气泡功能配置
-# ========================================
+# 聊天气泡
 chatbubble:
-  # 是否启用 ChatBubble 功能
-  enabled: true
-
-  # 气泡位置偏移（玩家头顶上方的距离）
+  enabled: false
   yOffset: 0.75
-
-  # 气泡存在时间（单位：tick，20 tick = 1 秒）
   timeSpan: 100
-
-  # 气泡朝向模式
-  # 可选值: FIXED(固定), VERTICAL(垂直), HORIZONTAL(水平), CENTER(居中)
   billboard: "VERTICAL"
-
-  # 是否显示阴影
   shadow: false
-
-  # 可视范围（单位：方块）
   viewRange: 16.0
-
-  # 更新频率（单位：tick，数值越小更新越频繁，性能消耗越大）
   updateTicks: 2
-
-  # 位置移动过渡时间（单位：tick）
   movementTicks: 4
-
-  # 不透明度配置（取值范围：0.0-1.0）
   opacity:
-    default: 1.0      # 正常状态
-    sneaking: 0.25    # 潜行状态
-
-  # 背景颜色配置（RGBA，取值范围：0-255）
-  # 如果 red 设置为 -1，则使用默认背景
+    default: 1.0
+    sneaking: 0.25
   background:
     red: -1
     green: 0
     blue: 0
     alpha: 0
 
-# ========================================
-# FixGhost 幽灵方块清理功能配置
-# ========================================
+# 幽灵方块清理
 fixghost:
-  enabled: true
+  enabled: false
   default-radius: 5
   max-radius: 5
   cooldown: 5.0
 
-
-# ========================================
-# Near 附近玩家配置
-# ========================================
+# 附近玩家
 near:
-  # 是否启用 Near 功能
-  enabled: true
-
-  # 默认搜索半径（单位：方块）
-  # 当玩家输入 /tsl near 不指定范围时使用
+  enabled: false
   defaultRadius: 1000
-
-  # 最大搜索半径（单位：方块）
-  # 普通玩家的最大范围限制，OP 或有 tsl.near.bypass 权限的玩家无视此限制
   maxRadius: 1000
 
-# ========================================
-# Speed 速度控制配置
-# ========================================
+# 速度控制
 speed:
-  enabled: true
+  enabled: false
   min-multiplier: 0.1
   max-multiplier: 10.0
 
-# ========================================
-# Phantom 幻翼控制配置
-# ========================================
+# 幻翼控制
 phantom:
-  # 是否启用 Phantom 功能
-  enabled: true
-
-  # 检查间隔（单位：秒）
-  # 每隔这么多秒检查一次所有在线玩家，重置不允许幻翼骚扰的玩家的 TIME_SINCE_REST
-  # 建议值: 300（5分钟），更低的值会增加服务器负担
+  enabled: false
   checkInterval: 300
 
-# ========================================
-# NewbieTag 萌新标志配置
-# ========================================
+# 萌新标志
 newbieTag:
-  # 是否启用 NewbieTag 功能
-  enabled: true
-
-  # 时间阈值（单位：小时）
-  # 在线时长小于此值的玩家显示萌新标志，大于等于此值显示老玩家标志
+  enabled: false
   thresholdHours: 24
-
-  # 萌新标志（在线时长 < thresholdHours）
   newbieTag: "✨"
-
-  # 老玩家标志（在线时长 >= thresholdHours）
   veteranTag: "⚡"
 
-# ========================================
-# Spec 观众模式配置
-# ========================================
+# 观众模式
 spec:
-  # 是否启用 Spec 功能
-  enabled: true
-
-  # 默认延迟（单位：秒）
-  # 当使用 /tsl spec start 不指定延迟时使用
+  enabled: false
   defaultDelay: 30
-
-  # 最小延迟（单位：秒）
   minDelay: 10
-
-  # 最大延迟（单位：秒）
   maxDelay: 300
-
-  # 白名单（不会被观看的玩家）
-  # 支持玩家名或 UUID
   whitelist: []
 
-# ========================================
-# Title 称号系统配置
-# 通过 WebSocket 与 Web 端同步称号数据
-# ========================================
+# 称号系统
 title:
-  # 是否启用称号功能
-  enabled: true
-  # LuckPerms 权重（避免与其他插件冲突）
-  # 数值越高优先级越高
+  enabled: false
   luckperms-priority: 100
-  # 玩家上线后延迟请求称号（tick，20tick=1秒）
   join-delay: 20
 
-# ========================================
-# WebBridge Web 通信桥配置
-# ========================================
+# Web通信桥
 webbridge:
-  # 是否启用 WebBridge 功能
   enabled: false
-
-  # 服务器唯一标识（首次启动自动生成，请勿手动修改）
-  # 用于多服务器支持，区分不同的 MC 服务器
-  # 服务器显示名称在 Web 后台设置
   server-id: ""
-
-  # WebSocket 配置
   websocket:
-    # WebSocket 服务器地址（支持 ws:// 和 wss://）
-    #
-    # 重要：
-    # 1. 使用 127.0.0.1 而不是 localhost（避免 DNS 解析问题）
-    # 2. 无需在 URL 中手动添加 serverId，插件会自动添加
-    # 3. 如有 token 认证，可在下方 token 配置项填写
-    #
-    # 配置完成后使用 /tsl webbridge connect 命令连接
     url: "ws://127.0.0.1:4001/mc-bridge"
-    # 连接 Token（可选，如果服务端配置了的话）
     token: ""
-
-  # 自动重连配置
-  # 开服后自动尝试连接 WebSocket 服务器
   auto-reconnect: true
-  # 重连间隔（秒）
   reconnect-interval: 30
-  # 最大重试次数，超过后停止自动重连
   max-reconnect-attempts: 5
-
-  # 玩家列表推送间隔（秒）
-  # 每隔这么多秒向 Web 端推送一次玩家列表
   player-list-interval: 30
-
-  # 心跳间隔（秒）
-  # 用于保持 WebSocket 连接的活跃状态
   heartbeat-interval: 30
-
-  # Web 端消息同步到游戏的格式
   web-to-game-format: "&7[&b{source}&7] &f<{playerName}> &7{message}"
-# ========================================
-# EndDragon 末影龙控制功能配置
-# ========================================
-enddragon:
-  # 是否启用末影龙控制功能
-  enabled: true
 
-  # 是否禁止末影龙破坏方块（撞方块）
-  # true: 末影龙会被限制，无法破坏地形
-  # false: 末影龙可以正常破坏方块
+# 末影龙控制
+enddragon:
+  enabled: false
   disable-damage: true
 
-# ========================================
-# PlayerCountCmd 人数控制命令配置
-# ========================================
-# 根据在线人数自动执行控制台命令
-# 适用场景：Chunky预加载、Bluemap渲染、视距调整等
+# 人数控制命令
 player-count-cmd:
-  # 是否启用人数控制命令功能
-  enabled: true
-
-  # 上阈值：当在线人数 >= 此值时，执行高人数命令
-  # 设置建议：根据服务器性能调整
+  enabled: false
   upper-threshold: 52
-
-  # 下阈值：当在线人数 <= 此值时，执行低人数命令
-  # 设置建议：应小于上阈值，形成"回差"区间防止频繁切换
-  # 例如：上阈值52，下阈值48，意味着52人执行高人数命令，48人执行低人数命令，49-51人维持当前状态
   lower-threshold: 48
-
-  # 最小执行间隔（毫秒）
-  # 两次命令执行之间的最小间隔，防止玩家快速进出导致频繁切换
-  # 推荐值: 10000（10秒）
   min-interval-ms: 10000
-
-  # 人数低于下阈值时执行的命令
-  # 示例：
-  #   - "chunky continue" 继续预加载
-  #   - "bluemap start" 开始渲染
-  #   - "minecraft:execute run gamerule viewDistance 12" 设置视距
   command-when-low: "chunky continue"
-
-  # 人数高于上阈值时执行的命令
-  # 示例：
-  #   - "chunky pause" 暂停预加载
-  #   - "bluemap stop" 暂停渲染
-  #   - "minecraft:execute run gamerule viewDistance 8" 降低视距
   command-when-high: "chunky pause"
 
-# ========================================
-# Neko 猫娘模式配置
-# ========================================
+# 猫娘模式
 neko:
-  enabled: true
+  enabled: false
   suffix: "喵~"
   scan-interval-ticks: 20
 
-# ========================================
-# Mcedia 视频播放器配置
-# ========================================
+# 视频播放器
 mcedia:
-  enabled: true
+  enabled: false
   player-name-prefix: "mcedia"
   default-scale: 1.0
   default-volume: 1.0
   max-players: 50
   trigger-item: ""
 
-# ========================================
-# RandomVariable 混合分布随机数配置
-# 用于生成 PAPI 变量 %tsl_random_变量名%
-# ========================================
+# 随机数变量 (%tsl_random_变量名%)
 random-variable:
-  # 是否启用混合分布随机数功能
-  enabled: true
-
-  # 变量配置
-  # 每个变量由多个区间+权重组成
-  # 概率计算: 区间权重 / 总权重
+  enabled: false
   variables:
-    # 示例变量: scale_random
-    # 使用 %tsl_random_scale_random% 获取
     scale_random:
-      # 小数精度 (-1 表示不限制)
       precision: 1
-      # 区间列表
       ranges:
         - min: 0.1
           max: 1.0
@@ -545,164 +291,65 @@ random-variable:
           max: 20.0
           weight: 1.0
 
-    # 示例变量: damage_boost
-    # 使用 %tsl_random_damage_boost% 获取
-    damage_boost:
-      precision: 2
-      ranges:
-        - min: 1.0
-          max: 5.0
-          weight: 3.0    # 50% 概率
-        - min: 5.0
-          max: 10.0
-          weight: 2.0    # 33% 概率
-        - min: 10.0
-          max: 20.0
-          weight: 1.0    # 17% 概率
-
-    # 示例变量: lucky_number
-    # 使用 %tsl_random_lucky_number% 获取
-    lucky_number:
-      precision: 0      # 整数
-      ranges:
-        - min: 1
-          max: 100
-          weight: 1.0
-
-# ========================================
-# Peace 伪和平模式配置
-# ========================================
+# 伪和平模式
 peace:
-  enabled: true
+  enabled: false
   scan-interval-ticks: 20
   nospawn-radius: 48
 
-# ========================================
-# PlayTime 玩家在线时长统计配置
-# ========================================
+# 在线时长统计
 playtime:
-  enabled: true
+  enabled: false
   save-interval-ticks: 6000
   timezone: "Asia/Shanghai"
 
-# ========================================
-# SuperSnowball 超级大雪球配置
-# ========================================
+# 超级大雪球
 super-snowball:
-  # 是否启用超级大雪球功能
-  enabled: true
-
-  # 覆雪效果半径（方块）
+  enabled: false
   snow-radius: 5
-
-  # 击飞效果半径（方块，比覆雪稍大）
   knockback-radius: 7.0
-
-  # 击飞强度
   knockback-strength: 1.5
-
-  # 额外重力（模拟大雪球下落更快）
   gravity: 0.06
-
-  # 速度倍率（更慢的飞行速度）
   velocity-multiplier: 0.6
-
-  # 轨迹粒子数量（每次生成）
   trail-particle-count: 3
-
-  # 轨迹粒子间隔（tick）
   trail-particle-interval: 2
-
-  # 落地粒子数量
   impact-particle-count: 50
-
-  # 雪层生成概率（0.0-1.0）
   snow-layer-chance: 0.7
-
-  # 最大雪层数
   max-snow-layers: 3
-
-  # 冻伤效果刻度（140刻开始受伤，0为禁用）
   freeze-ticks: 100
-
-  # 是否使用自定义模型
   use-custom-model: true
-
-  # 自定义模型 Key（需要资源包支持）
   custom-model-key: "cris_tsl:big_snow_ball"
-
-  # 落地音效配置（格式: "音效名:音量:音高"）
-  # 留空使用默认音效（紫水晶+风弹）
-  # 音效名参考: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html
   impact-sounds: []
-  # 示例:
-  # impact-sounds:
-  #   - "BLOCK_AMETHYST_BLOCK_CHIME:1.5:1.0"
-  #   - "ENTITY_WIND_CHARGE_WIND_BURST:1.0:1.2"
 
-# ============================================
-# 红石冻结系统配置
-# ============================================
+# 红石冻结
 redstone-freeze:
-  # 是否启用红石冻结功能
-  enabled: true
-
-  # 最大冻结半径（区块数）
+  enabled: false
   max-radius: 32
-
-  # 冻结区域 BossBar 标题
   bossbar-title: "§c❄ 当前区域物理已冻结 ❄"
-
-  # 受影响的红石元件开关（true=冻结, false=不冻结）
   affected-components:
-    # 红石信号变化
     redstone-signal: true
-    # 活塞伸出
     piston-extend: true
-    # 活塞收回
     piston-retract: true
-    # 方块物理更新（侦测器、重力方块等）
     block-physics: true
-    # TNT 点燃
     tnt-prime: true
-    # 爆炸（TNT、苦力怕等）
     explosion: true
-    # TNT 实体生成
     tnt-spawn: true
 
-# ========================================
-# Vault 宝库重置模块
-# ========================================
-# 双重检测：epoch 周期 + resumesAt 异常值
-# 玩家右键宝库时检查，满足任一条件则使用 /data 命令重置
+# 宝库重置
 vault:
-  # 是否启用
-  enabled: true
-
-  # 当前周期（自动维护，请勿手动修改）
+  enabled: false
   current-epoch: 1
-
-  # 重置间隔（天）
   reset-interval-days: 15
-
-  # 上次重置时间戳（自动维护）
   last-reset-timestamp: 0
-
-  # 异常阈值（游戏刻）
-  # 如果 resumesAt 超过当前游戏时间 + 此值，判定为异常
-  # 默认 100000 ticks ≈ 83 分钟
   abnormal-threshold: 100000
-
-  # 调试模式
   debug: false
 
-# Vote 指令投票
+# 指令投票
 vote:
   enabled: false
   cooldown-seconds: 60
   default-duration-seconds: 30
   default-percentage: 0.5
-  # 投票配置 (command支持{initiator}/{votes}变量)
   votes:
     day:
       command: "time set day"

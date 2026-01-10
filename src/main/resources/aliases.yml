@@ -1,17 +1,5 @@
-# TSL 插件 - 命令别名配置文件
-# 格式: "别名:原命令"
-# 支持子命令: "别名 子命令:原命令"
-# 大小写不敏感
-#
-# 示例:
-#   - "传送:tpa"          -> /传送 等同于 /tpa
-#   - "t:tpa"             -> /t 等同于 /tpa
-#   - "stp tp:teleport"   -> /stp tp 等同于 /teleport
-#   - "stp time:time set" -> /stp time day 等同于 /time set day
-
+# 命令别名 (格式: "别名:原命令")
 aliases:
   - "传送:tpa"
   - "t:tpa"
-  - "stp tp:teleport"
-  - "stp time:time set"
 
