@@ -19,6 +19,12 @@ class VisitorCommand(
         label: String,
         args: Array<out String>
     ): Boolean {
+        // 检查模块是否启用
+        if (!visitorEffect.isEnabled()) {
+            sender.sendMessage("§c访客模式功能已禁用")
+            return true
+        }
+
         // 检查权限
         if (!sender.hasPermission("tsl.visitor.admin")) {
             sender.sendMessage("§c你没有权限使用此命令！")
@@ -112,8 +118,8 @@ class VisitorCommand(
         label: String,
         args: Array<out String>
     ): List<String> {
-        // 检查权限
-        if (!sender.hasPermission("tsl.visitor.admin")) {
+        // 检查模块启用和权限
+        if (!visitorEffect.isEnabled() || !sender.hasPermission("tsl.visitor.admin")) {
             return emptyList()
         }
 

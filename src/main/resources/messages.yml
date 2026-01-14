@@ -197,3 +197,18 @@ vote:
   vote_failed: "&c&l[投票失败] &f{key} &7| 赞成: &c{votes}&7/&e{required} &7(票数不足)"
   vote_cancelled: "%prefix%&e当前投票已被取消"
   vote_force_cancelled: "%prefix%&a已强制取消当前投票"
+
+qq-bind:
+  not_connected: "%prefix%&cWebSocket 未连接，无法使用此功能"
+  request_sent: "%prefix%&7正在生成绑定码..."
+  request_timeout: "%prefix%&c请求超时，请重试"
+  code_generated: "%prefix%&a绑定码已生成：&e&l%code%"
+  instruction: "%prefix%&7请在 &b服务器QQ群 &7内发送此绑定码完成绑定"
+  expire_hint: "%prefix%&7有效期：&f%seconds% 秒"
+  already_bound: "%prefix%&c该账号已绑定其他 QQ"
+  invalid_code: "%prefix%&c验证码格式错误，请重试"
+  server_error: "%prefix%&c服务器繁忙，请稍后重试"
+  unknown_error: "%prefix%&c未知错误，请重试"
+  bind_success: "%prefix%&a✓ QQ 绑定成功！"
+  bind_success_hint: "%prefix%&7你的 MC 账号已与 QQ 关联"
+  bind_failed: "%prefix%&c✗ 绑定失败：%reason%"

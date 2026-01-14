@@ -28,6 +28,7 @@ class WebBridgeManager(private val plugin: Plugin) {
     private var playerEventListener: WebBridgePlayerListener? = null
     private var titleManager: TitleManager? = null
     private var bindManager: BindManager? = null
+    private var qqBindManager: QQBindManager? = null
     private var isEnabled = false
 
     // 服务器标识（多服务器支持）
@@ -126,6 +127,9 @@ class WebBridgeManager(private val plugin: Plugin) {
         // 初始化绑定管理器
         bindManager = BindManager(plugin)
 
+        // 初始化 QQ 绑定管理器
+        qqBindManager = QQBindManager(plugin, this)
+
         plugin.logger.info("[WebBridge] 模块已启用，URL: $url")
 
         // 启动自动重连任务
@@ -165,6 +169,10 @@ class WebBridgeManager(private val plugin: Plugin) {
         // 关闭绑定管理器
         bindManager?.shutdown()
         bindManager = null
+
+        // 关闭 QQ 绑定管理器
+        qqBindManager?.shutdown()
+        qqBindManager = null
 
         plugin.logger.info("[WebBridge] 模块已关闭")
     }
@@ -279,6 +287,11 @@ class WebBridgeManager(private val plugin: Plugin) {
      * 获取绑定管理器
      */
     fun getBindManager(): BindManager? = bindManager
+
+    /**
+     * 获取 QQ 绑定管理器
+     */
+    fun getQQBindManager(): QQBindManager? = qqBindManager
 
     // ========== 绑定相关方法 ==========
 

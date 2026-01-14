@@ -40,8 +40,14 @@ class BindCommand(
             return true
         }
 
+        // 无参数时，发起 QQ 群绑定
         if (args.isEmpty()) {
-            showUsage(sender)
+            val qqBindManager = webBridgeManager.getQQBindManager()
+            if (qqBindManager != null) {
+                qqBindManager.requestQQBind(sender)
+            } else {
+                sender.sendMessage(serializer.deserialize("&c[绑定] QQ 绑定功能不可用"))
+            }
             return true
         }
 
@@ -55,21 +61,11 @@ class BindCommand(
             return true
         }
 
-        // 发送绑定请求
+        // 发送绑定请求（网站验证码绑定）
         sender.sendMessage(serializer.deserialize("&e[绑定] 正在验证..."))
         webBridgeManager.requestBindAccount(sender, code)
 
         return true
-    }
-
-    private fun showUsage(sender: CommandSender) {
-        sender.sendMessage(serializer.deserialize("&6&l===== 账号绑定 ====="))
-        sender.sendMessage(serializer.deserialize("&e/tsl bind <验证码> &7- 绑定网站账号"))
-        sender.sendMessage(serializer.deserialize(""))
-        sender.sendMessage(serializer.deserialize("&7步骤:"))
-        sender.sendMessage(serializer.deserialize("&71. 访问官网绑定页面"))
-        sender.sendMessage(serializer.deserialize("&72. 点击\"生成验证码\""))
-        sender.sendMessage(serializer.deserialize("&73. 在游戏内输入 &f/tsl bind <验证码>"))
     }
 
     override fun tabComplete(

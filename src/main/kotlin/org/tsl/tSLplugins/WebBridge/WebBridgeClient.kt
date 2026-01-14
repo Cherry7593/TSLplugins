@@ -365,6 +365,8 @@ class WebBridgeClient(
                     "GET_TITLE" -> handleGetTitleResponse(data)
                     "REDEEM_CODE" -> handleRedeemCodeResponse(data)
                     "BIND_ACCOUNT" -> handleBindAccountResponse(data)
+                    "QQ_BIND_REQUEST" -> handleQQBindRequestResponse(data)
+                    "QQ_BIND_RESULT" -> handleQQBindResult(data)
                     else -> plugin.logger.fine("[WebBridge] 未处理的响应类型: $action")
                 }
             } catch (e: Exception) {
@@ -419,6 +421,40 @@ class WebBridgeClient(
             
             Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
                 manager.getBindManager()?.handleBindResponse(requestId, success, message, error, userId, userName)
+            }
+        }
+
+        /**
+         * 处理 QQ 绑定请求响应
+         */
+        private fun handleQQBindRequestResponse(data: kotlinx.serialization.json.JsonObject) {
+            val requestId = data["id"]?.jsonPrimitive?.content ?: return
+            val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val code = data["code"]?.jsonPrimitive?.content
+            val remainingSeconds = data["remainingSeconds"]?.jsonPrimitive?.content?.toIntOrNull()
+            val isNew = data["isNew"]?.jsonPrimitive?.content?.toBoolean()
+            val message = data["message"]?.jsonPrimitive?.content
+            val error = data["error"]?.jsonPrimitive?.content
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getQQBindManager()?.handleBindRequestResponse(
+                    requestId, success, code, remainingSeconds, isNew, message, error
+                )
+            }
+        }
+
+        /**
+         * 处理 QQ 绑定结果通知（广播）
+         */
+        private fun handleQQBindResult(data: kotlinx.serialization.json.JsonObject) {
+            val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val mcUuid = data["mcUuid"]?.jsonPrimitive?.content ?: return
+            val mcName = data["mcName"]?.jsonPrimitive?.content ?: ""
+            val qqNumber = data["qqNumber"]?.jsonPrimitive?.content
+            val message = data["message"]?.jsonPrimitive?.content
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getQQBindManager()?.handleBindResult(success, mcUuid, mcName, qqNumber, message)
             }
         }
 

@@ -84,7 +84,7 @@ class VisitorEffect(private val plugin: JavaPlugin) : Listener {
     /**
      * 检查 Visitor 功能是否启用
      */
-    private fun isEnabled(): Boolean = enabled
+    fun isEnabled(): Boolean = enabled
 
     /**
      * 快速检查玩家是否是访客（使用缓存，性能优化）
