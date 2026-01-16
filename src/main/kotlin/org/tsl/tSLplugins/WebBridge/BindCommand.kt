@@ -1,5 +1,10 @@
 package org.tsl.tSLplugins.WebBridge
 
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -8,7 +13,7 @@ import org.tsl.tSLplugins.SubCommandHandler
 
 /**
  * 账号绑定命令处理器
- * 处理 /tsl bind <验证码> 命令
+ * 处理 /tsl bind [验证码|unbind] 命令
  */
 class BindCommand(
     private val webBridgeManager: WebBridgeManager
@@ -37,6 +42,17 @@ class BindCommand(
         // 检查 WebSocket 连接
         if (!webBridgeManager.isConnected()) {
             sender.sendMessage(serializer.deserialize("&c[绑定] 服务器未连接，请稍后重试"))
+            return true
+        }
+
+        // 处理解绑命令
+        if (args.isNotEmpty() && args[0].equals("unbind", ignoreCase = true)) {
+            val qqBindManager = webBridgeManager.getQQBindManager()
+            if (qqBindManager != null) {
+                qqBindManager.requestUnbind(sender)
+            } else {
+                sender.sendMessage(serializer.deserialize("&c[绑定] 解绑功能不可用"))
+            }
             return true
         }
 
@@ -74,11 +90,30 @@ class BindCommand(
         label: String,
         args: Array<out String>
     ): List<String> {
-        // 不提供补全，验证码需要手动输入
+        if (args.size == 1) {
+            return listOf("unbind").filter { it.startsWith(args[0], ignoreCase = true) }
+        }
         return emptyList()
     }
 
     override fun getDescription(): String {
-        return "绑定网站账号"
+        return "绑定/解绑账号"
+    }
+
+    companion object {
+        /**
+         * 发送已绑定提示（带可点击解绑按钮）
+         */
+        fun sendAlreadyBoundMessage(player: Player) {
+            val prefix = Component.text("[绑定] ", NamedTextColor.GOLD)
+            val message = Component.text("该账号已绑定，请勿重复绑定。", NamedTextColor.YELLOW)
+            
+            val unbindButton = Component.text(" [点击解绑]", NamedTextColor.RED)
+                .decorate(TextDecoration.BOLD)
+                .clickEvent(ClickEvent.runCommand("/tsl bind unbind"))
+                .hoverEvent(HoverEvent.showText(Component.text("点击解除绑定", NamedTextColor.GRAY)))
+            
+            player.sendMessage(prefix.append(message).append(unbindButton))
+        }
     }
 }

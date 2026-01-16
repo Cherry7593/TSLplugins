@@ -304,11 +304,11 @@ class WebBridgeManager(private val plugin: Plugin) {
             return
         }
 
-        val requestId = "bind-${System.currentTimeMillis()}-${UUID.randomUUID().toString().substring(0, 8)}"
+        val requestId = UUID.randomUUID().toString()
 
         val request = BindAccountRequest(
+            requestId = requestId,
             data = BindAccountRequestData(
-                id = requestId,
                 playerUuid = player.uniqueId.toString(),
                 playerName = player.name,
                 code = code.uppercase()

@@ -25,7 +25,9 @@ class ConfigUpdateManager(private val plugin: JavaPlugin) {
          * 不会被默认配置覆盖
          */
         private val USER_OWNED_KEYS = setOf(
-            "permission-checker.rules"  // 权限检测规则，用户自定义
+            "permission-checker.rules",   // 权限检测规则，用户自定义
+            "random-variable.variables",  // 随机变量定义，用户自定义
+            "papi-alias.mappings"         // PAPI 别名映射，用户自定义
         )
     }
 

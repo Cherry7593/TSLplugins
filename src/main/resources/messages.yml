@@ -200,11 +200,10 @@ vote:
 
 qq-bind:
   not_connected: "%prefix%&cWebSocket 未连接，无法使用此功能"
-  request_sent: "%prefix%&7正在生成绑定码..."
+  request_sent: "%prefix%&7正在请求绑定码..."
   request_timeout: "%prefix%&c请求超时，请重试"
-  code_generated: "%prefix%&a绑定码已生成：&e&l%code%"
-  instruction: "%prefix%&7请在 &b服务器QQ群 &7内发送此绑定码完成绑定"
-  expire_hint: "%prefix%&7有效期：&f%seconds% 秒"
+  bind_instruction: "%prefix%&a请在 QQ 群内发送：&e&l%command%"
+  expire_hint: "%prefix%&7验证码有效期：&f%minutes% 分钟"
   already_bound: "%prefix%&c该账号已绑定其他 QQ"
   invalid_code: "%prefix%&c验证码格式错误，请重试"
   server_error: "%prefix%&c服务器繁忙，请稍后重试"
@@ -212,3 +211,7 @@ qq-bind:
   bind_success: "%prefix%&a✓ QQ 绑定成功！"
   bind_success_hint: "%prefix%&7你的 MC 账号已与 QQ 关联"
   bind_failed: "%prefix%&c✗ 绑定失败：%reason%"
+  unbind_processing: "%prefix%&7正在处理解绑请求..."
+  unbind_success: "%prefix%&a✓ 解绑成功！"
+  unbind_qq_hint: "%prefix%&7已解除与 QQ &e%qq% &7的绑定"
+  not_bound: "%prefix%&c该账号未绑定任何 QQ"

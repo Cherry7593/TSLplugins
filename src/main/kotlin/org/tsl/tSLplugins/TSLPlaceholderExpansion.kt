@@ -36,6 +36,8 @@ import org.tsl.tSLplugins.PlayTime.PlayTimeManager
  * - %tsl_playtime_seconds% - 今日在线时长（秒）
  * - %tsl_playtime_minutes% - 今日在线时长（分钟）
  * - %tsl_playtime_hours% - 今日在线时长（小时，带小数）
+ * - %tsl_bind% - QQ 绑定状态 (true/false)
+ * - %tsl_bind_qq% - 绑定的 QQ 号码
  */
 class TSLPlaceholderExpansion(
     private val plugin: JavaPlugin,
@@ -48,7 +50,8 @@ class TSLPlaceholderExpansion(
     private val newbieTagManager: NewbieTagManager?,
     private val randomVariableManager: RandomVariableManager?,
     private val papiAliasManager: PapiAliasManager? = null,
-    private val playTimeManager: PlayTimeManager? = null
+    private val playTimeManager: PlayTimeManager? = null,
+    private val playerDataManager: PlayerDataManager? = null
 ) : PlaceholderExpansion() {
 
     override fun getIdentifier(): String = "tsl"
@@ -181,6 +184,21 @@ class TSLPlaceholderExpansion(
                     if (onlinePlayer == null) return "0.0"
                     val seconds = playTimeManager.getTodayPlayTime(onlinePlayer.uniqueId)
                     return String.format("%.1f", seconds / 3600.0)
+                }
+            }
+        }
+
+        // === Bind 变量 ===
+        if (playerDataManager != null) {
+            val profile = playerDataManager.getProfileStore().get(player.uniqueId)
+            when {
+                // %tsl_bind% - QQ 绑定状态
+                params.equals("bind", ignoreCase = true) -> {
+                    return (profile?.bindStatus ?: false).toString()
+                }
+                // %tsl_bind_qq% - 绑定的 QQ 号码
+                params.equals("bind_qq", ignoreCase = true) -> {
+                    return profile?.bindQQ ?: ""
                 }
             }
         }

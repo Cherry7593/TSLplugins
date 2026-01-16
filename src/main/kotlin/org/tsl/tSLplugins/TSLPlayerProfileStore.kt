@@ -89,6 +89,8 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
                 kissCount = config.getInt("kissCount", 0),
                 kissedCount = config.getInt("kissedCount", 0),
                 ignoreList = ignoreList,
+                bindStatus = config.getBoolean("bindStatus", false),
+                bindQQ = config.getString("bindQQ", "") ?: "",
                 migratedFromPdc = config.getBoolean("migratedFromPdc", false),
                 lastSaved = config.getLong("lastSaved", System.currentTimeMillis())
             )
@@ -133,6 +135,8 @@ class TSLPlayerProfileStore(private val plugin: JavaPlugin) {
             config.set("kissCount", profile.kissCount)
             config.set("kissedCount", profile.kissedCount)
             config.set("ignoreList", profile.ignoreList.map { it.toString() })
+            config.set("bindStatus", profile.bindStatus)
+            config.set("bindQQ", profile.bindQQ)
             config.set("migratedFromPdc", profile.migratedFromPdc)
             config.set("lastSaved", profile.lastSaved)
 

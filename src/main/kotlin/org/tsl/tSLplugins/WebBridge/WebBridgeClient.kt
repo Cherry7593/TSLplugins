@@ -355,18 +355,24 @@ class WebBridgeClient(
          */
         private fun handleResponseMessage(json: kotlinx.serialization.json.JsonObject) {
             try {
-                val source = json["source"]?.jsonPrimitive?.content
-                if (source != "web") return
+                // 优先从顶层获取 action（新格式），否则从 data 内获取（旧格式）
+                val topLevelAction = json["action"]?.jsonPrimitive?.content
+                val data = json["data"]?.jsonObject
+                val dataAction = data?.get("action")?.jsonPrimitive?.content
+                val action = topLevelAction ?: dataAction
                 
-                val data = json["data"]?.jsonObject ?: return
-                val action = data["action"]?.jsonPrimitive?.content ?: return
+                if (action == null) {
+                    plugin.logger.fine("[WebBridge] 响应消息缺少 action 字段")
+                    return
+                }
                 
                 when (action) {
-                    "GET_TITLE" -> handleGetTitleResponse(data)
-                    "REDEEM_CODE" -> handleRedeemCodeResponse(data)
-                    "BIND_ACCOUNT" -> handleBindAccountResponse(data)
-                    "QQ_BIND_REQUEST" -> handleQQBindRequestResponse(data)
-                    "QQ_BIND_RESULT" -> handleQQBindResult(data)
+                    "GET_TITLE" -> data?.let { handleGetTitleResponse(it) }
+                    "REDEEM_CODE" -> data?.let { handleRedeemCodeResponse(it) }
+                    "BIND_ACCOUNT" -> handleBindAccountResponse(json)
+                    "QQ_BIND_REQUEST" -> handleQQBindRequestResponse(json)
+                    "QQ_BIND_RESULT" -> data?.let { handleQQBindResult(it) }
+                    "UNBIND_ACCOUNT" -> handleUnbindAccountResponse(json)
                     else -> plugin.logger.fine("[WebBridge] 未处理的响应类型: $action")
                 }
             } catch (e: Exception) {
@@ -409,15 +415,21 @@ class WebBridgeClient(
         }
 
         /**
-         * 处理账号绑定响应
+         * 处理网站绑定账号响应
+         * Web 实际格式: { type, source, timestamp, data: {action, id, success, userId, userName, message, error?} }
          */
-        private fun handleBindAccountResponse(data: kotlinx.serialization.json.JsonObject) {
+        private fun handleBindAccountResponse(json: kotlinx.serialization.json.JsonObject) {
+            val data = json["data"]?.jsonObject ?: return
+            
+            // 所有字段都在 data 内部
             val requestId = data["id"]?.jsonPrimitive?.content ?: return
             val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
             val message = data["message"]?.jsonPrimitive?.content ?: ""
             val error = data["error"]?.jsonPrimitive?.content
             val userId = data["userId"]?.jsonPrimitive?.content
             val userName = data["userName"]?.jsonPrimitive?.content
+            
+            plugin.logger.info("[WebBridge] 绑定响应: requestId=$requestId, success=$success")
             
             Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
                 manager.getBindManager()?.handleBindResponse(requestId, success, message, error, userId, userName)
@@ -426,19 +438,26 @@ class WebBridgeClient(
 
         /**
          * 处理 QQ 绑定请求响应
+         * Web 实际格式: { type, source, timestamp, data: {action, id, success, code, remainingSeconds, isNew, bindCommand, message, error?} }
          */
-        private fun handleQQBindRequestResponse(data: kotlinx.serialization.json.JsonObject) {
+        private fun handleQQBindRequestResponse(json: kotlinx.serialization.json.JsonObject) {
+            val data = json["data"]?.jsonObject ?: return
+            
+            // 所有字段都在 data 内部
             val requestId = data["id"]?.jsonPrimitive?.content ?: return
             val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val message = data["message"]?.jsonPrimitive?.content
+            val error = data["error"]?.jsonPrimitive?.content
             val code = data["code"]?.jsonPrimitive?.content
             val remainingSeconds = data["remainingSeconds"]?.jsonPrimitive?.content?.toIntOrNull()
             val isNew = data["isNew"]?.jsonPrimitive?.content?.toBoolean()
-            val message = data["message"]?.jsonPrimitive?.content
-            val error = data["error"]?.jsonPrimitive?.content
+            val bindCommand = data["bindCommand"]?.jsonPrimitive?.content
+            
+            plugin.logger.info("[WebBridge] QQ绑定响应: requestId=$requestId, success=$success, code=$code")
             
             Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
                 manager.getQQBindManager()?.handleBindRequestResponse(
-                    requestId, success, code, remainingSeconds, isNew, message, error
+                    requestId, success, code, remainingSeconds, isNew, bindCommand, message, error
                 )
             }
         }
@@ -455,6 +474,28 @@ class WebBridgeClient(
             
             Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
                 manager.getQQBindManager()?.handleBindResult(success, mcUuid, mcName, qqNumber, message)
+            }
+        }
+
+        /**
+         * 处理解绑账号响应
+         * Web 实际格式: { type, source, timestamp, data: {action, id, success, mcName, qqNumber, message, error?} }
+         */
+        private fun handleUnbindAccountResponse(json: kotlinx.serialization.json.JsonObject) {
+            val data = json["data"]?.jsonObject ?: return
+            
+            // 所有字段都在 data 内部
+            val requestId = data["id"]?.jsonPrimitive?.content ?: return
+            val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val message = data["message"]?.jsonPrimitive?.content
+            val error = data["error"]?.jsonPrimitive?.content
+            val mcName = data["mcName"]?.jsonPrimitive?.content
+            val qqNumber = data["qqNumber"]?.jsonPrimitive?.content
+            
+            plugin.logger.info("[WebBridge] 解绑响应: requestId=$requestId, success=$success, message=$message")
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getQQBindManager()?.handleUnbindResponse(requestId, success, mcName, qqNumber, message, error)
             }
         }
 

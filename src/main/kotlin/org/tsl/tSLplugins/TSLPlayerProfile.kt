@@ -45,6 +45,14 @@ data class TSLPlayerProfile(
     /** 聊天屏蔽列表（被屏蔽玩家的 UUID） */
     var ignoreList: MutableSet<UUID> = mutableSetOf(),
 
+    // ==================== 绑定状态 ====================
+
+    /** QQ 绑定状态 */
+    var bindStatus: Boolean = false,
+
+    /** 绑定的 QQ 号码 */
+    var bindQQ: String = "",
+
     // ==================== 迁移标记 ====================
 
     /** 是否已从 PDC 迁移 */
