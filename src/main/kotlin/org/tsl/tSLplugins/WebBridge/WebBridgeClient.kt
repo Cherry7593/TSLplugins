@@ -41,6 +41,12 @@ class WebBridgeClient(
     // 发送任务引用
     private var sendTask: ScheduledTask? = null
 
+    // 重连任务引用
+    private var reconnectTask: ScheduledTask? = null
+
+    // 重连间隔（秒）
+    private val reconnectIntervalSeconds = 30L
+
 
     /**
      * 启动 WebSocket 客户端
@@ -69,6 +75,10 @@ class WebBridgeClient(
         // 停止发送任务
         sendTask?.cancel()
         sendTask = null
+
+        // 停止重连任务
+        reconnectTask?.cancel()
+        reconnectTask = null
 
         // 关闭连接
         clientRef.getAndSet(null)?.close()
@@ -150,8 +160,13 @@ class WebBridgeClient(
             if (!connectSuccess) {
                 plugin.logger.warning("[WebBridge] ❌ 连接失败")
                 clientRef.set(null)
+                scheduleReconnect()
                 return false
             }
+
+            // 连接成功，取消重连任务
+            reconnectTask?.cancel()
+            reconnectTask = null
 
             // 连接成功，启动发送任务（如果还没启动）
             if (sendTask == null) {
@@ -178,6 +193,10 @@ class WebBridgeClient(
         sendTask?.cancel()
         sendTask = null
 
+        // 停止重连任务
+        reconnectTask?.cancel()
+        reconnectTask = null
+
         val client = clientRef.getAndSet(null)
         if (client != null && client.isOpen) {
             client.close()
@@ -188,6 +207,30 @@ class WebBridgeClient(
 
         // 清空队列
         messageQueue.clear()
+    }
+
+    /**
+     * 调度自动重连
+     */
+    private fun scheduleReconnect() {
+        if (!isRunning.get()) {
+            return
+        }
+
+        // 已有重连任务在运行
+        if (reconnectTask != null) {
+            return
+        }
+
+        plugin.logger.info("[WebBridge] 将在 ${reconnectIntervalSeconds} 秒后尝试重连...")
+
+        reconnectTask = Bukkit.getGlobalRegionScheduler().runDelayed(plugin, { _ ->
+            reconnectTask = null
+            if (isRunning.get() && !isConnected()) {
+                plugin.logger.info("[WebBridge] 正在尝试重连...")
+                connect()
+            }
+        }, reconnectIntervalSeconds * 20L) // 转换为 ticks
     }
 
     /**
@@ -256,6 +299,7 @@ class WebBridgeClient(
                     "system" -> handleSystemMessage(json)
                     "event" -> handleEventMessage(json)
                     "response" -> handleResponseMessage(json)
+                    "request" -> handleRequestMessage(json)
                     else -> plugin.logger.warning("[WebBridge] 未知消息类型: $type")
                 }
             } catch (e: Exception) {
@@ -324,11 +368,29 @@ class WebBridgeClient(
                 
                 when (event) {
                     "TITLE_UPDATE" -> handleTitleUpdateEvent(data)
+                    "BIND_STATUS_UPDATE" -> handleBindStatusUpdateEvent(data)
                     else -> plugin.logger.fine("[WebBridge] 未处理的事件类型: $event")
                 }
             } catch (e: Exception) {
                 plugin.logger.log(Level.WARNING, "[WebBridge] 处理事件消息失败", e)
             }
+        }
+
+        /**
+         * 处理绑定状态更新事件
+         */
+        private fun handleBindStatusUpdateEvent(data: kotlinx.serialization.json.JsonObject) {
+            val mcUuid = data["mcUuid"]?.jsonPrimitive?.content ?: return
+            val mcName = data["mcName"]?.jsonPrimitive?.content ?: ""
+            val qqNumber = data["qqNumber"]?.jsonPrimitive?.content
+            val action = data["action"]?.jsonPrimitive?.content ?: return
+            val source = data["source"]?.jsonPrimitive?.content ?: ""
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getQQBindManager()?.handleBindStatusUpdateEvent(mcUuid, mcName, qqNumber, action, source)
+            }
+            
+            plugin.logger.info("[WebBridge] 收到绑定状态更新: $mcName ($action) 来源: $source")
         }
 
         /**
@@ -373,6 +435,7 @@ class WebBridgeClient(
                     "QQ_BIND_REQUEST" -> handleQQBindRequestResponse(json)
                     "QQ_BIND_RESULT" -> data?.let { handleQQBindResult(it) }
                     "UNBIND_ACCOUNT" -> handleUnbindAccountResponse(json)
+                    "QUERY_BIND_STATUS" -> handleQueryBindStatusResponse(json)
                     else -> plugin.logger.fine("[WebBridge] 未处理的响应类型: $action")
                 }
             } catch (e: Exception) {
@@ -478,6 +541,27 @@ class WebBridgeClient(
         }
 
         /**
+         * 处理绑定状态查询响应
+         * Web 实际格式: { type, source, timestamp, data: {action, id, success, bound, qqNumber, source, message} }
+         */
+        private fun handleQueryBindStatusResponse(json: kotlinx.serialization.json.JsonObject) {
+            val data = json["data"]?.jsonObject ?: return
+            
+            val requestId = data["id"]?.jsonPrimitive?.content ?: return
+            val success = data["success"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val bound = data["bound"]?.jsonPrimitive?.content?.toBoolean() ?: false
+            val qqNumber = data["qqNumber"]?.jsonPrimitive?.content
+            val source = data["source"]?.jsonPrimitive?.content
+            val message = data["message"]?.jsonPrimitive?.content
+            
+            Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                manager.getQQBindManager()?.handleBindStatusResponse(
+                    requestId, success, bound, qqNumber, source, message
+                )
+            }
+        }
+
+        /**
          * 处理解绑账号响应
          * Web 实际格式: { type, source, timestamp, data: {action, id, success, mcName, qqNumber, message, error?} }
          */
@@ -499,6 +583,55 @@ class WebBridgeClient(
             }
         }
 
+        /**
+         * 处理请求消息（来自 Web 端）
+         */
+        private fun handleRequestMessage(json: kotlinx.serialization.json.JsonObject) {
+            try {
+                val source = json["source"]?.jsonPrimitive?.content
+                if (source != "web") return
+                
+                val data = json["data"]?.jsonObject ?: return
+                val action = data["action"]?.jsonPrimitive?.content ?: return
+                val requestId = json["requestId"]?.jsonPrimitive?.content ?: return
+                
+                when (action) {
+                    "QQ_COMMAND_EXECUTE" -> handleQQCommandExecute(requestId, data)
+                    else -> plugin.logger.fine("[WebBridge] 未处理的请求类型: $action")
+                }
+            } catch (e: Exception) {
+                plugin.logger.log(Level.WARNING, "[WebBridge] 处理请求消息失败", e)
+            }
+        }
+
+        /**
+         * 处理 QQ 群指令执行请求
+         */
+        private fun handleQQCommandExecute(requestId: String, data: kotlinx.serialization.json.JsonObject) {
+            val command = data["command"]?.jsonPrimitive?.content ?: return
+            val serverId = data["serverId"]?.jsonPrimitive?.content
+            val qqNumber = data["qqNumber"]?.jsonPrimitive?.content ?: "unknown"
+            val groupId = data["groupId"]?.jsonPrimitive?.content ?: "unknown"
+            val commandId = data["commandId"]?.jsonPrimitive?.content ?: "unknown"
+            
+            // 检查是否是发给本服务器的命令
+            val myServerId = manager.getServerId()
+            if (serverId != null && serverId != myServerId) {
+                // 不是发给本服务器的，忽略
+                return
+            }
+            
+            // 记录审计日志
+            plugin.logger.info("[WebBridge] QQ指令请求: requestId=$requestId, command=$command, qq=$qqNumber, group=$groupId, cmdId=$commandId")
+            
+            // 在主线程执行命令
+            if (plugin.isEnabled) {
+                Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                    manager.executeQQCommand(requestId, command)
+                }
+            }
+        }
+
         override fun onClose(code: Int, reason: String, remote: Boolean) {
             val source = if (remote) "服务器" else "客户端"
             plugin.logger.warning("[WebBridge] 连接已关闭 (由${source}发起, code: $code)")
@@ -508,6 +641,13 @@ class WebBridgeClient(
 
             // 通知 Manager 连接断开
             manager.onDisconnected()
+
+            // 调度自动重连（仅当插件启用时）
+            if (plugin.isEnabled) {
+                Bukkit.getGlobalRegionScheduler().run(plugin) { _ ->
+                    scheduleReconnect()
+                }
+            }
         }
 
         override fun onError(ex: Exception) {

@@ -30,6 +30,9 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
             // 重新加载配置文件
             plugin.reloadConfig()
 
+            // 重新加载在线玩家数据到缓存（必须在其他模块之前）
+            plugin.reloadPlayerData()
+
             // 重新加载别名系统
             val reloadedAliases = plugin.reloadAliasManager()
 
@@ -138,6 +141,12 @@ class ReloadCommand(private val plugin: TSLplugins) : SubCommandHandler {
 
             // 重新加载 Vote 功能
             plugin.reloadVoteManager()
+
+            // 重新加载 XConomy 余额触发器功能
+            plugin.reloadXconomyTriggerManager()
+
+            // 重新加载死亡金币惩罚功能
+            plugin.reloadDeathPenaltyManager()
 
             sender.sendMessage(serializer.deserialize("&a配置文件重载成功！"))
             sender.sendMessage(serializer.deserialize("&7- 主配置文件已重载"))

@@ -99,6 +99,9 @@ import org.tsl.tSLplugins.Vault.VaultListener
 import org.tsl.tSLplugins.Vault.VaultNBTHelper
 import org.tsl.tSLplugins.Vote.VoteManager
 import org.tsl.tSLplugins.Vote.VoteCommand
+import org.tsl.tSLplugins.XconomyTrigger.XconomyTriggerManager
+import org.tsl.tSLplugins.DeathPenalty.DeathPenaltyManager
+import org.tsl.tSLplugins.DeathPenalty.DeathPenaltyListener
 
 class TSLplugins : JavaPlugin() {
 
@@ -139,6 +142,8 @@ class TSLplugins : JavaPlugin() {
     private lateinit var playTimeManager: PlayTimeManager
     private lateinit var vaultManager: VaultManager
     private lateinit var voteManager: VoteManager
+    private lateinit var xconomyTriggerManager: XconomyTriggerManager
+    private lateinit var deathPenaltyManager: DeathPenaltyManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -311,6 +316,8 @@ class TSLplugins : JavaPlugin() {
         // 初始化 WebBridge 系统
         webBridgeManager = WebBridgeManager(this)
         webBridgeManager.initialize()
+        // 设置 PlayerDataManager 用于绑定状态缓存
+        webBridgeManager.getQQBindManager()?.setPlayerDataManager(playerDataManager)
 
         // 初始化末影龙控制系统
         endDragonManager = EndDragonManager(this)
@@ -387,6 +394,15 @@ class TSLplugins : JavaPlugin() {
         // 初始化 Vote 投票系统
         voteManager = VoteManager(this)
 
+        // 初始化 XConomy 余额触发器系统
+        xconomyTriggerManager = XconomyTriggerManager(this)
+        xconomyTriggerManager.initialize()
+
+        // 初始化死亡金币惩罚系统
+        deathPenaltyManager = DeathPenaltyManager(this)
+        val deathPenaltyListener = DeathPenaltyListener(this, deathPenaltyManager, messageManager)
+        pm.registerEvents(deathPenaltyListener, this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -446,7 +462,8 @@ class TSLplugins : JavaPlugin() {
                 newbieTagManager,
                 randomVariableManager,
                 papiAliasManager,
-                playTimeManager
+                playTimeManager,
+                playerDataManager
             ).register()
             
             logger.info("PlaceholderAPI 扩展已注册！")
@@ -525,6 +542,11 @@ class TSLplugins : JavaPlugin() {
             playTimeManager.shutdown()
         }
 
+        // 清理 XConomy 余额触发器系统
+        if (::xconomyTriggerManager.isInitialized) {
+            xconomyTriggerManager.shutdown()
+        }
+
         // 关闭全局数据库管理器
         DatabaseManager.shutdown()
 
@@ -538,6 +560,14 @@ class TSLplugins : JavaPlugin() {
     fun reloadAliasManager(): Int {
         aliasManager.reloadAliases()
         return aliasManager.getAliasCount()
+    }
+
+    /**
+     * 重新加载在线玩家数据到缓存
+     * 用于热重载后恢复在线玩家的配置状态
+     */
+    fun reloadPlayerData() {
+        playerDataManager.reloadOnlinePlayers()
     }
 
     /**
@@ -788,6 +818,20 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadVoteManager() {
         voteManager.reload()
+    }
+
+    /**
+     * 重新加载 XConomy 余额触发器管理器
+     */
+    fun reloadXconomyTriggerManager() {
+        xconomyTriggerManager.reload()
+    }
+
+    /**
+     * 重新加载死亡金币惩罚管理器
+     */
+    fun reloadDeathPenaltyManager() {
+        deathPenaltyManager.reload()
     }
 
     /**

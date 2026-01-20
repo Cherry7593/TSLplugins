@@ -38,3 +38,6 @@ Thumbs.db
 
 # Standalone plugins (each has its own git repo)
 StandalonePlugins/
+
+.windsurf/
+bin/

@@ -103,14 +103,15 @@ class BindCommand(
     companion object {
         /**
          * 发送已绑定提示（带可点击解绑按钮）
+         * @param unbindCommand 解绑命令，默认为 /tsl bind unbind
          */
-        fun sendAlreadyBoundMessage(player: Player) {
+        fun sendAlreadyBoundMessage(player: Player, unbindCommand: String = "/tsl bind unbind") {
             val prefix = Component.text("[绑定] ", NamedTextColor.GOLD)
             val message = Component.text("该账号已绑定，请勿重复绑定。", NamedTextColor.YELLOW)
             
             val unbindButton = Component.text(" [点击解绑]", NamedTextColor.RED)
                 .decorate(TextDecoration.BOLD)
-                .clickEvent(ClickEvent.runCommand("/tsl bind unbind"))
+                .clickEvent(ClickEvent.runCommand(unbindCommand))
                 .hoverEvent(HoverEvent.showText(Component.text("点击解除绑定", NamedTextColor.GRAY)))
             
             player.sendMessage(prefix.append(message).append(unbindButton))

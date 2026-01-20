@@ -111,6 +111,26 @@ class PermissionChecker(private val plugin: JavaPlugin) : Listener {
         loadRules()
     }
 
+    /**
+     * 手动触发权限检查（供外部调用）
+     * 用于绑定状态变更后立即检查权限
+     */
+    fun checkPlayer(player: Player) {
+        if (!plugin.config.getBoolean("permission-checker.enabled", true)) {
+            return
+        }
+
+        val lp = luckPerms ?: return
+
+        plugin.server.asyncScheduler.runNow(plugin) {
+            try {
+                checkAndUpdatePermissionAsync(player, lp)
+            } catch (e: Exception) {
+                plugin.logger.severe("检查玩家 ${player.name} 的权限时发生错误: ${e.message}")
+            }
+        }
+    }
+
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
         val player = event.player

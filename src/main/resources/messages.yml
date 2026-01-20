@@ -198,6 +198,10 @@ vote:
   vote_cancelled: "%prefix%&e当前投票已被取消"
   vote_force_cancelled: "%prefix%&a已强制取消当前投票"
 
+death-penalty:
+  deducted: "%prefix%&c死亡惩罚：已从您的账户扣除 &e{amount} &c金币"
+  insufficient-balance: "%prefix%&7您的余额不足，本次死亡免除金币惩罚"
+
 qq-bind:
   not_connected: "%prefix%&cWebSocket 未连接，无法使用此功能"
   request_sent: "%prefix%&7正在请求绑定码..."

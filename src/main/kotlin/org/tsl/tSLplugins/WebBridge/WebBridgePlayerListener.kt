@@ -37,6 +37,9 @@ class WebBridgePlayerListener(
                 if (titleManager?.isEnabled() == true) {
                     manager.requestPlayerTitle(player.uniqueId.toString())
                 }
+                
+                // 请求玩家绑定状态
+                manager.requestBindStatus(player.uniqueId.toString(), player.name)
             },
             manager.getTitleManager()?.getJoinDelay() ?: 20L
         )

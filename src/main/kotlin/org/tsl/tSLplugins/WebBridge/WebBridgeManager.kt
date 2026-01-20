@@ -322,6 +322,32 @@ class WebBridgeManager(private val plugin: Plugin) {
         sendMessage(jsonString)
     }
 
+    // ========== 绑定状态查询 ==========
+
+    /**
+     * 请求查询玩家绑定状态
+     * 在玩家加入服务器时调用，用于同步绑定缓存
+     */
+    fun requestBindStatus(playerUuid: String, playerName: String) {
+        if (!isConnected()) return
+
+        val requestId = "bs-${System.currentTimeMillis()}"
+
+        val request = QueryBindStatusRequest(
+            requestId = requestId,
+            data = QueryBindStatusRequestData(
+                playerUuid = playerUuid,
+                playerName = playerName
+            )
+        )
+
+        // 注册待处理请求
+        qqBindManager?.registerBindStatusQuery(requestId, playerUuid)
+
+        val jsonString = json.encodeToString(request)
+        sendMessage(jsonString)
+    }
+
     // ========== 称号相关方法 ==========
 
     /**
@@ -630,6 +656,165 @@ class WebBridgeManager(private val plugin: Plugin) {
      */
     fun reloadTitleManager() {
         titleManager?.reload()
+    }
+
+    // ========== QQ 群指令联动 ==========
+
+    /**
+     * 执行 QQ 群下发的命令
+     * 
+     * @param requestId 请求 ID，用于响应匹配
+     * @param command 要执行的命令（不含前导斜杠）
+     */
+    fun executeQQCommand(requestId: String, command: String) {
+        val executedAt = System.currentTimeMillis()
+        
+        try {
+            // 使用多种方式尝试捕获命令输出
+            val capturedOutput = captureCommandOutput(command)
+            
+            // 发送响应
+            sendQQCommandResult(requestId, capturedOutput.success, capturedOutput.output, null, executedAt)
+            
+            plugin.logger.info("[WebBridge] QQ指令执行完成: requestId=$requestId, success=${capturedOutput.success}, outputLines=${capturedOutput.output?.lines()?.size ?: 0}, method=${capturedOutput.method}")
+        } catch (e: Exception) {
+            // 发送失败响应
+            sendQQCommandResult(requestId, false, null, e.message ?: "命令执行异常", executedAt)
+            
+            plugin.logger.warning("[WebBridge] QQ指令执行失败: requestId=$requestId, error=${e.message}")
+        }
+    }
+    
+    /**
+     * 命令输出捕获结果
+     */
+    private data class CaptureResult(
+        val success: Boolean,
+        val output: String?,
+        val method: String
+    )
+    
+    /**
+     * 使用反射访问 Log4j2 捕获命令输出（Paper/Folia 使用 Log4j2）
+     */
+    private fun captureCommandOutput(command: String): CaptureResult {
+        val capturedLines = java.util.Collections.synchronizedList(mutableListOf<String>())
+        
+        var appenderInstance: Any? = null
+        var loggerInstance: Any? = null
+        var removeMethod: java.lang.reflect.Method? = null
+        var stopMethod: java.lang.reflect.Method? = null
+        
+        try {
+            // 通过反射获取 Log4j2 LogManager
+            val logManagerClass = Class.forName("org.apache.logging.log4j.LogManager")
+            val getContextMethod = logManagerClass.getMethod("getContext", Boolean::class.javaPrimitiveType)
+            val context = getContextMethod.invoke(null, false)
+            
+            // 获取 root logger
+            val getRootLoggerMethod = context.javaClass.getMethod("getRootLogger")
+            loggerInstance = getRootLoggerMethod.invoke(context)
+            
+            // 创建自定义 Appender 使用动态代理
+            val appenderClass = Class.forName("org.apache.logging.log4j.core.Appender")
+            val logEventClass = Class.forName("org.apache.logging.log4j.core.LogEvent")
+            
+            appenderInstance = java.lang.reflect.Proxy.newProxyInstance(
+                appenderClass.classLoader,
+                arrayOf(appenderClass)
+            ) { _, method, args ->
+                when (method.name) {
+                    "append" -> {
+                        val event = args?.get(0)
+                        if (event != null) {
+                            try {
+                                val getMessage = event.javaClass.getMethod("getMessage")
+                                val message = getMessage.invoke(event)
+                                if (message != null) {
+                                    val getFormattedMessage = message.javaClass.getMethod("getFormattedMessage")
+                                    val msg = getFormattedMessage.invoke(message) as? String
+                                    if (msg != null && !msg.contains("[WebBridge]") && !msg.contains("[TSLplugins]") && !msg.contains("QQ指令")) {
+                                        capturedLines.add(msg)
+                                    }
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        null
+                    }
+                    "getName" -> "QQCommandCapture"
+                    "getLayout" -> null
+                    "ignoreExceptions" -> true
+                    "getHandler" -> null
+                    "isStarted" -> true
+                    "isStopped" -> false
+                    "start" -> null
+                    "stop" -> null
+                    else -> null
+                }
+            }
+            
+            // 添加 Appender
+            val addAppenderMethod = loggerInstance.javaClass.getMethod("addAppender", appenderClass)
+            addAppenderMethod.invoke(loggerInstance, appenderInstance)
+            
+            removeMethod = loggerInstance.javaClass.getMethod("removeAppender", appenderClass)
+            
+        } catch (e: Exception) {
+            plugin.logger.fine("[WebBridge] Log4j2 反射初始化失败: ${e.message}")
+        }
+        
+        // 执行命令
+        val success: Boolean
+        try {
+            success = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command)
+        } finally {
+            // 移除 Appender
+            try {
+                if (appenderInstance != null && loggerInstance != null && removeMethod != null) {
+                    removeMethod.invoke(loggerInstance, appenderInstance)
+                }
+            } catch (_: Exception) {}
+        }
+        
+        // 处理捕获结果
+        val output = capturedLines
+            .distinct()
+            .joinToString("\n")
+            .takeIf { it.isNotEmpty() }
+        
+        val method = if (output != null) "log4j2" else "none"
+        
+        return CaptureResult(success, output, method)
+    }
+
+    /**
+     * 发送 QQ 指令执行结果
+     * 
+     * @param requestId 请求 ID
+     * @param success 是否成功
+     * @param output 命令输出（可选）
+     * @param error 错误信息（可选）
+     * @param executedAt 执行时间戳
+     */
+    private fun sendQQCommandResult(
+        requestId: String,
+        success: Boolean,
+        output: String?,
+        error: String?,
+        executedAt: Long
+    ) {
+        val response = QQCommandResultResponse(
+            requestId = requestId,
+            data = QQCommandResultData(
+                success = success,
+                output = output,
+                error = error,
+                executedAt = executedAt
+            )
+        )
+        
+        val jsonString = json.encodeToString(response)
+        sendMessage(jsonString)
     }
 }
 

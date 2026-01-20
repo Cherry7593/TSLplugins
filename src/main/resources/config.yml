@@ -1,5 +1,5 @@
 ﻿# TSLplugins 配置文件
-config-version: 37
+config-version: 39
 
 # 数据库
 database:
@@ -247,6 +247,15 @@ webbridge:
   player-list-interval: 30
   heartbeat-interval: 30
   web-to-game-format: "&7[&b{source}&7] &f<{playerName}> &7{message}"
+  qq-bind:
+    # 点击解绑按钮时执行的命令
+    unbind-click-command: "/tsl bind unbind"
+    # 绑定成功时执行的命令（支持变量: %player%, %uuid%, %qq%）
+    on-bind-commands:
+      - "lp user %player% parent set normal"
+    # 解绑成功时执行的命令
+    on-unbind-commands:
+      - "lp user %player% parent set default"
 
 # 末影龙控制
 enddragon:
@@ -363,3 +372,25 @@ vote:
       duration: 30
       description: "天气晴朗"
       permission: ""
+
+# 死亡金币惩罚
+death-penalty:
+  enabled: false
+  amount: 1.0
+
+# XConomy 余额触发器
+xconomy-trigger:
+  enabled: false
+  scan-interval-seconds: 60
+  hysteresis: 100.0
+  player-cooldown-seconds: 300
+  low-balance:
+    enabled: true
+    threshold: 1000.0
+    commands:
+      - "say %player% 余额不足 %balance%"
+  high-balance:
+    enabled: true
+    threshold: 100000.0
+    commands:
+      - "say %player% 余额过高 %balance%"

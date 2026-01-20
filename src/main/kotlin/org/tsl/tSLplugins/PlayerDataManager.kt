@@ -197,6 +197,22 @@ class PlayerDataManager(private val plugin: JavaPlugin) {
     // ==================== 工具方法 ====================
 
     /**
+     * 重新加载所有在线玩家的配置到缓存
+     * 用于热重载后恢复在线玩家的配置状态
+     */
+    fun reloadOnlinePlayers() {
+        val onlinePlayers = org.bukkit.Bukkit.getOnlinePlayers()
+        var loadedCount = 0
+
+        onlinePlayers.forEach { player ->
+            profileStore.load(player.uniqueId, player.name)
+            loadedCount++
+        }
+
+        plugin.logger.info("[PlayerData] 已重新加载 $loadedCount 个在线玩家的配置")
+    }
+
+    /**
      * 获取 Profile Store（供其他模块使用）
      */
     fun getProfileStore(): TSLPlayerProfileStore {
