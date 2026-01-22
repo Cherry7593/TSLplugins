@@ -102,6 +102,15 @@ import org.tsl.tSLplugins.Vote.VoteCommand
 import org.tsl.tSLplugins.XconomyTrigger.XconomyTriggerManager
 import org.tsl.tSLplugins.DeathPenalty.DeathPenaltyManager
 import org.tsl.tSLplugins.DeathPenalty.DeathPenaltyListener
+import org.tsl.tSLplugins.MinecartBoost.MinecartBoostManager
+import org.tsl.tSLplugins.MinecartBoost.MinecartBoostListener
+import org.tsl.tSLplugins.Landmark.LandmarkManager
+import org.tsl.tSLplugins.Landmark.LandmarkCommand
+import org.tsl.tSLplugins.Landmark.LandmarkGUI
+import org.tsl.tSLplugins.Landmark.LandmarkListener
+import org.tsl.tSLplugins.Landmark.LandmarkOPKTool
+import org.tsl.tSLplugins.TownPHome.TownPHomeManager
+import org.tsl.tSLplugins.TownPHome.TownPHomeCommand
 
 class TSLplugins : JavaPlugin() {
 
@@ -144,6 +153,11 @@ class TSLplugins : JavaPlugin() {
     private lateinit var voteManager: VoteManager
     private lateinit var xconomyTriggerManager: XconomyTriggerManager
     private lateinit var deathPenaltyManager: DeathPenaltyManager
+    private lateinit var minecartBoostManager: MinecartBoostManager
+    private lateinit var landmarkManager: LandmarkManager
+    private lateinit var landmarkGUI: LandmarkGUI
+    private lateinit var landmarkOPKTool: LandmarkOPKTool
+    private lateinit var townPHomeManager: TownPHomeManager
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -403,6 +417,23 @@ class TSLplugins : JavaPlugin() {
         val deathPenaltyListener = DeathPenaltyListener(this, deathPenaltyManager, messageManager)
         pm.registerEvents(deathPenaltyListener, this)
 
+        // 初始化矿车加速系统
+        minecartBoostManager = MinecartBoostManager(this)
+        val minecartBoostListener = MinecartBoostListener(this, minecartBoostManager)
+        pm.registerEvents(minecartBoostListener, this)
+
+        // 初始化地标系统
+        landmarkManager = LandmarkManager(this)
+        val landmarkListener = LandmarkListener(this, landmarkManager)
+        landmarkGUI = LandmarkGUI(this, landmarkManager, landmarkListener)
+        landmarkOPKTool = LandmarkOPKTool(this, landmarkManager)
+        pm.registerEvents(landmarkGUI, this)
+        pm.registerEvents(landmarkListener, this)
+        pm.registerEvents(landmarkOPKTool, this)
+
+        // 初始化小镇PHome系统
+        townPHomeManager = TownPHomeManager(this)
+
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
             val dispatcher = TSLCommand()
@@ -441,6 +472,8 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("papialias", PapiAliasCommand(papiAliasManager))
             dispatcher.registerSubCommand("playtime", PlayTimeCommand(playTimeManager))
             dispatcher.registerSubCommand("vote", VoteCommand(voteManager))
+            dispatcher.registerSubCommand("landmark", LandmarkCommand(this, landmarkManager, landmarkGUI, landmarkOPKTool))
+            dispatcher.registerSubCommand("phome", TownPHomeCommand(townPHomeManager))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
@@ -545,6 +578,16 @@ class TSLplugins : JavaPlugin() {
         // 清理 XConomy 余额触发器系统
         if (::xconomyTriggerManager.isInitialized) {
             xconomyTriggerManager.shutdown()
+        }
+
+        // 清理地标系统
+        if (::landmarkManager.isInitialized) {
+            landmarkManager.shutdown()
+        }
+
+        // 清理小镇PHome系统
+        if (::townPHomeManager.isInitialized) {
+            townPHomeManager.shutdown()
         }
 
         // 关闭全局数据库管理器
@@ -832,6 +875,27 @@ class TSLplugins : JavaPlugin() {
      */
     fun reloadDeathPenaltyManager() {
         deathPenaltyManager.reload()
+    }
+
+    /**
+     * 重新加载矿车加速管理器
+     */
+    fun reloadMinecartBoostManager() {
+        minecartBoostManager.loadConfig()
+    }
+
+    /**
+     * 重新加载地标系统管理器
+     */
+    fun reloadLandmarkManager() {
+        landmarkManager.loadConfig()
+    }
+
+    /**
+     * 重新加载小镇PHome管理器
+     */
+    fun reloadTownPHomeManager() {
+        townPHomeManager.loadConfig()
     }
 
     /**

@@ -169,3 +169,12 @@ permissions:
   tsl.freeze.bypass:
     description: Bypass being frozen by freeze command
     default: op
+  tsl.landmark.admin:
+    description: Landmark admin permission (create, delete, edit all)
+    default: op
+  tsl.landmark.tp:
+    description: Teleport to landmark permission
+    default: true
+  tsl.landmark.use:
+    description: Use landmark GUI permission
+    default: true

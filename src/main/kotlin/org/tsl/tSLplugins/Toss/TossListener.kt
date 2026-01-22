@@ -71,8 +71,8 @@ class TossListener(
             return
         }
 
-        // 检查实体是否已在乘客链中
-        if (isEntityInPassengerChain(entity)) {
+        // 检查实体是否已被其他玩家持有
+        if (isEntityHeldByPlayer(entity)) {
             sendMessage(player, "entity_already_lifted")
             return
         }
@@ -102,7 +102,7 @@ class TossListener(
         if (!manager.isPlayerEnabled(player)) return
 
         // 检查玩家是否举起了生物
-        if (getPassengerChainCount(player) == 0) return
+        if (!hasPassengers(player)) return
 
         // 只处理左键投掷
         if (event.action == Action.LEFT_CLICK_AIR || event.action == Action.LEFT_CLICK_BLOCK) {
@@ -129,7 +129,7 @@ class TossListener(
     fun onGameModeChange(event: PlayerGameModeChangeEvent) {
         val player = event.player
         // 检查玩家是否有举起的生物
-        if (getPassengerChainCount(player) > 0) {
+        if (hasPassengers(player)) {
             cleanupPlayerEntities(player)
         }
     }
@@ -141,6 +141,9 @@ class TossListener(
         player.scheduler.run(plugin, { _ ->
             // 验证实体和玩家仍然有效
             if (!entity.isValid || !player.isOnline) return@run
+
+            // 如果实体当前有载具（堆叠状态），先将其移除
+            entity.vehicle?.removePassenger(entity)
 
             // 获取当前乘客链数量
             val currentCount = getPassengerChainCount(player)
@@ -217,33 +220,6 @@ class TossListener(
     }
 
     /**
-     * 放下所有举起的实体
-     */
-    private fun dropAllEntities(player: Player) {
-        player.scheduler.run(plugin, { _ ->
-            val allPassengers = getAllPassengers(player)
-
-            if (allPassengers.isEmpty()) {
-                sendMessage(player, "no_entity_lifted")
-                return@run
-            }
-
-            // 移除所有乘客并轻柔放下
-            val direction = player.location.direction.normalize().multiply(0.2)
-            allPassengers.forEach { entity ->
-                if (entity.isValid) {
-                    entity.vehicle?.removePassenger(entity)
-                    entity.velocity = direction
-                }
-            }
-
-            // 发送成功消息
-            sendMessage(player, "drop_all_success",
-                "count" to allPassengers.size.toString())
-        }, null)
-    }
-
-    /**
      * 清理玩家举起的所有实体
      */
     private fun cleanupPlayerEntities(player: Player) {
@@ -259,9 +235,24 @@ class TossListener(
     }
 
     /**
-     * 获取玩家乘客链的数量
+     * 检查实体是否有乘客（快速检查，不创建列表）
      */
-    private fun getPassengerChainCount(player: Player): Int = getAllPassengers(player).size
+    private fun hasPassengers(entity: Entity): Boolean = entity.passengers.isNotEmpty()
+
+    /**
+     * 获取玩家乘客链的数量（计数而非创建列表）
+     */
+    private fun getPassengerChainCount(entity: Entity): Int {
+        var count = 0
+        fun countPassengers(current: Entity) {
+            current.passengers.forEach { passenger ->
+                count++
+                countPassengers(passenger)
+            }
+        }
+        countPassengers(entity)
+        return count
+    }
 
     /**
      * 获取实体的所有乘客（递归，尾递归优化）
@@ -295,16 +286,28 @@ class TossListener(
     }
 
     /**
-     * 检查实体是否在任何乘客链中
+     * 检查实体是否被玩家持有（根载具是玩家）
      */
-    private fun isEntityInPassengerChain(entity: Entity): Boolean =
-        entity.vehicle != null || entity.passengers.isNotEmpty()
+    private fun isEntityHeldByPlayer(entity: Entity): Boolean {
+        var current: Entity? = entity
+        while (current?.vehicle != null) {
+            current = current.vehicle
+        }
+        return current is Player
+    }
 
     /**
-     * 检查实体是否在玩家的乘客链中
+     * 检查实体是否在玩家的乘客链中（早期退出优化）
      */
-    private fun isEntityInPlayerPassengerChain(player: Player, entity: Entity): Boolean =
-        getAllPassengers(player).contains(entity)
+    private fun isEntityInPlayerPassengerChain(player: Player, target: Entity): Boolean {
+        fun searchInChain(current: Entity): Boolean {
+            for (passenger in current.passengers) {
+                if (passenger == target || searchInChain(passenger)) return true
+            }
+            return false
+        }
+        return searchInChain(player)
+    }
 
     /**
      * 获取实体的显示名称
