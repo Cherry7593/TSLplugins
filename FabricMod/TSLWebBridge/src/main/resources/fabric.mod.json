@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "tsl-webbridge",
+  "version": "${version}",
+  "name": "TSL WebBridge",
+  "description": "WebSocket bridge for server player list reporting",
+  "authors": ["TSL"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/tsl-webbridge/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["org.tsl.webbridge.TSLWebBridgeMod"]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
