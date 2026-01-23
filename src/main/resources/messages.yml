@@ -242,12 +242,15 @@ town-phome:
   teleport_success: "%prefix%&a已传送到: &e{name}"
   teleport_failed: "%prefix%&c传送失败"
   world_not_found: "%prefix%&c目标世界不存在"
+  gui_enter_name: "%prefix%&e请在聊天中输入PHome名称:"
+  gui_name_empty: "%prefix%&c名称不能为空"
 
 landmark:
   disabled: "%prefix%&c地标系统未启用"
   player_only: "%prefix%&c此命令只能由玩家执行"
   no_permission: "%prefix%&c你没有权限执行此操作"
   enter: "&a&l▶ &f你已到达: &e{landmark}"
+  leave: "&c&l◀ &f你已离开: &e{landmark}"
   unlocked: "&6★ &f已解锁地标: &e{landmark}"
   creation_failed: "%prefix%&c创建失败，请检查名称是否已存在"
   creation_failed_volume: "%prefix%&c创建失败，区域面积超过限制"
@@ -270,6 +273,7 @@ landmark:
   untrust_success: "%prefix%&a已移除 &e{player} &a的 &f{landmark} &a维护权限"
   untrust_not_found: "%prefix%&c{player} 不是维护者"
   warp_set: "%prefix%&a已设置 &e{landmark} &a的传送点为当前位置"
+  warp_not_in_region: "%prefix%&c必须在 &e{landmark} &c的区域内才能设置传送点"
   not_in_landmark: "%prefix%&c你必须在地标区域内才能传送"
   not_unlocked: "%prefix%&c你还未解锁地标: &e{landmark}"
   on_cooldown: "%prefix%&c传送冷却中，请稍后再试"

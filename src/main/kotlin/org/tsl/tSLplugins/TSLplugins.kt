@@ -111,6 +111,7 @@ import org.tsl.tSLplugins.Landmark.LandmarkListener
 import org.tsl.tSLplugins.Landmark.LandmarkOPKTool
 import org.tsl.tSLplugins.TownPHome.TownPHomeManager
 import org.tsl.tSLplugins.TownPHome.TownPHomeCommand
+import org.tsl.tSLplugins.TownPHome.TownPHomeGUI
 
 class TSLplugins : JavaPlugin() {
 
@@ -158,6 +159,7 @@ class TSLplugins : JavaPlugin() {
     private lateinit var landmarkGUI: LandmarkGUI
     private lateinit var landmarkOPKTool: LandmarkOPKTool
     private lateinit var townPHomeManager: TownPHomeManager
+    private lateinit var townPHomeGUI: TownPHomeGUI
     private lateinit var advancementMessage: AdvancementMessage
     private lateinit var farmProtect: FarmProtect
     private lateinit var visitorEffect: VisitorEffect
@@ -433,6 +435,8 @@ class TSLplugins : JavaPlugin() {
 
         // 初始化小镇PHome系统
         townPHomeManager = TownPHomeManager(this)
+        townPHomeGUI = TownPHomeGUI(this, townPHomeManager)
+        server.pluginManager.registerEvents(townPHomeGUI, this)
 
         // 注册命令 - 使用新的命令分发架构
         getCommand("tsl")?.let { command ->
@@ -473,7 +477,7 @@ class TSLplugins : JavaPlugin() {
             dispatcher.registerSubCommand("playtime", PlayTimeCommand(playTimeManager))
             dispatcher.registerSubCommand("vote", VoteCommand(voteManager))
             dispatcher.registerSubCommand("landmark", LandmarkCommand(this, landmarkManager, landmarkGUI, landmarkOPKTool))
-            dispatcher.registerSubCommand("phome", TownPHomeCommand(townPHomeManager))
+            dispatcher.registerSubCommand("phome", TownPHomeCommand(townPHomeManager, townPHomeGUI))
             dispatcher.registerSubCommand("reload", ReloadCommand(this))
 
             command.setExecutor(dispatcher)
