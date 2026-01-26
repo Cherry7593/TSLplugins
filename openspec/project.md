@@ -31,20 +31,76 @@ TSLplugins is a multi-function integrated plugin for **Paper/Folia 1.21.8** Mine
 - Use Adventure API with `LegacyComponentSerializer.legacyAmpersand()` for messages
 
 ### Architecture Patterns
-**Manager-Command-Listener Pattern** (standard module structure):
+
+**Directory Structure:**
 ```
-Module/
-├── ModuleManager.kt    # Config loading, state management, utilities
-├── ModuleCommand.kt    # Command handling (implements SubCommandHandler)
-└── ModuleListener.kt   # Event listeners, business logic
+src/main/kotlin/org/tsl/tSLplugins/
+├── core/                    # Framework layer
+│   ├── AbstractModule.kt    # Module base class with lifecycle
+│   ├── ModuleContext.kt     # Dependency injection context
+│   └── ModuleRegistry.kt    # Module registration and management
+├── service/                 # Service layer
+│   ├── MessageManager.kt    # i18n message management
+│   ├── DatabaseManager.kt   # SQLite database access
+│   ├── PlayerDataManager.kt # Player profile persistence
+│   └── TSLPlayerProfile*.kt # Profile data classes
+├── modules/                 # Feature modules (48+)
+│   └── <module-name>/       # One directory per module
+│       ├── <Name>Module.kt  # Entry point (extends AbstractModule)
+│       ├── <Name>Manager.kt # Business logic (optional)
+│       ├── <Name>Command.kt # Command handler (optional)
+│       └── <Name>Listener.kt# Event listener (optional)
+└── TSLplugins.kt            # Main plugin class
+```
+
+**AbstractModule Pattern** (recommended for all modules):
+```kotlin
+class ExampleModule : AbstractModule() {
+    override val id = "example"           // Unique module ID
+    override val configPath = "example"   // Config section path
+    
+    override fun doEnable() {
+        // Initialize manager, register listeners
+        registerListener(ExampleListener(this))
+    }
+    
+    override fun doDisable() {
+        // Cleanup resources
+    }
+    
+    override fun getCommandHandler() = ExampleCommand(this)
+}
 ```
 
 **Key patterns:**
 - All commands route through `/tsl <subcommand>` via `TSLCommand.kt` dispatcher
 - Config cached at startup/reload; zero overhead during event handling
+- Services accessed via `ModuleContext` (not direct imports from root package)
 - PDC (`PersistentDataContainer`) for player data persistence
-- Folia schedulers: `player.scheduler.run()` for entity ops, `Bukkit.getGlobalRegionScheduler()` for global tasks
-- Never use `Bukkit.getScheduler()` (incompatible with Folia)
+
+**Folia Scheduler Guide** (CRITICAL - never use BukkitScheduler):
+```kotlin
+// Entity-related task (player, mob, etc.)
+player.scheduler.run(plugin, { /* task */ }, null)
+
+// Global task (not tied to entity)
+Bukkit.getGlobalRegionScheduler().run(plugin) { /* task */ }
+
+// Async task (I/O, computation)
+Bukkit.getAsyncScheduler().runNow(plugin) { /* task */ }
+
+// ❌ NEVER use these (Folia incompatible):
+// Bukkit.getScheduler().runTask()
+// Bukkit.getScheduler().runTaskAsynchronously()
+```
+
+**Module Creation Checklist:**
+1. Create directory: `modules/<name>/`
+2. Create `<Name>Module.kt` extending `AbstractModule`
+3. Implement `doEnable()` with initialization logic
+4. Register module in `TSLplugins.kt`: `registry.register(<Name>Module())`
+5. Add config section in `config.yml` with `enabled: true`
+6. Add messages in `messages.yml` under `<name>:` section
 
 ### Testing Strategy
 - Manual in-game testing with suggested test steps
