@@ -1,0 +1,170 @@
+package org.tsl.tSLplugins.modules.neko
+
+import org.bukkit.Bukkit
+import org.bukkit.entity.Player
+import org.bukkit.plugin.java.JavaPlugin
+import org.tsl.tSLplugins.TSLplugins
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * 猫娘模式管理器
+ * 负责管理玩家的猫娘状态、计时和配置
+ */
+class NekoManager(private val plugin: JavaPlugin) {
+
+    private var enabled: Boolean = true
+    private var suffix: String = "喵~"
+    private var scanIntervalTicks: Long = 20L
+
+    private val msg get() = (plugin as TSLplugins).messageManager
+
+    // 活跃的猫娘效果：playerUuid -> NekoEffect
+    private val activeEffects: ConcurrentHashMap<UUID, NekoEffect> = ConcurrentHashMap()
+
+    init {
+        loadConfig()
+    }
+
+    /**
+     * 加载配置
+     */
+    fun loadConfig() {
+        val config = plugin.config
+        enabled = config.getBoolean("neko.enabled", true)
+        suffix = config.getString("neko.suffix", "喵~") ?: "喵~"
+        scanIntervalTicks = config.getLong("neko.scan-interval-ticks", 20L)
+    }
+
+    /**
+     * 启动过期扫描任务
+     */
+    fun startExpirationTask() {
+        if (!enabled) return
+
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, { _ ->
+            scanAndRemoveExpired()
+        }, scanIntervalTicks, scanIntervalTicks)
+
+        plugin.logger.info("[Neko] 过期扫描任务已启动，间隔: ${scanIntervalTicks} ticks")
+    }
+
+    /**
+     * 扫描并移除过期效果
+     */
+    private fun scanAndRemoveExpired() {
+        val expiredPlayers = mutableListOf<UUID>()
+
+        activeEffects.forEach { (uuid, effect) ->
+            if (effect.isExpired()) {
+                expiredPlayers.add(uuid)
+            }
+        }
+
+        expiredPlayers.forEach { uuid ->
+            val effect = activeEffects.remove(uuid)
+            if (effect != null) {
+                plugin.logger.info("[Neko] ${effect.playerName} 的猫娘效果已过期")
+            }
+        }
+    }
+
+    /**
+     * 设置玩家为猫娘
+     */
+    fun setNeko(player: Player, durationMs: Long, source: String = "command"): Boolean {
+        if (!enabled) return false
+
+        val expireAt = if (durationMs == -1L) -1L else System.currentTimeMillis() + durationMs
+
+        val effect = NekoEffect(
+            playerUuid = player.uniqueId,
+            playerName = player.name,
+            expireAt = expireAt,
+            source = source
+        )
+
+        activeEffects[player.uniqueId] = effect
+        plugin.logger.info("[Neko] ${player.name} 已成为猫娘，持续: ${effect.formatRemainingTime()}")
+        return true
+    }
+
+    /**
+     * 取消玩家的猫娘状态
+     */
+    fun resetNeko(player: Player): Boolean {
+        val removed = activeEffects.remove(player.uniqueId)
+        if (removed != null) {
+            plugin.logger.info("[Neko] ${player.name} 已不再是猫娘")
+            return true
+        }
+        return false
+    }
+
+    fun resetNeko(uuid: UUID): Boolean {
+        val removed = activeEffects.remove(uuid)
+        return removed != null
+    }
+
+    fun isNeko(player: Player): Boolean {
+        val effect = activeEffects[player.uniqueId] ?: return false
+        if (effect.isExpired()) {
+            activeEffects.remove(player.uniqueId)
+            return false
+        }
+        return true
+    }
+
+    fun isNeko(uuid: UUID): Boolean {
+        val effect = activeEffects[uuid] ?: return false
+        if (effect.isExpired()) {
+            activeEffects.remove(uuid)
+            return false
+        }
+        return true
+    }
+
+    fun getNekoEffect(uuid: UUID): NekoEffect? {
+        val effect = activeEffects[uuid] ?: return null
+        if (effect.isExpired()) {
+            activeEffects.remove(uuid)
+            return null
+        }
+        return effect
+    }
+
+    fun getAllNekos(): List<NekoEffect> {
+        return activeEffects.values.filter { !it.isExpired() }
+    }
+
+    fun getSuffix(): String = suffix
+    fun isEnabled(): Boolean = enabled
+
+    fun getMessage(key: String, vararg replacements: Pair<String, String>): String {
+        return msg.getModule("neko", key, *replacements)
+    }
+
+    fun parseDuration(input: String): Long? {
+        val trimmed = input.trim().lowercase()
+        trimmed.toLongOrNull()?.let { return it * 1000 }
+        val regex = Regex("""^(\d+)([smhd])$""")
+        val match = regex.matchEntire(trimmed) ?: return null
+        val value = match.groupValues[1].toLongOrNull() ?: return null
+        val unit = match.groupValues[2]
+        return when (unit) {
+            "s" -> value * 1000
+            "m" -> value * 60 * 1000
+            "h" -> value * 60 * 60 * 1000
+            "d" -> value * 24 * 60 * 60 * 1000
+            else -> null
+        }
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    fun onPlayerQuit(player: Player) {}
+
+    fun shutdown() {
+        activeEffects.clear()
+        plugin.logger.info("[Neko] 管理器已关闭")
+    }
+}

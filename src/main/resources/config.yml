@@ -1,4 +1,4 @@
-﻿# TSLplugins 配置文件
+# TSLplugins 配置文件
 config-version: 43
 
 # 数据库
@@ -441,3 +441,14 @@ landmark:
     cast-time-seconds: 0
     cancel-on-move: true
     cooldown-seconds: 0
+  compass:
+    # ActionBar 刷新间隔（tick，20tick=1秒）
+    actionbar-interval-ticks: 10
+    # 是否启用粒子引导（默认关闭，使用 ActionBar + 磁石指南针）
+    enable-particle: false
+    # 粒子类型（仅在 enable-particle: true 时生效）
+    particle-type: END_ROD
+    particle-interval-ticks: 10
+    particle-length: 5.0
+    particle-density: 1
+    particle-start-distance: 2.0

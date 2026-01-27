@@ -306,4 +306,11 @@ landmark:
   compass_lore_tracking: "&7追踪中: &e{landmark}"
   compass_lore_none: "&7追踪中: &c无"
   compass_lore_tip: "&8左键上一个 | 右键下一个"
+  compass_actionbar: "&b{indicator} &f{direction} &7| &e{landmark} &7| &a{distance}"
   usage_compass: "%prefix%&e用法: /lm compass [玩家名]"
+  # 解锁/锁定命令
+  usage_unlock: "%prefix%&e用法: /lm unlock <地标名|ALL> <玩家名|ALL>"
+  usage_lock: "%prefix%&e用法: /lm lock <地标名|ALL> <玩家名|ALL>"
+  unlock_batch_success: "%prefix%&a已为 &e{player} &a解锁 &f{landmark}&a (共 {count} 条记录)"
+  lock_batch_success: "%prefix%&a已锁定 &e{player} &a的 &f{landmark}&a (共 {count} 条记录)"
+  lock_default_unlocked: "%prefix%&c地标 &f{landmark} &c是默认解锁的，无法锁定"
